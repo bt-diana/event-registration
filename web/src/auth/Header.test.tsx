@@ -56,6 +56,32 @@ describe("W-A18: header", () => {
   });
 });
 
+describe("W-R14: registrations link per role", () => {
+  it.each([
+    [ANN, "My registrations", "/registrations/me", "Registrations"],
+    [OLGA, "Registrations", "/registrations", "My registrations"],
+  ])("logged in as %o: %s", async (me, text, href, other) => {
+    mockFetch({
+      "GET /auth/me": () => json(200, me),
+      "GET /public/events": () => json(200, { events: [] }),
+      "GET /events": () => json(200, { events: [] }),
+    });
+    renderApp(me.role === "user" ? "/" : "/organizer");
+    expect((await header().findByRole("link", { name: text })).getAttribute("href")).toBe(href);
+    expect(header().queryByRole("link", { name: other })).toBeNull();
+  });
+
+  it("logged out: no registrations link", async () => {
+    mockFetch({
+      "GET /auth/me": () => json(401, { error: "not_logged_in" }),
+      "GET /public/events": () => json(200, { events: [] }),
+    });
+    renderApp("/");
+    expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
+    expect(header().queryByRole("link", { name: /registrations/i })).toBeNull();
+  });
+});
+
 describe("W-E22: organizer look on every screen", () => {
   // /event/1 is an unknown event: both views answer 404.
   const EVENT_ROUTES = {

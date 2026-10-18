@@ -1,5 +1,7 @@
-// The public event view (W-E15-W-E18, W-E23): the same for nobody, an attendee and an
-// organizer who does not own the event. Read only: no register button in M2.
+// The public event view (W-E15-W-E18, W-E23): the same event details for nobody, an
+// attendee and an organizer who does not own the event. Under them the registration
+// area (registration-web.md W-R1-W-R10): logged-out viewers and attendees only.
+import { RegistrationArea } from "../registrations/RegistrationArea";
 import { formatDateTime, formatDuration } from "./format";
 import { PUBLIC_LABEL, isClosed, publicStatus } from "./publicStatus";
 import { statusOf, usePublicEvent } from "./queries";
@@ -47,6 +49,7 @@ export function PublicEventView({ id }: { id: string }) {
           <p className="event-closed">Registration is closed.</p>
         </>
       )}
+      <RegistrationArea event={event} />
     </section>
   );
 }

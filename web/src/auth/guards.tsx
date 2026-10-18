@@ -25,7 +25,8 @@ const LOGIN_AS: Record<Role, string> = {
 type Props = { role: Role; children: ReactNode };
 
 // Renders children only once me has an answer; loading and error states otherwise.
-function MeGate({ children }: { children: (me: Me | null) => ReactNode }) {
+// Also used by the registration route entries (registration-web.md W-R15, W-R16).
+export function MeGate({ children }: { children: (me: Me | null) => ReactNode }) {
   const me = useMe();
   if (me.isPending || (me.isError && me.isFetching)) {
     return (

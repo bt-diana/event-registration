@@ -48,13 +48,17 @@ describe("W-E17: status line, first match wins", () => {
     }
   });
 
-  it.each(["active", "cancelled", "passed"] as const)(
-    "has no register button (%s)",
-    async (status) => {
-      await show(publicEvent({ status }));
-      expect(screen.queryByRole("button", { name: /register|sign up|join/i })).toBeNull();
-    },
-  );
+  // Updated for registration-web.md W-R2: logged out gets a login link, never a button,
+  // and only while the event is not closed.
+  it.each<[SamplePublicEvent["status"], boolean]>([
+    ["active", true],
+    ["cancelled", false],
+    ["passed", false],
+  ])("logged out: no register button, a login link only when open (%s)", async (status, link) => {
+    await show(publicEvent({ status }));
+    expect(screen.queryByRole("button", { name: /register|sign up|join/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Log in to register" }) !== null).toBe(link);
+  });
 });
 
 function main() {
@@ -66,8 +70,11 @@ function detail(label: string): string | null {
 }
 
 describe("W-E15: the same public view for every viewer", () => {
-  it("looks the same for nobody, an attendee and another organizer", async () => {
+  // Updated for registration-web.md: the event details are the same for everyone; only
+  // the registration area under them differs (login link, button, nothing for an organizer).
+  it("shows the same event details to nobody, an attendee and another organizer", async () => {
     const texts: string[] = [];
+    const areas: string[] = [];
     for (const [me, own] of [
       [() => json(401, { error: "not_logged_in" }), undefined],
       [() => json(200, ANN), undefined],
@@ -76,17 +83,23 @@ describe("W-E15: the same public view for every viewer", () => {
       mockFetch({
         "GET /auth/me": me,
         [PUBLIC]: () => json(200, publicEvent({ description: "Hello" })),
+        [`GET /events/${EVENT_ID}/registrations/me`]: () => json(404, { error: "not_found" }),
         ...(own ? { [`GET /events/${EVENT_ID}`]: own } : {}),
       });
       const { queryClient, unmount } = renderApp(`/event/${EVENT_ID}`);
       await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
+      await waitFor(() => expect(main().queryByText("Loading...")).toBeNull());
       expect(queryClient.getQueryData(["public-event", EVENT_ID])).toBeTruthy();
-      texts.push(screen.getByRole("main").textContent ?? "");
+      const area = screen.getByRole("main").querySelector(".registration-area");
+      const areaText = area?.textContent ?? "";
+      areas.push(areaText);
+      texts.push((screen.getByRole("main").textContent ?? "").replace(areaText, ""));
       unmount();
       vi.unstubAllGlobals();
     }
     expect(texts[1]).toBe(texts[0]);
     expect(texts[2]).toBe(texts[0]);
+    expect(areas).toEqual(["Log in to register", "Register", ""]);
   });
 });
 
@@ -116,12 +129,15 @@ describe("W-E16: dates and seats", () => {
 });
 
 describe("W-E20 and W-E21: public view structure", () => {
-  it("has the Event eyebrow, one h1, the status as text and no links", async () => {
+  // Updated for registration-web.md W-R2: the only link is the login link of the area.
+  it("has the Event eyebrow, one h1, the status as text and only the login link", async () => {
     await show(publicEvent());
     expect(main().getByText("Event")).toBeTruthy();
     expect(main().getAllByRole("heading", { level: 1 }).length).toBe(1);
     expect(main().getByText("Open").textContent).toBe("Open");
-    expect(main().queryAllByRole("link")).toEqual([]);
+    expect(main().queryAllByRole("link").map((link) => link.textContent)).toEqual([
+      "Log in to register",
+    ]);
   });
 });
 

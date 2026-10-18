@@ -28,12 +28,16 @@ export function isAuthError(error: unknown): boolean {
   return status === 401 || status === 403;
 }
 
-function onApiError(queryClient: QueryClient, error: unknown) {
+// Shared with registrations/queries.ts (registration-web.md section 3).
+export function onApiError(queryClient: QueryClient, error: unknown) {
   if (isAuthError(error)) void queryClient.invalidateQueries({ queryKey: ME_KEY });
 }
 
 // Queries in TanStack Query v5 have no onError, so the check wraps the call.
-async function authCheckedCall<T>(queryClient: QueryClient, call: () => Promise<T>): Promise<T> {
+export async function authCheckedCall<T>(
+  queryClient: QueryClient,
+  call: () => Promise<T>,
+): Promise<T> {
   try {
     return await call();
   } catch (error) {
@@ -42,7 +46,7 @@ async function authCheckedCall<T>(queryClient: QueryClient, call: () => Promise<
   }
 }
 
-const QUERY_OPTIONS = { retry: false, refetchOnWindowFocus: false } as const;
+export const QUERY_OPTIONS = { retry: false, refetchOnWindowFocus: false } as const;
 
 export function useEvents() {
   const queryClient = useQueryClient();

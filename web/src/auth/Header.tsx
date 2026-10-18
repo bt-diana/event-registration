@@ -5,10 +5,20 @@ import { useLogout, useMe } from "./session";
 
 const ROLE_NAME: Record<Me["role"], string> = { user: "Attendee", organizer: "Organizer" };
 
+// One registrations link per role (registration-web.md W-R14).
+const REGISTRATIONS_LINK: Record<Me["role"], { to: string; text: string }> = {
+  user: { to: "/registrations/me", text: "My registrations" },
+  organizer: { to: "/registrations", text: "Registrations" },
+};
+
 function Account({ me }: { me: Me }) {
   const logout = useLogout();
+  const link = REGISTRATIONS_LINK[me.role];
   return (
     <div className="site-account" data-role={me.role}>
+      <nav aria-label="Main" className="site-nav">
+        <Link to={link.to}>{link.text}</Link>
+      </nav>
       <span className="account-name">{me.name}</span>
       <span className="account-role">{ROLE_NAME[me.role]}</span>
       <button

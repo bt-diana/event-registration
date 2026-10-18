@@ -19,10 +19,12 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 - M2 API: event description (`event-description.md`, DS1-DS13): migration `003_event_description.sql`, optional `description` on `POST /events`, in both event shapes, `api/openapi.yaml`.
 - M2 specs for the public events list: `events-public-list.md`, `events-public-list-web.md`.
 - M2 API: public events list (`events-public-list.md`, PL1-PL11): `GET /public/events` (not cancelled and not ended, by `starts_at` then `id`, at most 100, no `description`), `api/openapi.yaml`.
-- M2 UI: public events list (`events-public-list-web.md`, W-L1-W-L13): `/` lists the open events as cards (title link, start, duration, badge from `publicStatus`), with loading, error with Retry and empty states; it waits for `me` and redirects an organizer to `/organizer` with no list request. The W-L13 invalidation from the register handler comes with step 18.
+- M2 UI: public events list (`events-public-list-web.md`, W-L1-W-L13): `/` lists the open events as cards (title link, start, duration, badge from `publicStatus`), with loading, error with Retry and empty states; it waits for `me` and redirects an organizer to `/organizer` with no list request. The W-L13 invalidation from the register handler came with step 18.
 - M3 API spec: `registration.md` (R1-R22): register, waiting list, last seat, my registration.
 - M5 API spec: `checkin.md` (C1-C19): check-in by ticket code, organizer registrations list for the arrivals counter.
 - M3 API: registration (`registration.md`, R1-R22): `POST /events/:id/registrations` (one transaction, `FOR UPDATE` on the event, `ticket` outbox row), `GET /events/:id/registrations/me`, shared `api/src/events/status.ts`, `api/openapi.yaml`.
+- M3 UI spec: `registration-web.md` (W-R1-W-R37).
+- M3 UI: register area and ticket page (`registration-web.md`, W-R1-W-R23): register button, waiting list and login link on the public event page, ticket panel, ticket page `/registrations/me?event={id}`, the `/registrations` and `/registrations/me` redirects, header links. The two lists are placeholders; the QR and the scan screen (W-R24-W-R37) are not built (new libraries need the user's OK; check-in API is step 26).
 
 ## Milestones
 
@@ -69,7 +71,7 @@ Specs are not written all at once. The first steps of each milestone write (or e
 15. **Green:** the register service in one transaction with `FOR UPDATE` on the event, a `ticket` outbox row, route `POST /events/:id/registrations`. (done: `api/src/registrations/`)
 16. "My registration" route (ticket code, status, place on the list). (done: `GET /events/:id/registrations/me`)
 17. UI spec: `registration-web.md`: the register button on the public event page, the ticket page. (done: spec W-R1-W-R23, mock-up boards `Reg*` in the design canvas)
-18. Test, then code: registration form (states: loading, error, full so the list, already registered, not logged in) and the ticket page (code, status, place on the list).
+18. Test, then code: registration form (states: loading, error, full so the list, already registered, not logged in) and the ticket page (code, status, place on the list). (done: tests-first commit, then `web/src/registrations/`: the registration area on the public view of `/event/:id`, the ticket page `/registrations/me?event={id}`, the route entries `/registrations` and `/registrations/me` with the role redirects, header links; W-R1-W-R23 with the recommended answers to questions 1-8; the register handler also invalidates `["public-events"]` (W-L13). Not built: the two lists are placeholders (W-R18-W-R21, `it.todo`; attendee list waits for an API route, question 1; organizer list waits for `GET /events/{id}/registrations`, step 26); the QR on the ticket page and the scan screen (W-R24-W-R37) wait for the user's OK on the `qrcode`, `@types/qrcode` and `jsqr` packages (question 9) and for `POST /checkin` (step 26))
 
 ### M4. Cancel and capacity
 19. API spec: extend `registration.md` (B3, B10).

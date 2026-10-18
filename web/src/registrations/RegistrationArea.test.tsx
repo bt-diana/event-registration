@@ -377,6 +377,140 @@ describe("W-R10: states of the registration read", () => {
   });
 });
 
+describe("W-R2: logged out", () => {
+  async function loggedOutPage(overrides: Partial<SamplePublicEvent>) {
+    const fetch = mockFetch({ [ME]: loggedOut, [PUBLIC]: () => json(200, publicEvent(overrides)) });
+    renderApp(`/event/${EVENT_ID}`);
+    await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
+    return fetch;
+  }
+
+  it.each<[string, Partial<SamplePublicEvent>, string]>([
+    ["open", {}, "Log in to register"],
+    ["already started", STARTED, "Log in to register"],
+    ["full", FULL, "Log in to join the waiting list"],
+  ])("%s: a login link back to the event, no registration request", async (_case, overrides, text) => {
+    const fetch = await loggedOutPage(overrides);
+    const link = main().getByRole("link", { name: text });
+    expect(link.getAttribute("href")).toBe(`/login?next=%2Fevent%2F${EVENT_ID}`);
+    expect(link.classList.contains("button-link")).toBe(true);
+    expect(registerControls()).toEqual([]);
+    expect(registrationCalls(fetch)).toBe(0);
+  });
+
+  it("full: the full hint above the link", async () => {
+    await loggedOutPage(FULL);
+    expect(main().getByText("This event is full.")).toBeTruthy();
+  });
+
+  it.each<[string, Partial<SamplePublicEvent>]>([
+    ["cancelled", CANCELLED],
+    ["ended", PASSED],
+  ])("%s: only Registration is closed.", async (_case, overrides) => {
+    const fetch = await loggedOutPage(overrides);
+    expect(main().queryByRole("link", { name: /Log in to/ })).toBeNull();
+    expect(main().getAllByText("Registration is closed.")).toHaveLength(1);
+    expect(registrationCalls(fetch)).toBe(0);
+  });
+
+  it("after login the person comes back to the event page (W-A5)", async () => {
+    mockFetch({
+      [ME]: loggedOut,
+      [PUBLIC]: () => json(200, publicEvent()),
+      "POST /auth/users/login": () => json(200, ANN),
+      [MY_REGISTRATION]: NONE,
+    });
+    renderApp(`/event/${EVENT_ID}`);
+    fireEvent.click(await main().findByRole("link", { name: "Log in to register" }));
+    fireEvent.change(await screen.findByLabelText("Email"), { target: { value: "ann@mail.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "whatever" } });
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+    expect(await main().findByRole("button", { name: "Register" })).toBeTruthy();
+    expect(screen.getByTestId("location").textContent).toBe(`/event/${EVENT_ID}`);
+  });
+});
+
+describe("W-R3: the registration read", () => {
+  it("is called once after me and the event; 404 is stored as null, not an error", async () => {
+    const { fetch, queryClient } = await attendeePage(publicEvent(), NONE);
+    expect(callsTo(fetch, MY_REGISTRATION)).toBe(1);
+    expect(queryClient.getQueryData(["registration", ANN.id, EVENT_ID])).toBeNull();
+    expect(main().queryByRole("alert")).toBeNull();
+  });
+
+  it.each<[string, Partial<SamplePublicEvent>]>([
+    ["cancelled", CANCELLED],
+    ["ended", PASSED],
+  ])("is also called for a %s event", async (_case, overrides) => {
+    const { fetch } = await attendeePage(publicEvent(overrides), mine(registration()));
+    expect(callsTo(fetch, MY_REGISTRATION)).toBe(1);
+  });
+
+  it("is not called while me loads", async () => {
+    const me = deferred<Response>();
+    const fetch = mockFetch({
+      [ME]: () => me.promise,
+      [PUBLIC]: () => json(200, publicEvent()),
+      [MY_REGISTRATION]: NONE,
+    });
+    renderApp(`/event/${EVENT_ID}`);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(callsTo(fetch, MY_REGISTRATION)).toBe(0);
+    await act(async () => me.resolve(json(200, ANN)));
+    expect(await main().findByRole("button", { name: "Register" })).toBeTruthy();
+    expect(callsTo(fetch, MY_REGISTRATION)).toBe(1);
+  });
+});
+
+describe("W-R7: the ticket panel", () => {
+  it("has the ticket code and a View ticket link to the ticket page", async () => {
+    await attendeePage(publicEvent(), mine(registration()));
+    expect(main().getByText("Ticket code")).toBeTruthy();
+    expect(main().getByText("K7M2QX9TPA")).toBeTruthy();
+    expect(main().getByRole("link", { name: "View ticket" }).getAttribute("href")).toBe(
+      `/registrations/me?event=${EVENT_ID}`,
+    );
+  });
+
+  it("a cancelled ticket keeps its old code and says it is no longer valid", async () => {
+    await attendeePage(publicEvent(), mine(registration({ status: "cancelled" })));
+    expect(main().getByText("K7M2QX9TPA")).toBeTruthy();
+    expect(main().getByText("This ticket is no longer valid.")).toBeTruthy();
+  });
+});
+
+describe("W-R22: accessibility", () => {
+  it("the panel is a section labelled by its h2 inside a status region", async () => {
+    await attendeePage(publicEvent(), mine(registration()));
+    const heading = main().getByRole("heading", { level: 2, name: "You are registered" });
+    const section = heading.closest("section")!;
+    expect(section.getAttribute("aria-labelledby")).toBe(heading.id);
+    expect(main().getByRole("region", { name: "You are registered" })).toBe(section);
+    expect(section.parentElement?.getAttribute("role")).toBe("status");
+    // The code is plain selectable text, not an image.
+    expect(main().getByText("K7M2QX9TPA").tagName).toBe("DD");
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  it("the register control is a real button; after success the focus is on the h2", async () => {
+    await attendeePage(publicEvent(), NONE, { [REGISTER]: () => json(201, registration()) });
+    const button = main().getByRole("button", { name: "Register" });
+    expect(button.tagName).toBe("BUTTON");
+    expect(button.getAttribute("type")).toBe("button");
+    fireEvent.click(button);
+    const heading = await main().findByRole("heading", { level: 2, name: "You are registered" });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(heading.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("after an error the focus is on the error text", async () => {
+    await attendeePage(publicEvent(), NONE, { [REGISTER]: () => json(500, { error: "internal" }) });
+    fireEvent.click(main().getByRole("button", { name: "Register" }));
+    const alert = await main().findByRole("alert");
+    await waitFor(() => expect(document.activeElement).toBe(alert));
+  });
+});
+
 describe("W-R23: the registration is cached per account", () => {
   it("a second account in the same tab never sees the first one's ticket", async () => {
     const ben = deferred<Response>();

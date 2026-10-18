@@ -6,6 +6,7 @@ import { CreateEventForm } from "./events/CreateEventForm";
 import { EventPage } from "./events/EventPage";
 import { EventsList } from "./events/EventsList";
 import { PublicEventsList } from "./events/PublicEventsList";
+import { MyRegistrationsEntry, RegistrationsEntry } from "./registrations/entries";
 
 export function App() {
   return (
@@ -17,6 +18,9 @@ export function App() {
           <Route path="/" element={<PublicEventsList />} />
           {/* One link for everyone, no guard: the page picks its view from me (W-E10). */}
           <Route path="/event/:id" element={<EventPage />} />
+          {/* Each entry redirects the other role to its own screen (W-R15-W-R17). */}
+          <Route path="/registrations" element={<RegistrationsEntry />} />
+          <Route path="/registrations/me" element={<MyRegistrationsEntry />} />
           <Route
             path="/login"
             element={

@@ -139,6 +139,32 @@ describe("W-R16: /registrations is the organizer screen", () => {
   });
 });
 
+describe("W-R18 and W-R20: placeholders until the list routes exist", () => {
+  it.each<[string, Me, string]>([
+    ["/registrations/me", ANN, "My registrations"],
+    ["/registrations/me?event=", ANN, "My registrations"],
+    ["/registrations", OLGA, "Registrations"],
+  ])("%s: the card with its h1, the placeholder text and no request", async (path, me, h1) => {
+    const fetch = mockFetch({ [ME]: () => json(200, me) });
+    renderApp(path);
+    expect(await main().findByRole("heading", { level: 1, name: h1 })).toBeTruthy();
+    expect(main().getByText("The list is not built yet.")).toBeTruthy();
+    expect(fetch.mock.calls).toHaveLength(1);
+  });
+
+  // Blocked until the API has the attendee list route (registration-web.md question 1).
+  it.todo("W-R18: one list request, one row per registration in the API order (question 1)");
+  it.todo("W-R18: empty list shows You have no registrations yet. and Go home (question 1)");
+  it.todo("W-R18: loading and error with Retry, Could not load your registrations (question 1)");
+  it.todo("W-R19: registering invalidates the attendee list (question 1)");
+  // Blocked until GET /events/{id}/registrations is built (checkin.md C15-C18, step 26;
+  // registration-web.md question 2).
+  it.todo(
+    "W-R20: event selector and the table of the chosen event from GET /events/{id}/registrations (question 2)",
+  );
+  it.todo("W-R21: no events, nobody registered, loading, error, event not found (question 2)");
+});
+
 describe("W-R17: no redirect loop", () => {
   it.each<[string, Me, string[]]>([
     ["/registrations/me", ANN, ["/registrations/me"]],
