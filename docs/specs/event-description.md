@@ -24,7 +24,7 @@ Feature spec made from `SPEC_TEMPLATE.md` (sections 1-5). It adds one column, `d
 | DS12 | Guards are unchanged: `POST /events`, `GET /events`, `GET /events/:id` give 401 `not_logged_in` with no login and 403 `wrong_role` for an attendee, before any validation of `description` (E9). Another organizer's event is 404 (E7), and the answer does not contain the description. | |
 | DS13 | Error codes: no new code. `description` problems use `invalid_input` (E2, E17). | |
 
-**Out of scope.** Editing or clearing the description after create (there is no event update route in the API yet; B8/B10/M7 decide their own fields); rich text, Markdown or HTML; images or links; a description in emails or the outbox; search by description; a separate short summary; translations; the web screens (see section 2, `events-web.md`); a default text.
+**Out of scope.** Editing or clearing the description after create (now specified in `event-edit.md`, `PATCH /events/:id`, EE6; B8/B10/M7 decide their own fields); rich text, Markdown or HTML; images or links; a description in emails or the outbox; search by description; a separate short summary; translations; the web screens (see section 2, `events-web.md`); a default text.
 
 **Assumptions.** Change any of these first in this file.
 - Column is `NOT NULL DEFAULT ''`, not nullable. One kind of "no description" (`''`) means one rule for old rows, create, and the shapes (always a string, never `null`). Answered; see open question 1.
