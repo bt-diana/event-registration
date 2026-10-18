@@ -1482,7 +1482,7 @@ describe("HR26: no header click open while Menu is not displayed", () => {
   });
 });
 
-describe("HR27: All events, first in the drawer after Close menu", () => {
+describe("HR27: All events, first in the drawer and in the desktop row, after Close menu", () => {
   it.each(
     STATES.flatMap(([state, me]) =>
       ["/", "/event/1", "/login"].map((path) => [state, path, me] as const),
@@ -1539,6 +1539,110 @@ describe("HR28: All events aria-current on / only (exact match)", () => {
     renderApp(path);
     await meShown(state);
     expect(allEvents().getAttribute("aria-current")).toBeNull();
+  });
+});
+
+// Tests first for D73 (header-responsive.md HR1, HR19, HR27, HR28; header-events-link.md HB1,
+// HB4, HB9): All events at every width, also above 640 px in the one-row header. jsdom does not
+// read styles.css, so the desktop look and the absence of a hiding media query are checked by
+// hand; these tests check the DOM the desktop row is made of.
+describe("HR27 (D73): All events at every width", () => {
+  it("is absent while me is pending: the header shows only the logo", () => {
+    mockFetch({ [ME]: () => deferred<Response>().promise, ...SCREENS });
+    renderApp("/");
+    expect(header().queryByRole("link", { name: "All events" })).toBeNull();
+    expect(header().queryByRole("navigation", { name: "Site" })).toBeNull();
+    expect(header().getAllByRole("link").map((link) => link.textContent)).toEqual([LOGO]);
+  });
+
+  it.each<[string, (me: ReturnType<typeof deferred<Response>>) => void, State]>([
+    ["200 attendee", (me) => me.resolve(json(200, ANN)), "attendee"],
+    ["200 organizer", (me) => me.resolve(json(200, OLGA)), "organizer"],
+    ["401", (me) => me.resolve(loggedOut()), "logged out"],
+    ["5xx", (me) => me.resolve(json(500, { error: "internal" })), "logged out"],
+    ["network error", (me) => me.reject(new TypeError("Failed to fetch")), "logged out"],
+  ])("appears after me answers %s: one link All events to /", async (_case, settle, state) => {
+    const me = deferred<Response>();
+    mockFetch({ [ME]: () => me.promise, ...SCREENS });
+    renderApp("/event/1");
+    expect(header().queryByRole("link", { name: "All events" })).toBeNull();
+    settle(me);
+    await meShown(state);
+    const links = header().getAllByRole("link", { name: "All events" });
+    expect(links).toHaveLength(1);
+    expect(links[0]).toBe(allEvents());
+    expect(links[0].textContent).toBe("All events");
+    expect(links[0].getAttribute("href")).toBe("/");
+    expect(links[0]).not.toBe(logoLink());
+    // Nothing in the markup hides it at any width: no hidden, no aria-hidden, no inline style.
+    const site = header().getByRole("navigation", { name: "Site" });
+    for (const element of [site, links[0]]) {
+      expect(element.hasAttribute("hidden")).toBe(false);
+      expect(element.hasAttribute("aria-hidden")).toBe(false);
+      expect(element.hasAttribute("style")).toBe(false);
+    }
+    expect(within(site).getAllByRole("link")).toHaveLength(1);
+    expect(site.classList.contains("site-nav")).toBe(true);
+  });
+
+  // Paths that do not redirect in any state; the other paths are in HR28 above.
+  it.each(STATES)("%s: aria-current only on / (HR28)", async (state, me) => {
+    for (const [path, current] of [
+      ["/", "page"],
+      ["/event/1", null],
+      ["/event/1?from=/#/", null],
+    ] as const) {
+      mockFetch({ [ME]: me, ...SCREENS });
+      const view = renderApp(path);
+      await meShown(state);
+      expect(allEvents().getAttribute("aria-current")).toBe(current);
+      view.unmount();
+    }
+  });
+
+  // Desktop is faked like HR26: Menu and Close menu are display: none above 640 px, so the Tab
+  // order is the DOM order of what is still displayed (HR1, HB9).
+  function desktopTabOrder(): string[] {
+    menuButton().style.display = "none";
+    closeButton().style.display = "none";
+    return Array.from(screen.getByRole("banner").querySelectorAll<HTMLElement>("a[href], button"))
+      .filter((element) => getComputedStyle(element).display !== "none")
+      .map((element) => {
+        expect(element.hasAttribute("tabindex")).toBe(false);
+        return element.getAttribute("aria-label") ?? element.textContent ?? "";
+      });
+  }
+
+  it.each(LOGGED_IN)("%s on desktop: Tab order logo, All events, nav link, Log out", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    const link = within(header().getByRole("navigation", { name: "Main" })).getByRole("link");
+    expect(desktopTabOrder()).toEqual([LOGO, "All events", link.textContent, "Log out"]);
+  });
+
+  it("logged out on desktop: Tab order logo, All events, Log in, Sign up, role switch", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/event/1");
+    await meShown("logged out");
+    expect(desktopTabOrder()).toEqual([LOGO, "All events", "Log in", "Sign up", "For organizers"]);
+  });
+
+  // On desktop the row's right group starts with All events: the first displayed child of the
+  // drawer element, before the Main or Account nav; no divider sibling (.account-info) after it.
+  it.each(STATES)("%s on desktop: All events is the first item of the right group", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    closeButton().style.display = "none";
+    const shown = Array.from(panel().children).filter(
+      (element) => getComputedStyle(element).display !== "none",
+    );
+    const site = header().getByRole("navigation", { name: "Site" });
+    expect(shown[0]).toBe(site);
+    expect(site.nextElementSibling?.classList.contains("account-info")).toBe(false);
+    const other = header().getByRole("navigation", { name: state === "logged out" ? "Account" : "Main" });
+    expect(shown[1].contains(other)).toBe(true);
   });
 });
 
