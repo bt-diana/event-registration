@@ -23,21 +23,21 @@ const COPY: Record<
   user: {
     login: {
       title: "Log in",
-      intro: "Log in to sign up for events and see your tickets.",
+      intro: "Use the email you registered with.",
       submit: "Log in",
       pending: "Logging in...",
     },
     signup: {
-      title: "Create an account",
-      intro: "Make an account to sign up for events.",
+      title: "Create your account",
+      intro: "Register for events and keep your tickets in one place.",
       submit: "Create account",
       pending: "Creating account...",
     },
   },
   organizer: {
     login: {
-      title: "Log in",
-      intro: "Log in to create and manage your events.",
+      title: "Organizer log in",
+      intro: "Manage your events and check people in.",
       submit: "Log in",
       pending: "Logging in...",
     },
@@ -277,7 +277,11 @@ export function AuthForm({ role, mode }: Props) {
       </form>
 
       <p className="switch-mode">
-        {isSignup ? "Already have an account? " : "No account yet? "}
+        {isSignup
+          ? "Already have an account? "
+          : role === "organizer"
+            ? "No organizer account? "
+            : "No account yet? "}
         <Link to={sameRolePath} className="action-link">
           {isSignup ? "Log in" : "Sign up"}
         </Link>

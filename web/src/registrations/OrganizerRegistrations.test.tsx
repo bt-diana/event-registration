@@ -93,7 +93,7 @@ function goToScan() {
 
 // Scan screen link back to /registrations.
 function goToList() {
-  fireEvent.click(main().getByRole("link", { name: "Registrations" }));
+  fireEvent.click(main().getByRole("link", { name: "Back to registrations" }));
 }
 
 function cellsOf(row: HTMLElement): string[] {

@@ -104,7 +104,7 @@ function typeCode(code = CODE) {
 
 // Scan screen link: back to the registrations page (the first event is chosen).
 function goToList() {
-  fireEvent.click(main().getByRole("link", { name: "Registrations" }));
+  fireEvent.click(main().getByRole("link", { name: "Back to registrations" }));
 }
 
 function goToScan() {

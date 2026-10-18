@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { OLGA, json, mockFetch, renderApp } from "./auth/test-helpers";
 
 afterEach(() => {
@@ -45,6 +45,7 @@ describe("App", () => {
     loggedOut();
     renderApp("/login");
     expect(await screen.findByRole("heading", { level: 1, name: "Log in" })).toBeTruthy();
+    expect(screen.getByText("Use the email you registered with.")).toBeTruthy();
     expect(screen.getByText("Attendee")).toBeTruthy();
     expect(screen.getByLabelText("Email").getAttribute("type")).toBe("email");
     expect(screen.getByLabelText("Email").getAttribute("autocomplete")).toBe("email");
@@ -58,8 +59,9 @@ describe("App", () => {
     loggedOut();
     renderApp("/signup");
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Create an account" }),
+      await screen.findByRole("heading", { level: 1, name: "Create your account" }),
     ).toBeTruthy();
+    expect(screen.getByText("Register for events and keep your tickets in one place.")).toBeTruthy();
     expect(screen.getByLabelText("Email")).toBeTruthy();
     expect(screen.getByLabelText("Name").getAttribute("autocomplete")).toBe("name");
     expect(screen.getByLabelText("Password").getAttribute("autocomplete")).toBe("new-password");
@@ -69,7 +71,14 @@ describe("App", () => {
   it("shows the organizer login page at /organizer/login", async () => {
     loggedOut();
     renderApp("/organizer/login");
-    expect(await screen.findByRole("heading", { level: 1, name: "Log in" })).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Organizer log in" }),
+    ).toBeTruthy();
+    expect(screen.getByText("Manage your events and check people in.")).toBeTruthy();
+    expect(screen.getByText("No organizer account?", { exact: false })).toBeTruthy();
+    expect(
+      within(screen.getByRole("main")).getByRole("link", { name: "Sign up" }).getAttribute("href"),
+    ).toBe("/organizer/signup");
     expect(screen.getByText("Organizer")).toBeTruthy();
     expect(screen.getByLabelText("Email")).toBeTruthy();
     expect(screen.getByLabelText("Password")).toBeTruthy();
