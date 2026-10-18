@@ -127,4 +127,4 @@ Tests follow the existing style (`App.test.tsx`: Vitest globals, files next to t
 
 ## 6. Open questions
 
-1. How does the browser reach the API in development? Proposal: a Vite dev proxy for `/auth` (the API routes have no prefix), so the app and API share one origin and no CORS or `credentials: "include"` is needed. The other option is CORS on the API with a fixed origin. Needed before the code step; the proxy needs a change in `vite.config.ts` and a production note for the README.
+1. **Answered (D34): dev proxy.** `web/vite.config.ts` proxies `/auth` to `http://localhost:3000`; production must serve the app and the API on one origin too (README). The original question: How does the browser reach the API in development? Proposal: a Vite dev proxy for `/auth` (the API routes have no prefix), so the app and API share one origin and no CORS or `credentials: "include"` is needed. The other option is CORS on the API with a fixed origin. Needed before the code step; the proxy needs a change in `vite.config.ts` and a production note for the README.
