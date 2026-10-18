@@ -724,6 +724,45 @@ a:hover {
   font-size: 28px;
 }
 
+.ticket-checked-in {
+  margin: 8px 0 0;
+  font-weight: 600;
+}
+
+/* Ticket QR (W-R24-W-R26): a white square with its own quiet zone, 232 px, fluid down
+   to 160 px on a phone. The bitmap is 464 px, so each module stays sharp. */
+.ticket-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.ticket-qr h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.qr-canvas {
+  display: block;
+  width: min(232px, 100%);
+  min-width: 160px;
+  height: auto;
+  aspect-ratio: 1;
+  background: #ffffff;
+  image-rendering: pixelated;
+}
+
+.ticket-qr-hint {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
 @media (max-width: 520px) {
   .event-card {
     grid-template-columns: 1fr;

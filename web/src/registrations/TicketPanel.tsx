@@ -1,6 +1,6 @@
 // The ticket panel (W-R7), shared by the event page and the ticket page (W-R11).
 // A section labelled by its h2; the code is plain selectable text (W-R22).
-import { useId, type Ref } from "react";
+import { useId, type ReactNode, type Ref } from "react";
 import { Link } from "react-router";
 import { Badge } from "../events/StatusBadge";
 import type { Registration } from "./api";
@@ -12,9 +12,17 @@ type Props = {
   viewTicketOf?: string;
   badge?: boolean;
   headingRef?: Ref<HTMLHeadingElement>;
+  // The ticket page puts the QR here (W-R25); the event page has none.
+  children?: ReactNode;
 };
 
-export function TicketPanel({ registration, viewTicketOf, badge = false, headingRef }: Props) {
+export function TicketPanel({
+  registration,
+  viewTicketOf,
+  badge = false,
+  headingRef,
+  children,
+}: Props) {
   const headingId = useId();
   const label = ticketLabel(registration);
   return (
@@ -33,6 +41,8 @@ export function TicketPanel({ registration, viewTicketOf, badge = false, heading
         <dd className="ticket-code">{registration.ticket_code}</dd>
       </dl>
       {label.note && <p className="ticket-note">{label.note}</p>}
+      {label.checkedIn && <p className="ticket-checked-in">{label.checkedIn}</p>}
+      {children}
       {viewTicketOf !== undefined && (
         <Link
           to={`/registrations/me?event=${encodeURIComponent(viewTicketOf)}`}

@@ -1,5 +1,6 @@
 // The ticket page /registrations/me?event={id} (registration-web.md W-R11-W-R13).
 // Inside the attendee entry (W-R15). Both reads start together; no button here.
+// The QR of the ticket code is shown here only (W-R25).
 // No role eyebrow (RE1).
 import { Link } from "react-router";
 import { EventNotFound, Detail } from "../events/EventParts";
@@ -7,7 +8,9 @@ import { formatDateTime } from "../events/format";
 import { PUBLIC_LABEL, publicStatus } from "../events/publicStatus";
 import { isAuthError, statusOf, usePublicEvent } from "../events/queries";
 import { Badge } from "../events/StatusBadge";
+import { QrCode } from "./QrCode";
 import { useMyRegistration } from "./queries";
+import { showQr } from "./ticket";
 import { TicketPanel } from "./TicketPanel";
 
 export function TicketPage({ eventId }: { eventId: string }) {
@@ -83,7 +86,9 @@ export function TicketPage({ eventId }: { eventId: string }) {
       <p className="event-status">
         <Badge {...PUBLIC_LABEL[publicStatus(event.data)]} />
       </p>
-      <TicketPanel registration={mine.data} badge />
+      <TicketPanel registration={mine.data} badge>
+        {showQr(mine.data, event.data) && <QrCode code={mine.data.ticket_code} />}
+      </TicketPanel>
     </section>
   );
 }

@@ -34,3 +34,11 @@ Started 18-10 18:39 +06.
 
 ### D46: use `qr-creator` and `qr-scanner` for the ticket QR and the scan screen
 19:01:07 +0600. `qr-creator` draws the QR of the ticket code, `qr-scanner` reads it from the camera, instead of the recommended `qrcode`/`jsqr`. Reason (the user's own words, not checked): the user has worked with these libraries; both are from the same developer (Nimiq), so they are fully compatible with each other; and they are more up to date than `qrcode` and `jsqr`.
+
+## Step 4: ticket QR (W-R24-W-R27)
+
+**Prompt** (19:01 +06, same prompt as step 3: build the QR on the ticket page, tests first)
+
+**What Claude did.** Tests first (commit `c26dee0`, red: `qr.ts` and `showQr` missing): `qr.test.ts` (`qr-creator` mocked: one `render` call with the code only, level M, `radius` 0, quiet zone 4, `#101C1A` on white, 464 px, on the given canvas; no fetch), `showQr` and the "Checked in" line in `ticket.test.ts`, the QR cases in `TicketPage.test.tsx` (`qr.ts` mocked: shown for registered and on an Ended event; not for waitlisted, cancelled ticket, Cancelled event, checked in; canvas with `role="img"` and the label; no fetch after a re-render) and two cases in `RegistrationArea.test.tsx` (no QR on the event page, "Checked in" line). Then the code: `qr.ts` (`drawQr`, the only `qr-creator` import), `QrCode.tsx` (canvas, `h3` "Check-in code", the two hints), `showQr` and `checkedIn` in `ticket.ts`, the QR as a child of `TicketPanel` on the ticket page only, styles (232 px shown, 160 px minimum, `image-rendering: pixelated`). Updated `README.md` and `ROADMAP.md`. `bash scripts/verify.sh` passes (api 332, web 422 and 6 todo). A production build bundles `qr-creator`. While this step ran, another session committed `POST /checkin` (`d4ff8f2`); this step did not touch it. Used Read, Write, Edit, Bash.
+
+**Decision.** None.

@@ -26,19 +26,23 @@ export type TicketLabel = {
   place: string | null;
   // Shown under the ticket code (a cancelled ticket).
   note: string | null;
+  // "Checked in" once the ticket is used; the time is not shown (W-R25).
+  checkedIn: string | null;
   badge: { text: string; tone: Tone };
 };
 
 // W-R7 words; badge colours as brand.md (Registered like Open, Waiting list like Full).
 export function ticketLabel(
-  registration: Pick<Registration, "status" | "waitlist_position">,
+  registration: Pick<Registration, "status" | "waitlist_position" | "checked_in_at">,
 ): TicketLabel {
+  const checkedIn = registration.checked_in_at === null ? null : "Checked in";
   switch (registration.status) {
     case "registered":
       return {
         heading: "You are registered",
         place: null,
         note: null,
+        checkedIn,
         badge: { text: "Registered", tone: "open" },
       };
     case "waitlisted":
@@ -49,6 +53,7 @@ export function ticketLabel(
             ? null
             : `Your place: ${registration.waitlist_position}`,
         note: null,
+        checkedIn,
         badge: { text: "Waiting list", tone: "full" },
       };
     case "cancelled":
@@ -56,7 +61,21 @@ export function ticketLabel(
         heading: "Registration cancelled",
         place: null,
         note: "This ticket is no longer valid.",
+        checkedIn,
         badge: { text: "Cancelled", tone: "cancelled" },
       };
   }
+}
+
+// W-R25: the ticket page shows the QR only for a ticket that can still be used at the
+// door: registered, not checked in, event not Cancelled (an Ended event keeps it).
+export function showQr(
+  registration: Pick<Registration, "status" | "checked_in_at">,
+  event: Pick<PublicEvent, "status">,
+): boolean {
+  return (
+    registration.status === "registered" &&
+    registration.checked_in_at === null &&
+    event.status !== "cancelled"
+  );
 }
