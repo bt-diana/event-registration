@@ -32,8 +32,9 @@ afterAll(async () => {
   await db?.drop();
 });
 
-function read(eventId: string, cookie: string | undefined = owner.cookie, target: Running = api): Promise<Reply> {
-  return call(target, "GET", `/events/${eventId}/arrivals`, { cookie });
+// `null` sends no cookie at all (an undefined argument would take the default).
+function read(eventId: string, cookie: string | null = owner.cookie, target: Running = api): Promise<Reply> {
+  return call(target, "GET", `/events/${eventId}/arrivals`, { cookie: cookie ?? undefined });
 }
 
 // Answers 200 with exactly the three keys, each a whole JSON number, and
@@ -124,7 +125,7 @@ describe("AR1: guards on GET /events/:id/arrivals (tests first)", () => {
     const connect = vi.spyOn(db.pool, "connect");
     try {
       for (const id of [eventId, foreign, UNKNOWN_ID, ...MALFORMED_IDS.map(encodeURIComponent)]) {
-        for (const cookie of [undefined, "session=garbage", expired]) {
+        for (const cookie of [null, "session=garbage", expired]) {
           const reply = await read(id, cookie);
           expectError(reply, 401, "not_logged_in");
         }
@@ -474,7 +475,9 @@ describe("AR12: one statement, one snapshot", () => {
         expect(text).not.toMatch(/\bFOR\s+(UPDATE|SHARE|NO KEY UPDATE|KEY SHARE)\b/i);
         expect(text).not.toMatch(/^\s*(BEGIN|START TRANSACTION)\b/i);
       }
-      expect(connect).not.toHaveBeenCalled();
+      // pool.query checks a client out once by itself; a transaction would need
+      // a client of its own from pool.connect.
+      expect(connect).toHaveBeenCalledTimes(1);
     } finally {
       query.mockRestore();
       connect.mockRestore();
@@ -538,7 +541,7 @@ describe("AR14: errors", () => {
   it("uses only not_logged_in, wrong_role and not_found, each with only the error key; a bad id is never 400", async () => {
     const eventId = await insertEvent(db.pool, owner.id);
     const person = await attendee(db.pool);
-    expectError(await read(eventId, undefined), 401, "not_logged_in");
+    expectError(await read(eventId, null), 401, "not_logged_in");
     expectError(await read(eventId, person.cookie), 403, "wrong_role");
     expectError(await read(UNKNOWN_ID), 404, "not_found");
     for (const id of MALFORMED_IDS) {
