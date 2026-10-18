@@ -333,6 +333,7 @@ describe("routes outside the fixed role map", () => {
       body: { email: email(), name: "Eve", password: PASSWORD },
     });
     expect(reply.status).toBe(404);
+    expect(reply.body).toEqual({ error: "not_found" });
   });
 });
 
