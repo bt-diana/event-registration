@@ -35,19 +35,19 @@ The backend and the frontend are separate apps. They talk over HTTP, and the liv
 ### Prerequisites
 
 - Node.js 20 or newer
-- Docker (for PostgreSQL)
-- Free ports: 3000 (API), 5173 (web) and 5432 (database)
+- PostgreSQL 18, installed as a Windows service on port 5433 (no Docker)
+- Free ports: 3000 (API), 5173 (web) and 5433 (database)
 
 ### Run locally
 
 ```bash
-# 1. Start PostgreSQL
-docker compose up -d
+# 1. PostgreSQL runs as a Windows service.
+#    Copy .env.example to .env and set DATABASE_URL.
 
 # 2. Backend
 cd api
 npm install
-npm run migrate
+npm run db:migrate
 npm run dev
 
 # 3. Frontend (in a new terminal)
@@ -77,13 +77,12 @@ Planned. `[TODO: update after the build]`
 ```
 api/                 backend (Express, TypeScript)
 web/                 frontend (React, Vite, TypeScript)
-docker-compose.yml   PostgreSQL
 ROADMAP.md           the order of work, milestones and steps
 sessions/            the work log: one markdown file per session
 .claude/             agent rules (CLAUDE.md), agents and skills
 docs/
   specs/             the specs the build follows (SPEC_TEMPLATE.md)
-  planning/          the build plan for this task
+  planning/          the first build plan (out of date, see ROADMAP.md)
   research/sdd/      research about AI-driven development approaches
   skills/            the skill I used (audited-research)
 ```
@@ -148,7 +147,7 @@ Why I chose this process is in decision D1 in [sessions/17-10-1532_research.md](
 - `sessions/*.md`: one file per session with its prompts and decisions (time, reason)
 - [ROADMAP.md](ROADMAP.md): the order of work, milestones and steps
 - [docs/specs/SPEC_TEMPLATE.md](docs/specs/SPEC_TEMPLATE.md): the template for feature specs (one spec per feature)
-- [docs/planning/build_plan.md](docs/planning/build_plan.md): the build plan for this task
+- [docs/planning/build_plan.md](docs/planning/build_plan.md): the first build plan, out of date (Fastify, Docker); `ROADMAP.md` replaces it
 - [docs/research/sdd/summary.md](docs/research/sdd/summary.md): the research summary (the full report and sources are in the same folder)
 - [.claude/skills/audited-research/SKILL.md](.claude/skills/audited-research/SKILL.md): the skill I used for the research
 - `sessions/`: the work log, one markdown file per session
