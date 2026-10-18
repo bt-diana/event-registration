@@ -161,7 +161,6 @@ describe("W-R20: the registrations of the chosen event", () => {
         "Olga Test",
         "Registered",
         "Not yet",
-        "K7M2QX9TPA",
         formatDateTime("2026-10-18T10:00:00.000Z"),
         "View emails",
       ],
@@ -169,7 +168,6 @@ describe("W-R20: the registrations of the chosen event", () => {
         "Ivan Test",
         "Waiting list",
         "",
-        "H4Z8WR5NCD",
         formatDateTime("2026-10-18T11:00:00.000Z"),
         "View emails",
       ],
@@ -349,7 +347,7 @@ describe("W-R22: one h1, a real table", () => {
     expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual([
       "Registrations",
     ]);
-    expect(main().getAllByRole("columnheader")).toHaveLength(6);
+    expect(main().getAllByRole("columnheader")).toHaveLength(5);
   });
 });
 
