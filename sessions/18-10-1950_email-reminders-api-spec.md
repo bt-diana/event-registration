@@ -197,3 +197,73 @@ Started 18-10 19:50 +06.
 
 ### D63: the default period of the email job is 1 h; the local value is 10 s
 22:33:12 +0600. Code default 3600000 ms, `.env` and `.env.example` set 10000. Reason: the user asked for it. Effect: without the variable a ticket email can wait up to an hour.
+
+## Step 16: resend package and migration 004 (roadmap step 30, part 1)
+
+**Prompt** (22:24 +06, text cleaned)
+
+> (the `code-writer` agent's build of step 14: install `resend`, migration `004_outbox_status.sql`, tests first)
+
+**What Claude did.** The `code-writer` agent installed `resend` 6.34.1 in `api/` (`62c6fef`). Verify at install (`email-reminders.md` section 3): `idempotencyKey` and `signal` both go in the second argument, `emails.send(payload, { idempotencyKey, signal })` (`CreateEmailRequestOptions extends PostOptions, IdempotentRequest`); an API error is returned as `{ data: null, error: { name, message, statusCode } }` with `statusCode: number | null`; a network failure or an abort is also returned as `application_error` (the SDK catches it); `new Resend('')` falls back to `RESEND_API_KEY` and then throws "Missing API key". Outside `NODE_ENV=production` the SDK prints `[Resend API Error]` with the provider's error to the console. Then the schema tests (`648bb2a`, red: columns missing) and the migration with `docs/DATABASE.md` decision 19 (`0e7a115`). Used Bash, Write, Edit.
+
+**Decision.** None.
+
+## Step 17: outbox sender (roadmap step 30, part 2)
+
+**Prompt** (22:29 +06, text cleaned)
+
+> (continued build)
+
+**What Claude did.** Tests first for ER4-ER17 with a fake transport (`e13b94b`, red against a throwing stub), then `api/src/email/sender.ts` (`5f79731`): one row per transaction with `FOR UPDATE SKIP LOCKED`, the row id as idempotency key, `send_attempts` committed with the lock held, `error_sending` on the third failed try, addresses replaced in `send_error`, batch size 5 (D62). Used Bash, Write, Edit.
+
+**Decision.** None.
+
+## Step 18: Resend transport and mail settings (roadmap step 30, part 3)
+
+**Prompt** (22:32 +06, text cleaned)
+
+> (continued build)
+
+**What Claude did.** Tests first for ER39-ER46 with a fake client object (`0e835ac`), then `api/src/email/transport.ts` and `config.ts` (`a938f35`): a returned `error` and an answer without an id are failures, `AbortSignal.timeout` plus a timer race (10 s), the key is never in a message. No test reads `EMAIL_API_KEY` or builds `new Resend`. Used Bash, Write.
+
+**Decision.** None.
+
+## Step 19: B5 reminder worker (roadmap steps 31, 32)
+
+**Prompt** (22:34 +06, text cleaned)
+
+> (continued build)
+
+**What Claude did.** B5 tests first (`a884348`, ER18-ER31: 10 runs, 2 and 10 parallel workers in 3 rounds, window edges to the millisecond, the injected clock, one statement, A -> B -> A -> B, `error_sending` blocks a second reminder), then `api/src/email/reminders.ts` with the spec's statement (`bffb13d`). The ER27 test first also checked that `pool.connect` is not called; `pg`'s `Pool.query` calls it inside, so that line was removed in the code commit. Used Bash, Write.
+
+**Decision.** None.
+
+## Step 20: timer, jobs and start-up (roadmap step 32)
+
+**Prompt** (22:36 +06, text cleaned)
+
+> (continued build; D63 from step 15 arrived during it)
+
+**What Claude did.** Tests first for ER32-ER38 and the ER14 ticks (`3257d63`), with the D63 default of 3600000 in the ER37 test. Then `runner.ts`, `jobs.ts`, `api/src/index.ts` (reads the period and the mail settings before `listen`, exit 1 with the variable name, jobs after `listen`, stop on `SIGINT`/`SIGTERM`) and the `.env.example` comment (`127b561`). A runner test found a bug before the commit: a task that throws synchronously left the overlap guard set. Checked by hand: a blank `EMAIL_API_KEY`, an empty `MAIL_FROM` and `EMAIL_JOB_INTERVAL_MS=abc` each print the variable name and exit with code 1 (no real email was sent). Used Bash, Write, Edit.
+
+**Decision.** None.
+
+## Step 21: organizer email list route (roadmap step 32a)
+
+**Prompt** (22:48 +06, text cleaned)
+
+> (continued build)
+
+**What Claude did.** Tests first for OB1-OB18 (`b0ac92f`, red: the route did not exist), then `api/src/email/service.ts`, `routes.ts`, the mount in `api/src/app.ts` and `api/openapi.yaml` 0.8.0 with the tag `email` (`998709b`). Used Bash, Write.
+
+**Decision.** None.
+
+## Step 22: docs for the M6 API
+
+**Prompt** (22:53 +06, text cleaned)
+
+> (continued build)
+
+**What Claude did.** Updated `README.md` (stack, run steps, the three email variables, the Resend free-tier limit, the `GET /events/:id/emails` row, the structure, the proof table and "Project status") and `ROADMAP.md` (steps 30, 31, 32 and 32a done). The agent files only list the core stack, so they were not changed. Not built: ER48-ER60 (`GET /events/:id/registrations/:registrationId/emails`, D74), which were added to `email-reminders.md` during this build. Not done by hand yet: one real delivery to the Resend owner's address and the signal handling. Used Bash, Edit.
+
+**Decision.** None.
