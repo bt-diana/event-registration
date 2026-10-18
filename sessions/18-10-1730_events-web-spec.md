@@ -59,6 +59,6 @@ The event page is `/event/:id` for everyone. The owner gets the organizer view, 
 **What Claude did.** Found the cause in `web/src/auth/Header.tsx` (logo links to `/`; the organizer look depends only on the path). Added W-E22 to `events-web.md` and gave the fix to the `code-writer` agent, test first (it commits itself). Then turned section 7 of the spec into a list of decisions: questions 2 and 3 as the user answered; question 1 as `registration.md` R11 already says (running events accept registrations); question 4 accepted as drawn on the canvas. Used Read, Grep, Agent, Bash.
 
 ### D39: an organizer keeps the organizer view on every screen
-**Time:** 17:50 +0600
+**Time:** 17:41:31 +0600
 
 The header logo of a logged-in organizer goes to `/organizer` and the organizer look stays on public event pages too (W-E22). Reason: the user found that the logo led an organizer to the attendee home.
