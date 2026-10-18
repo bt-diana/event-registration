@@ -477,6 +477,21 @@ describe("W-R7: the ticket panel", () => {
     expect(main().getByText("K7M2QX9TPA")).toBeTruthy();
     expect(main().getByText("This ticket is no longer valid.")).toBeTruthy();
   });
+
+  // W-R25: the QR is on the ticket page only; the "Checked in" line is in both panels.
+  it("shows no QR on the event page", async () => {
+    await attendeePage(publicEvent(), mine(registration()));
+    expect(main().queryByRole("img")).toBeNull();
+    expect(main().queryByRole("heading", { name: "Check-in code" })).toBeNull();
+  });
+
+  it('a checked-in ticket has the line "Checked in"', async () => {
+    await attendeePage(
+      publicEvent(),
+      mine(registration({ checked_in_at: "2030-01-01T09:55:00.000Z" })),
+    );
+    expect(main().getByText("Checked in")).toBeTruthy();
+  });
 });
 
 describe("W-R22: accessibility", () => {

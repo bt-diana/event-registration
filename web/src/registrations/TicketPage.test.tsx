@@ -1,12 +1,20 @@
 // Tests first (registration-web.md): W-R13. Then W-R11, W-R12 (the ticket page).
+// The QR cases (W-R25-W-R27) mock qr.ts: jsdom cannot draw on a canvas (W-R37).
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
+import { App } from "../App";
 import { ANN, OLGA, callsTo, deferred, json, mockFetch, renderApp } from "../auth/test-helpers";
 import { formatDateTime } from "../events/format";
 import { EVENT_ID, publicEvent, type SamplePublicEvent } from "../events/test-helpers";
+import { drawQr } from "./qr";
 import { MY_REGISTRATION, registration, type SampleRegistration } from "./test-helpers";
+
+vi.mock("./qr", () => ({ drawQr: vi.fn() }));
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.mocked(drawQr).mockClear();
 });
 
 type Handler = () => Response | Promise<Response>;
@@ -178,5 +186,91 @@ describe("W-R13: 401 or 403 on the ticket page goes to the guard", () => {
     expect(await main().findByRole("heading", { level: 1, name: "Registrations" })).toBeTruthy();
     expect(screen.queryByText("Could not load your ticket")).toBeNull();
     expect(callsTo(fetch, ME)).toBe(2);
+  });
+});
+
+describe("W-R25: the QR on the ticket page", () => {
+  const QR = "QR code for ticket K7M2QX9TPA";
+
+  it("a registered ticket: Check-in code, the QR canvas drawn from the code, the hints", async () => {
+    await ticketPage(ok(publicEvent()), ok(registration()));
+    expect(main().getByRole("heading", { level: 3, name: "Check-in code" })).toBeTruthy();
+    const qr = main().getByRole("img", { name: QR });
+    expect(qr.tagName).toBe("CANVAS");
+    expect(drawQr).toHaveBeenCalledWith("K7M2QX9TPA", qr);
+    expect(main().getByText("Show this QR code at the entrance.")).toBeTruthy();
+    expect(main().getByText("If the scan does not work, show the ticket code.")).toBeTruthy();
+    // The code stays selectable text (W-R22, W-R26).
+    expect(main().getByText("K7M2QX9TPA").tagName).not.toBe("CANVAS");
+  });
+
+  it("a registered ticket on an ended event still shows the QR", async () => {
+    await ticketPage(
+      ok(publicEvent({ status: "passed", has_started: true, seats_left: 0 })),
+      ok(registration()),
+    );
+    expect(main().getByRole("img", { name: QR })).toBeTruthy();
+  });
+
+  it.each<[string, Partial<SamplePublicEvent>, SampleRegistration]>([
+    [
+      "waitlisted",
+      { full: true, seats_left: 0 },
+      registration({ status: "waitlisted", waitlist_position: 1 }),
+    ],
+    ["a cancelled ticket", {}, registration({ status: "cancelled" })],
+    ["a cancelled event", { status: "cancelled", seats_left: 0 }, registration()],
+  ])("%s: no QR, the code text stays", async (_case, event, r) => {
+    await ticketPage(ok(publicEvent(event)), ok(r));
+    expect(main().getByText(r.ticket_code)).toBeTruthy();
+    expect(main().queryByRole("img")).toBeNull();
+    expect(main().queryByRole("heading", { name: "Check-in code" })).toBeNull();
+    expect(drawQr).not.toHaveBeenCalled();
+  });
+
+  it('a checked-in ticket: "Checked in", the code as text, no QR, no time', async () => {
+    await ticketPage(
+      ok(publicEvent()),
+      ok(registration({ checked_in_at: "2030-01-01T09:55:00.000Z" })),
+    );
+    expect(main().getByText("Checked in")).toBeTruthy();
+    expect(main().getByText("K7M2QX9TPA")).toBeTruthy();
+    expect(main().queryByRole("img")).toBeNull();
+    expect(drawQr).not.toHaveBeenCalled();
+    expect(main().queryByText(formatDateTime("2030-01-01T09:55:00.000Z"))).toBeNull();
+  });
+});
+
+describe("W-R26: the QR is accessible", () => {
+  it("the canvas has role img and the label with the code, and the code stays visible", async () => {
+    await ticketPage(ok(publicEvent()), ok(registration({ ticket_code: "H4Z8WR5NCD" })));
+    const qr = main().getByRole("img", { name: "QR code for ticket H4Z8WR5NCD" });
+    expect(qr.getAttribute("role")).toBe("img");
+    expect(main().getByText("H4Z8WR5NCD")).toBeTruthy();
+  });
+});
+
+describe("W-R27: no network for the QR", () => {
+  it("drawing and re-rendering the QR makes no fetch", async () => {
+    const fetch = mockFetch({
+      [ME]: () => json(200, ANN),
+      [PUBLIC]: () => json(200, publicEvent()),
+      [MY_REGISTRATION]: () => json(200, registration()),
+    });
+    const { rerender, queryClient } = renderApp(TICKET_PATH);
+    await main().findByRole("img", { name: "QR code for ticket K7M2QX9TPA" });
+    const before = fetch.mock.calls.length;
+    expect(drawQr).toHaveBeenCalledTimes(1);
+    // The same tree again: the router and the cache keep their state.
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[TICKET_PATH]}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(main().getByRole("img", { name: "QR code for ticket K7M2QX9TPA" })).toBeTruthy();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(fetch.mock.calls.length).toBe(before);
   });
 });

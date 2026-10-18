@@ -1,7 +1,8 @@
 // registration-web.md W-R4 (every row of the section 2 table) and W-R7, as pure functions.
 import { publicEvent, type SamplePublicEvent } from "../events/test-helpers";
 import type { RegistrationStatus } from "./api";
-import { registerAction, ticketLabel, type RegisterAction } from "./ticket";
+import { registration } from "./test-helpers";
+import { registerAction, showQr, ticketLabel, type RegisterAction } from "./ticket";
 
 const OPEN: Partial<SamplePublicEvent> = {};
 const STARTED: Partial<SamplePublicEvent> = { has_started: true };
@@ -33,27 +34,63 @@ describe("registerAction", () => {
 
 describe("ticketLabel", () => {
   it("registered", () => {
-    expect(ticketLabel({ status: "registered", waitlist_position: null })).toEqual({
+    expect(
+      ticketLabel({ status: "registered", waitlist_position: null, checked_in_at: null }),
+    ).toEqual({
       heading: "You are registered",
       place: null,
       note: null,
+      checkedIn: null,
       badge: { text: "Registered", tone: "open" },
     });
   });
 
   it.each([1, 2])("waitlisted at place %i", (n) => {
-    const label = ticketLabel({ status: "waitlisted", waitlist_position: n });
+    const label = ticketLabel({ status: "waitlisted", waitlist_position: n, checked_in_at: null });
     expect(label.heading).toBe("You are on the waiting list");
     expect(label.place).toBe(`Your place: ${n}`);
     expect(label.badge).toEqual({ text: "Waiting list", tone: "full" });
   });
 
   it("cancelled", () => {
-    expect(ticketLabel({ status: "cancelled", waitlist_position: null })).toEqual({
+    expect(
+      ticketLabel({ status: "cancelled", waitlist_position: null, checked_in_at: null }),
+    ).toEqual({
       heading: "Registration cancelled",
       place: null,
       note: "This ticket is no longer valid.",
+      checkedIn: null,
       badge: { text: "Cancelled", tone: "cancelled" },
     });
+  });
+});
+
+// W-R25: a checked-in ticket has the line "Checked in" (also in the event page panel).
+describe("ticketLabel: checked in", () => {
+  it('a checked-in ticket has the line "Checked in", the time is not shown', () => {
+    const label = ticketLabel({
+      status: "registered",
+      waitlist_position: null,
+      checked_in_at: "2030-01-01T09:55:00.000Z",
+    });
+    expect(label.heading).toBe("You are registered");
+    expect(label.checkedIn).toBe("Checked in");
+  });
+});
+
+// Tests first (registration-web.md W-R25): when the ticket page shows the QR.
+describe("W-R25: showQr", () => {
+  it.each<[string, Partial<SamplePublicEvent>, Parameters<typeof registration>[0], boolean]>([
+    ["registered, open event", OPEN, {}, true],
+    ["registered, started event", STARTED, {}, true],
+    ["registered, full event", FULL, {}, true],
+    ["registered, ended event", PASSED, {}, true],
+    ["registered, cancelled event", CANCELLED, {}, false],
+    ["waitlisted", FULL, { status: "waitlisted", waitlist_position: 1 }, false],
+    ["cancelled ticket", OPEN, { status: "cancelled" }, false],
+    ["checked in", OPEN, { checked_in_at: "2030-01-01T09:55:00.000Z" }, false],
+    ["checked in, ended event", PASSED, { checked_in_at: "2030-01-01T09:55:00.000Z" }, false],
+  ])("%s: %s", (_case, event, ticket, shown) => {
+    expect(showQr(registration(ticket), publicEvent(event))).toBe(shown);
   });
 });
