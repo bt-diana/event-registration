@@ -29,3 +29,11 @@ Build session, Claude Code. Times are Asia/Bishkek (UTC+06), with no dates. Prom
 **Time:** 14:07:54 +0600
 
 Branches are for team work and there is one person on this project, so they only add merge steps. All commits go straight to `main`.
+
+## Step 3: bind the database to localhost
+
+**Prompt.** None. An automated security-review notice named `docker-compose.yml` but gave no details. It was not a message from me.
+
+**What Claude did.** Saw that Postgres was published on all interfaces with a dev password. Changed the port mapping to `127.0.0.1:5432:5432`. Used Bash.
+
+**Decision.** None.
