@@ -4,7 +4,7 @@ A small service for event registration. An organizer creates an event with a lim
 
 This is my solution for Task 9. I built it together with an AI agent.
 
-> **Draft.** Only the database schema and accounts and login (milestone M1, API only) are built so far. `[TODO]` marks what I fill in during and after the build. The "Project status" section must only say what really works.
+> **Draft.** Only the database schema, accounts and login (milestone M1, API) and the static look of the web login and sign-up screens (no functionality yet) are built so far. `[TODO]` marks what I fill in during and after the build. The "Project status" section must only say what really works.
 
 ## Features
 
@@ -21,7 +21,7 @@ This is my solution for Task 9. I built it together with an AI agent.
 | Part | Choice |
 |---|---|
 | Backend | Node.js, TypeScript, Express 5, `pg`, `cookie-parser`, Vitest |
-| Frontend | React, Vite, TypeScript, TanStack Query, Vitest |
+| Frontend | React, Vite, TypeScript, TanStack Query, `react-router` (v7, declarative routes), plain CSS, Vitest |
 | Database | PostgreSQL 18 (Windows service, port 5433) |
 | Email | Stub. Every email is saved in an `outbox` table and printed to the console |
 | Accounts | Attendees and organizers sign up with email and password. Passwords are stored as an `scrypt` hash with a random salt (`node:crypto`). Login is one signed `session` cookie that lasts 7 days; no sessions table |
@@ -100,6 +100,19 @@ Described in [api/openapi.yaml](api/openapi.yaml) (OpenAPI 3.0.3, hand-written).
 
 Later routes use the middleware in `api/src/auth/middleware.ts`: `authenticate` puts `req.user` or `req.organizer` on the request, and `requireUser` / `requireOrganizer` answer 401 (no login) or 403 (other role).
 
+## Web routes
+
+From [docs/specs/auth-web.md](docs/specs/auth-web.md) section 2, styled by [docs/brand.md](docs/brand.md). **UI only for now:** the pages are static markup. The forms send nothing, there is no session, no guard and no validation yet.
+
+| Route | Shows |
+|---|---|
+| `/` | Attendee home (placeholder) |
+| `/login`, `/signup` | Attendee login and sign-up form |
+| `/organizer/login`, `/organizer/signup` | Organizer login and sign-up form |
+| `/organizer` | Organizer home (placeholder, not guarded yet) |
+
+Every page has the logged-out header (Log in, Sign up, For organizers).
+
 ## Project structure
 
 Partly planned. `[TODO: update after the build]`
@@ -112,6 +125,10 @@ api/                 backend (Express, TypeScript)
   src/db/            pool, migrator, migrations (SQL)
   test/              Vitest tests (auth/, db/)
 web/                 frontend (React, Vite, TypeScript)
+  src/main.tsx       QueryClientProvider, BrowserRouter, styles.css
+  src/App.tsx        header and routes
+  src/auth/          AuthForm (shared login and sign-up form), Header
+  src/styles.css     brand tokens and styles from docs/brand.md
 ROADMAP.md           the order of work, milestones and steps
 sessions/            the work log: one markdown file per session
 .claude/             agent rules (CLAUDE.md), agents and skills
@@ -155,8 +172,8 @@ All of these are automatic tests. `[TODO: fill the Status column with real resul
 `[TODO: fill in honestly after the build. Do not copy the plan here.]`
 
 - **Works:** the database schema and migrator. Accounts and login (API only, M1): sign-up, login, logout and "me" for attendees and organizers, `GET /auth/me` for either role, the signed 7-day cookie (expiry checked on the server), and the `authenticate`, `requireUser` and `requireOrganizer` middleware. Behaviours A1-A19 of `docs/specs/auth.md` have tests in `api/test/auth/` and `api/test/app.test.ts`.
-- **Partly works:** `[TODO]`
-- **Does not work, or not done, and why:** events, registration, waiting list, check-in, emails, live updates and the web app are not built yet (milestones M2-M9 in `ROADMAP.md`).
+- **Partly works:** the web login and sign-up pages for both roles, the logged-out header and the links between pages are built as UI only (M9 step 28, visual part). Only the password Show/Hide button works. The forms send nothing; the session (`GET /auth/me`), guards, validation, error messages, pending states and logout (W-A1 to W-A17, W-A20) are not built yet.
+- **Does not work, or not done, and why:** events, registration, waiting list, check-in, emails, live updates and the rest of the web app are not built yet (milestones M2-M9 in `ROADMAP.md`).
 - **Known limits of the login:** logout only clears the cookie in the browser. A copy of the cookie stays valid until its 7 days end, because there is no sessions table (a test shows this). `sameSite=lax` is the only CSRF defence, which is not full protection (for example a hostile subdomain). No rate limiting, password reset or email verification.
 - **Known limits (expected, confirm after the build):** live updates use an in-process event stream, so only one server instance is supported. The reminder worker checks on a timer and uses the server clock. Email is a stub.
 - **Assumption:** the task does not say what happens to reminders after a reschedule. I assume one reminder per person per start time.

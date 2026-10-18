@@ -41,3 +41,13 @@ The user approved `react-router` (v7) as a new library for `web/`. Not installed
 **What Claude did.** Made a design canvas (https://claude.ai/artifact/Ca1zKGzeKDGuXHhn7J5L76) with four auth screens: attendee login, attendee sign-up with field errors, organizer login with the 401 error, and the wrong-account page. Three listed screens (organizer sign-up, states board, phone login) are not written yet. Then wrote `docs/brand.md` from the values used in those screens (colours, type, spacing, components, rules) and linked it in the README. Used Artifact, Write, Bash.
 
 **Decision.** None.
+
+## Step 3: static auth UI
+
+**Prompt** (text cleaned)
+
+> implement the UI only for the current task; no functionality yet
+
+**What Claude did.** Gave the `code-writer` agent the task. It installed `react-router` (approved in D33), added six routes, `AuthForm` (only the Show/Hide toggle works), a logged-out `Header`, `styles.css` with the brand tokens, fonts in `index.html`, and 7 render tests. Typecheck, lint and tests pass in `web/`. No fetch, session, validation or guards yet. Updated README, ROADMAP and `code-writer.md`. Used Agent, Bash.
+
+**Decision.** None.
