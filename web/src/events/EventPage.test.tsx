@@ -128,6 +128,65 @@ describe("email-reminders-web.md W-EM16, W-EM23: the M7 section on the event pag
   });
 });
 
+// capacity-web.md W-CP1, W-CP11 (test first): the "Capacity" section of the owner view.
+describe("capacity-web.md W-CP1, W-CP11: the capacity section on the event page", () => {
+  const CAPACITY = `POST /events/${EVENT_ID}/capacity`;
+
+  it("sits after the Registrations link and before Change the event", async () => {
+    mockFetch({
+      "GET /auth/me": () => json(200, OLGA),
+      [OWN]: () => json(200, organizerEvent()),
+    });
+    renderApp(`/event/${EVENT_ID}`);
+    await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
+    const region = main().getByRole("region", { name: "Capacity" });
+    const registrations = main().getByRole("link", { name: "Registrations" });
+    const schedule = main().getByRole("region", { name: "Change the event" });
+    expect(registrations.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(region.compareDocumentPosition(schedule) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(region.closest("section.card")).toBeTruthy();
+  });
+
+  it("is not in the public view of the same event", async () => {
+    mockFetch({
+      "GET /auth/me": () => json(401, { error: "not_logged_in" }),
+      [PUBLIC]: () => json(200, publicEvent()),
+    });
+    renderApp(`/event/${EVENT_ID}`);
+    await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
+    expect(main().queryByRole("region", { name: "Capacity" })).toBeNull();
+    expect(main().queryByLabelText("Capacity (seats)")).toBeNull();
+  });
+
+  it.each(["cancelled", "passed"] as const)("is not there for a %s event", async (status) => {
+    mockFetch({
+      "GET /auth/me": () => json(200, OLGA),
+      [OWN]: () => json(200, organizerEvent({ status })),
+    });
+    renderApp(`/event/${EVENT_ID}`);
+    await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
+    expect(main().queryByRole("region", { name: "Capacity" })).toBeNull();
+    expect(detail("Capacity")).toBe("25");
+  });
+
+  it("the details show the numbers of the cached answer, with no second read", async () => {
+    const fetch = mockFetch({
+      "GET /auth/me": () => json(200, OLGA),
+      [OWN]: () => json(200, organizerEvent({ capacity: 2, registered: 2, seats_left: 0 })),
+      [CAPACITY]: () => json(200, organizerEvent({ capacity: 4, registered: 4, seats_left: 0 })),
+    });
+    renderApp(`/event/${EVENT_ID}`);
+    await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
+    fireEvent.change(main().getByLabelText("Capacity (seats)"), { target: { value: "4" } });
+    fireEvent.click(main().getByRole("button", { name: "Save capacity" }));
+    await main().findByText("Capacity saved. Seats left: 0.");
+    expect(detail("Capacity")).toBe("4");
+    expect(detail("Registered")).toBe("4");
+    expect(detail("Seats left")).toBe("0");
+    expect(callsTo(fetch, OWN)).toBe(1);
+  });
+});
+
 describe("W-E20 and W-E21: organizer view structure and links", () => {
   it("has one h1, the Events back link and the share link as text", async () => {
     mockFetch({

@@ -2,6 +2,7 @@
 import {
   ERRORS,
   validateCapacity,
+  validateCapacityChange,
   validateDescription,
   validateDuration,
   validateStart,
@@ -80,5 +81,27 @@ describe("validateCapacity", () => {
     ["-1", ERRORS.capacity],
   ])("%j", (value, expected) => {
     expect(validateCapacity(value)).toBe(expected);
+  });
+});
+
+// capacity-web.md W-CP3 (test first): not below the page's registered count.
+describe("validateCapacityChange", () => {
+  it.each<[string, string, number, string | null]>([
+    ["below, plural", "2", 3, "Capacity cannot be below 3 registered people."],
+    ["below with spaces around", " 2 ", 3, "Capacity cannot be below 3 registered people."],
+    ["far below", "1", 40, "Capacity cannot be below 40 registered people."],
+    ["exactly the registered count", "3", 3, null],
+    ["above", "4", 3, null],
+    ["nobody registered", "1", 0, null],
+    ["not a number is left to validateCapacity", "abc", 3, null],
+    ["empty is left to validateCapacity", "", 3, null],
+  ])("%s", (_label, value, registered, expected) => {
+    expect(validateCapacityChange(value, registered)).toBe(expected);
+  });
+
+  it("the text says person for one and people otherwise", () => {
+    expect(ERRORS.capacityBelow(1)).toBe("Capacity cannot be below 1 registered person.");
+    expect(ERRORS.capacityBelow(0)).toBe("Capacity cannot be below 0 registered people.");
+    expect(ERRORS.capacityBelow(5)).toBe("Capacity cannot be below 5 registered people.");
   });
 });
