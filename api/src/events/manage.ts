@@ -1,4 +1,5 @@
 import type pg from "pg";
+import { promoteWaiting } from "../registrations/service.js";
 import { endsAt, type StoredStatus } from "./status.js";
 
 // docs/specs/email-reminders.md ER61-ER87 (M7): reschedule an event (B8,
@@ -6,11 +7,16 @@ import { endsAt, type StoredStatus } from "./status.js";
 // transaction that starts with the same FOR UPDATE lock on the event as the
 // register service; the lock query also checks ownership (3.8). Nothing here
 // sends an email: the rows go to the outbox and the sender sends them (ER9).
+// docs/specs/capacity.md CP1-CP24 (M4): change the capacity of an event (B10,
+// 3.9) under the same lock, promoting waiting people into the new free seats.
 
 export type ManageResult =
   | { kind: "not_found" }
   | { kind: "refused"; error: "event_cancelled" | "event_passed" | "event_started" }
   | { kind: "ok"; eventId: string };
+
+// CP5: the new capacity is below the `registered` count read under the lock.
+export type CapacityResult = ManageResult | { kind: "too_low"; registered: number };
 
 type LockedEvent = {
   id: string;
@@ -19,9 +25,10 @@ type LockedEvent = {
   starts_at: Date;
   duration_minutes: number;
   schedule_version: number;
+  capacity: number;
 };
 
-const LOCK_SQL = `SELECT id, title, status, starts_at, duration_minutes, schedule_version
+const LOCK_SQL = `SELECT id, title, status, starts_at, duration_minutes, schedule_version, capacity
   FROM events WHERE id = $1 AND organizer_id = $2 FOR UPDATE`;
 
 // Pending reminders of this event. The reschedule adds `schedule_version < $2`
@@ -47,12 +54,12 @@ function startedOrPassed(event: LockedEvent, now: Date): "event_passed" | "event
 // The transaction shape of registerForEvent: COMMIT on ok, ROLLBACK otherwise
 // (nothing was written then); on an error ROLLBACK, and a client whose
 // ROLLBACK failed is dropped from the pool (ER87).
-async function inEventLock(
+async function inEventLock<R extends { kind: string }>(
   pool: pg.Pool,
   organizerId: string,
   eventId: string,
-  work: (client: pg.PoolClient, event: LockedEvent) => Promise<ManageResult>,
-): Promise<ManageResult> {
+  work: (client: pg.PoolClient, event: LockedEvent) => Promise<R>,
+): Promise<R | { kind: "not_found" }> {
   const client = await pool.connect();
   let broken: Error | undefined;
   try {
@@ -144,6 +151,38 @@ export function cancelEvent(pool: pg.Pool, organizerId: string, eventId: string,
       [event.id, event.schedule_version, event.starts_at, subject, body],
     );
     await client.query(DELETE_PENDING_REMINDERS_SQL, [event.id]);
+    return { kind: "ok", eventId: event.id };
+  });
+}
+
+// B10 (capacity.md section 3). `capacity` is already checked by the route
+// (an integer from 1 to 100000, CP3). The state, the count and the waiting
+// list are all read under the lock (CP21).
+export function setCapacity(
+  pool: pg.Pool,
+  organizerId: string,
+  eventId: string,
+  capacity: number,
+  now: Date,
+): Promise<CapacityResult> {
+  return inEventLock<CapacityResult>(pool, organizerId, eventId, async (client, event) => {
+    if (event.status === "cancelled") return { kind: "refused", error: "event_cancelled" };
+    const refused = startedOrPassed(event, now);
+    if (refused) return { kind: "refused", error: refused };
+
+    // Checked-in people are `registered` and hold a seat (CP5).
+    const seated = await client.query<{ n: number }>(
+      "SELECT count(*)::int AS n FROM registrations WHERE event_id = $1 AND status = 'registered'",
+      [event.id],
+    );
+    const registered = seated.rows[0].n;
+    // Below the count before the same value (question 4), then the no-op (CP6).
+    if (capacity < registered) return { kind: "too_low", registered };
+    if (capacity === event.capacity) return { kind: "ok", eventId: event.id };
+
+    await client.query("UPDATE events SET capacity = $2 WHERE id = $1", [event.id, capacity]);
+    // CP9, CP13: never more than the free seats, in queue_no order.
+    await promoteWaiting(client, event, capacity - registered);
     return { kind: "ok", eventId: event.id };
   });
 }

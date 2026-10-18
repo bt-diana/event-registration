@@ -77,8 +77,9 @@ function setNow(at: Date): void {
 const A = new Date("2030-03-01T10:00:00.000Z");
 const B = new Date("2030-03-05T10:00:00.000Z");
 
-function setCapacity(eventId: string, body: unknown, cookie: string | undefined = owner.cookie): Promise<Reply> {
-  return call(api, "POST", `/events/${eventId}/capacity`, { body, cookie });
+// `cookie` null sends no cookie; left out, the owner's.
+function setCapacity(eventId: string, body: unknown, cookie: string | null = owner.cookie): Promise<Reply> {
+  return call(api, "POST", `/events/${eventId}/capacity`, { body, cookie: cookie ?? undefined });
 }
 
 function asEvent(reply: Reply): OrganizerEvent {
@@ -165,8 +166,8 @@ describe("CP1: route and guards", () => {
     const guest = await attendee(db.pool);
     const before = await allTables(db.pool);
 
-    expectError(await setCapacity(eventId, { capacity: 5 }, undefined), 401, "not_logged_in");
-    expectError(await setCapacity("abc", { capacity: "x" }, undefined), 401, "not_logged_in");
+    expectError(await setCapacity(eventId, { capacity: 5 }, null), 401, "not_logged_in");
+    expectError(await setCapacity("abc", { capacity: "x" }, null), 401, "not_logged_in");
     expectError(await setCapacity(eventId, { capacity: 5 }, guest.cookie), 403, "wrong_role");
     expectError(await setCapacity("abc", [], guest.cookie), 403, "wrong_role");
     expect(await allTables(db.pool)).toEqual(before);
@@ -601,7 +602,8 @@ describe("CP13: waiting people are served only as far as the seats go", () => {
       const seated = await countOf(eventId, "registered");
       const left = await countOf(eventId, "waitlisted");
       expect(seated).toBeLessThanOrEqual(next);
-      if (left > 0) expect(seated).toBe(next);
+      // The same value is the no-op of CP6, which leaves an SQL-made state as it is.
+      if (left > 0 && next !== capacity) expect(seated).toBe(next);
       expect(left).toBe(waitingCount - promotedCount);
       expect(regIds(await outboxOf(db.pool, eventId, "promotion"))).toEqual(ids(waiting.slice(0, promotedCount)));
     });

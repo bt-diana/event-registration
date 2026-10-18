@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Event registration API - accounts, login, events, registration, check-in and emails
-  version: 0.11.0
+  version: 0.12.0
   description: |
     Hand-written description of the seven auth routes (milestone M1, docs/specs/auth.md):
     signup, login and logout for each role, and GET /auth/me for either role. All bodies are JSON. Errors use the body { "error": "<code>" }; the status is
@@ -69,6 +69,15 @@ info:
     `event_cancelled` email for each (a second cancel answers 200 and does
     nothing). Both delete the pending reminders that would carry an old time. Both
     run in one transaction under the same event lock as registering.
+
+    Change the capacity of an event (milestone M4, docs/specs/capacity.md):
+    `POST /events/{id}/capacity` sets the seat limit of an own event that has not
+    started. A raise seats the first waiting people by queue order, up to the new
+    free seats, each with one `promotion` outbox row. A value below the number of
+    registered people is refused with 409 `capacity_below_registered` and that
+    number. The same value answers 200 and writes nothing. It runs under the same
+    event lock as registering, so `registered` never goes above `capacity`.
+    `PATCH /events/{id}` does not change the capacity.
 
     Login is one signed cookie named `session` (cookie-parser), valid 7 days,
     httpOnly, sameSite=lax, secure only when NODE_ENV=production. Its signed value is
@@ -363,6 +372,57 @@ paths:
         "409":
           # Only `event_passed` and `event_started` here; a cancelled event is a 200.
           $ref: "#/components/responses/EventNotChangeable"
+
+  /events/{id}/capacity:
+    post:
+      tags: [events]
+      operationId: setEventCapacity
+      summary: Change the capacity of an own event
+      description: |
+        Order of checks: guard (401/403), id is a uuid (else 404), body (400, before
+        any query, also for a closed or foreign event), then one transaction that
+        starts with `SELECT ... FROM events WHERE id = $1 AND organizer_id = $2 FOR
+        UPDATE` (the same event lock as registering, cancelling and the other event
+        routes; no row is 404), then the state under the lock: stored `cancelled` is
+        409 `event_cancelled`, an ended event 409 `event_passed`, a started one 409
+        `event_started`. Then the `registered` rows are counted under the lock
+        (checked-in people count, waiting and cancelled ones do not): a value below
+        the count is 409 `capacity_below_registered` with `registered`, nothing
+        written. The same value as stored is a no-op: 200 with the unchanged event,
+        nothing written, nobody promoted. Otherwise `capacity` is set and the waiting
+        people with the lowest `queue_no` (cancelled rows are skipped) become
+        `registered`, at most `capacity - registered` of them; each keeps their
+        ticket code and gets one `promotion` outbox row with the event's current
+        `schedule_version` and start. Lowering never changes a registration. The
+        answer says nothing about who was promoted. Other body fields are ignored.
+        `PATCH /events/{id}` refuses `capacity`; this route is the only way to change it.
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CapacityChange"
+      responses:
+        "200":
+          description: The event after the change (or unchanged for the same value); `registered` and `seats_left` include the promoted people.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerEvent"
+        "400":
+          $ref: "#/components/responses/InvalidCapacity"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/WrongRole"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/CapacityNotChangeable"
 
   /public/events:
     get:
@@ -1297,7 +1357,7 @@ components:
       type: object
       required: [error, checked_in_at, attendee_name]
       additionalProperties: false
-      description: The only error body with more keys than `error`.
+      description: An error body with more keys than `error` (the other one is `CapacityBelowRegistered`).
       properties:
         error:
           type: string
@@ -1428,6 +1488,30 @@ components:
           format: date-time
           description: ISO 8601 with a date, a time and `Z` or an offset; strictly after the server's now.
           example: "2030-01-01T10:00:00Z"
+    CapacityChange:
+      type: object
+      required: [capacity]
+      description: Other fields are ignored and change nothing.
+      properties:
+        capacity:
+          type: integer
+          minimum: 1
+          maximum: 100000
+          description: The new seat limit; a JSON integer (`1e2` is 100; `"5"`, `5.5` and `null` are refused).
+          example: 40
+    CapacityBelowRegistered:
+      type: object
+      required: [error, registered]
+      additionalProperties: false
+      description: The new capacity is below the number of registered people, counted under the event lock.
+      properties:
+        error:
+          type: string
+          enum: [capacity_below_registered]
+        registered:
+          type: integer
+          minimum: 1
+          description: The number of `registered` rows (checked-in people included).
     Error:
       type: object
       required: [error]
@@ -1647,6 +1731,44 @@ components:
             started:
               value:
                 error: event_started
+    InvalidCapacity:
+      description: |
+        Bad capacity body: not an object, or `capacity` missing or not a JSON integer
+        from 1 to 100000. Answered before any database query, also for a closed,
+        unknown or foreign event; nothing is written.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: invalid_input
+    CapacityNotChangeable:
+      description: |
+        Nothing is written. Checked under the event lock in this order:
+        `event_cancelled` (the event was cancelled), `event_passed`
+        (`starts_at + duration_minutes` is reached), `event_started` (started and
+        not ended), then `capacity_below_registered` with the number of registered
+        people (the only one of these with a second key).
+      content:
+        application/json:
+          schema:
+            anyOf:
+              - $ref: "#/components/schemas/CapacityBelowRegistered"
+              - $ref: "#/components/schemas/Error"
+          examples:
+            cancelled:
+              value:
+                error: event_cancelled
+            passed:
+              value:
+                error: event_passed
+            started:
+              value:
+                error: event_started
+            belowRegistered:
+              value:
+                error: capacity_below_registered
+                registered: 12
     RegistrationNotCancellable:
       description: |
         The registration cannot be cancelled; checked under the event lock, nothing

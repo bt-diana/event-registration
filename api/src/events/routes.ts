@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import type pg from "pg";
 import { requireOrganizer } from "../auth/middleware.js";
-import { cancelEvent, rescheduleEvent, type ManageResult } from "./manage.js";
+import { cancelEvent, rescheduleEvent, setCapacity, type ManageResult } from "./manage.js";
 import { deriveStatus, endsAt, MINUTE_MS, type StoredStatus } from "./status.js";
 
 // docs/specs/events.md (M2): POST /events, GET /events, GET /events/:id for the
@@ -9,6 +9,7 @@ import { deriveStatus, endsAt, MINUTE_MS, type StoredStatus } from "./status.js"
 // docs/specs/event-description.md (DS1-DS13). GET /public/events is
 // docs/specs/events-public-list.md (PL1-PL11). POST /events/:id/reschedule and
 // POST /events/:id/cancel are docs/specs/email-reminders.md ER61-ER87 (M7).
+// POST /events/:id/capacity is docs/specs/capacity.md CP1-CP24 (M4).
 
 const MAX_TITLE = 200;
 const MAX_DESCRIPTION = 2000;
@@ -217,6 +218,13 @@ function parseReschedule(body: unknown, now: Date): Date | null {
   return startsAt && startsAt.getTime() > now.getTime() ? startsAt : null;
 }
 
+// CP3: the new capacity, the rule of E2 (an integer from 1 to 100000), or
+// null for a bad body. Other fields are ignored.
+function parseCapacity(body: unknown): number | null {
+  const b = fields(body);
+  return b && isIntegerIn(b.capacity, MIN_CAPACITY, MAX_CAPACITY) ? b.capacity : null;
+}
+
 export function eventsRouter(pool: pg.Pool): Router {
   const router = Router();
 
@@ -273,6 +281,22 @@ export function eventsRouter(pool: pg.Pool): Router {
     if (typeof id !== "string" || !UUID.test(id)) return fail(res, 404, "not_found");
     const now = new Date();
     const result = await cancelEvent(pool, req.organizer!.id, id, now);
+    await answerManaged(res, req.organizer!.id, result, now);
+  });
+
+  // CP1-CP5: guard, uuid (404), body (400), then the locked work. Below the
+  // registered count is the one error body with a second key (CP5).
+  router.post("/events/:id/capacity", requireOrganizer, async (req: Request, res: Response) => {
+    const id = req.params.id;
+    if (typeof id !== "string" || !UUID.test(id)) return fail(res, 404, "not_found");
+    const capacity = parseCapacity(req.body);
+    if (capacity === null) return fail(res, 400, "invalid_input");
+    const now = new Date();
+    const result = await setCapacity(pool, req.organizer!.id, id, capacity, now);
+    if (result.kind === "too_low") {
+      res.status(409).json({ error: "capacity_below_registered", registered: result.registered });
+      return;
+    }
     await answerManaged(res, req.organizer!.id, result, now);
   });
 

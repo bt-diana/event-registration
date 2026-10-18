@@ -283,28 +283,7 @@ async function cancelLocked(
       "SELECT count(*)::int AS n FROM registrations WHERE event_id = $1 AND status = 'registered'",
       [eventId],
     );
-    if (seated.rows[0].n < event.capacity) {
-      const next = await client.query<{ id: string; email: string; ticket_code: string }>(
-        `SELECT r.id, u.email, r.ticket_code
-           FROM registrations r JOIN users u ON u.id = r.user_id
-          WHERE r.event_id = $1 AND r.status = 'waitlisted'
-          ORDER BY r.queue_no
-          LIMIT 1`,
-        [eventId],
-      );
-      if (next.rows.length > 0) {
-        const promoted = next.rows[0];
-        await client.query("UPDATE registrations SET status = 'registered' WHERE id = $1", [promoted.id]);
-        // Version and start from the locked event row (CR7, CR24).
-        const { subject, body } = promotionEmail(event, promoted.ticket_code);
-        await client.query(
-          `INSERT INTO outbox (registration_id, kind, schedule_version, event_starts_at, to_email, subject, body)
-           VALUES ($1, 'promotion', $2, $3, $4, $5, $6)
-           ON CONFLICT (registration_id, kind, schedule_version) DO NOTHING`,
-          [promoted.id, event.schedule_version, event.starts_at, promoted.email, subject, body],
-        );
-      }
-    }
+    if (seated.rows[0].n < event.capacity) await promoteWaiting(client, event, 1);
   }
 
   // 6. A cancelled person gets no reminder (CR17): only pending reminder rows
@@ -322,9 +301,62 @@ async function cancelLocked(
   return { kind: "ok", registration: after.rows[0] };
 }
 
+// The locked event row a promotion needs: version and start are copied into
+// the outbox row from it (CR7, CR24, capacity.md CP12).
+export type PromotionEvent = {
+  id: string;
+  title: string;
+  starts_at: Date;
+  schedule_version: number;
+};
+
+// B3 and B10 (cancel-registration.md CR5-CR7, capacity.md section 3): seats
+// the first `limit` waiting people of the event in queue_no order, each with
+// one promotion outbox row, and returns how many were seated. The caller holds
+// the event row lock and has checked that `limit` seats are free. The picked
+// rows are locked by this statement (after the event row, CR16); cancelled
+// rows are never picked. The outbox unique key is the second guard.
+export async function promoteWaiting(client: pg.PoolClient, event: PromotionEvent, limit: number): Promise<number> {
+  if (limit <= 0) return 0;
+  const moved = await client.query<{ id: string; ticket_code: string; email: string }>(
+    `WITH picked AS (
+       SELECT r.id FROM registrations r
+        WHERE r.event_id = $1 AND r.status = 'waitlisted'
+        ORDER BY r.queue_no
+        LIMIT $2
+        FOR UPDATE OF r),
+     moved AS (
+       UPDATE registrations r SET status = 'registered'
+         FROM picked WHERE r.id = picked.id
+       RETURNING r.id, r.user_id, r.ticket_code, r.queue_no)
+     SELECT m.id, m.ticket_code, u.email
+       FROM moved m JOIN users u ON u.id = m.user_id
+      ORDER BY m.queue_no`,
+    [event.id, limit],
+  );
+  if (moved.rows.length === 0) return 0;
+  // The text per person comes from promotionEmail, so it is one copy (CR7).
+  const texts = moved.rows.map((row) => promotionEmail(event, row.ticket_code));
+  await client.query(
+    `INSERT INTO outbox (registration_id, kind, schedule_version, event_starts_at, to_email, subject, body)
+     SELECT p.id, 'promotion', $2, $3, p.email, p.subject, p.body
+       FROM unnest($1::uuid[], $4::text[], $5::text[], $6::text[]) AS p(id, email, subject, body)
+     ON CONFLICT (registration_id, kind, schedule_version) DO NOTHING`,
+    [
+      moved.rows.map((row) => row.id),
+      event.schedule_version,
+      event.starts_at,
+      moved.rows.map((row) => row.email),
+      texts.map((t) => t.subject),
+      texts.map((t) => t.body),
+    ],
+  );
+  return moved.rows.length;
+}
+
 // CR7: the same style as the ticket email; the ticket code is the one the
 // person already has.
-function promotionEmail(event: LockedEvent, ticketCode: string): { subject: string; body: string } {
+function promotionEmail(event: PromotionEvent, ticketCode: string): { subject: string; body: string } {
   return {
     subject: `You have a seat at ${event.title}`,
     body: [event.title, `Starts: ${event.starts_at.toISOString()} (UTC)`, `Ticket code: ${ticketCode}`].join("\n"),
