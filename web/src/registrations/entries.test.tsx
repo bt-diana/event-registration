@@ -1,6 +1,7 @@
 // Tests first (registration-web.md): W-R15, W-R16, W-R17, the two list routes and their
-// redirects. Then the placeholder of the blocked attendee list (W-R18). The organizer
-// screen loads the organizer's events (W-R20), so its cases answer GET /events.
+// redirects. The organizer screen loads the organizer's events (W-R20), so its cases
+// answer GET /events; the attendee list reads GET /me/registrations (W-R18, W-R41), so the
+// attendee cases answer it. The list itself is tested in MyRegistrations.test.tsx.
 import { useEffect } from "react";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { useLocation } from "react-router";
@@ -15,7 +16,9 @@ afterEach(() => {
 
 const ME = "GET /auth/me";
 const EVENTS = "GET /events";
+const LIST = "GET /me/registrations";
 const noEvents = () => json(200, { events: [] });
+const noRegistrations = () => json(200, { registrations: [] });
 const loggedOut = () => json(401, { error: "not_logged_in" });
 
 function main() {
@@ -36,12 +39,14 @@ function Recorder({ seen }: { seen: string[] }) {
 }
 
 describe("W-R15: /registrations/me is the attendee screen", () => {
-  it("an attendee sees it; only the me request", async () => {
-    const fetch = mockFetch({ [ME]: () => json(200, ANN) });
+  it("an attendee sees it; the me request, then the screen's own list request", async () => {
+    const fetch = mockFetch({ [ME]: () => json(200, ANN), [LIST]: noRegistrations });
     renderApp("/registrations/me");
     expect(await main().findByRole("heading", { level: 1, name: "My registrations" })).toBeTruthy();
     expect(location()).toBe("/registrations/me");
-    expect(fetch.mock.calls).toHaveLength(1);
+    expect(callsTo(fetch, ME)).toBe(1);
+    await waitFor(() => expect(callsTo(fetch, LIST)).toBe(1));
+    expect(fetch.mock.calls).toHaveLength(2);
   });
 
   it("logged out: redirect to the attendee login with the path and the query in next", async () => {
@@ -91,12 +96,15 @@ describe("W-R16: /registrations is the organizer screen", () => {
   it.each(["/registrations", "/registrations?event=abc"])(
     "an attendee on %s is redirected to /registrations/me, never the wrong-account message",
     async (path) => {
-      const fetch = mockFetch({ [ME]: () => json(200, ANN) });
+      const fetch = mockFetch({ [ME]: () => json(200, ANN), [LIST]: noRegistrations });
       renderApp(path);
       await waitFor(() => expect(location()).toBe("/registrations/me"));
       expect(await main().findByRole("heading", { level: 1, name: "My registrations" })).toBeTruthy();
       expect(screen.queryByText(/This page is for/)).toBeNull();
-      expect(fetch.mock.calls).toHaveLength(1);
+      // Only me for the redirect; the attendee screen then reads its list once.
+      expect(callsTo(fetch, ME)).toBe(1);
+      await waitFor(() => expect(callsTo(fetch, LIST)).toBe(1));
+      expect(fetch.mock.calls).toHaveLength(2);
     },
   );
 
@@ -148,24 +156,20 @@ describe("W-R16: /registrations is the organizer screen", () => {
   });
 });
 
-describe("W-R18: placeholder until the attendee list route exists", () => {
-  it.each<[string, Me, string]>([
-    ["/registrations/me", ANN, "My registrations"],
-    ["/registrations/me?event=", ANN, "My registrations"],
-  ])("%s: the card with its h1, the placeholder text and no request", async (path, me, h1) => {
-    const fetch = mockFetch({ [ME]: () => json(200, me) });
-    renderApp(path);
-    expect(await main().findByRole("heading", { level: 1, name: h1 })).toBeTruthy();
-    expect(main().getByText("The list is not built yet.")).toBeTruthy();
-    expect(fetch.mock.calls).toHaveLength(1);
-  });
-
-  // Blocked until the API has the attendee list route (registration-web.md question 1).
-  it.todo("W-R18: one list request, one row per registration in the API order (question 1)");
-  it.todo("W-R18: empty list shows You have no registrations yet. and Go home (question 1)");
-  it.todo("W-R18: loading and error with Retry, Could not load your registrations (question 1)");
-  it.todo("W-R19: registering invalidates the attendee list (question 1)");
-  // W-R20 and W-R21 (the organizer list) are in OrganizerRegistrations.test.tsx.
+describe("W-R18: the attendee list, not the placeholder", () => {
+  it.each(["/registrations/me", "/registrations/me?event="])(
+    "%s: the h1, the list request and no placeholder text",
+    async (path) => {
+      const fetch = mockFetch({ [ME]: () => json(200, ANN), [LIST]: noRegistrations });
+      renderApp(path);
+      expect(await main().findByRole("heading", { level: 1, name: "My registrations" })).toBeTruthy();
+      expect(await main().findByText("You have no registrations yet.")).toBeTruthy();
+      expect(main().queryByText("The list is not built yet.")).toBeNull();
+      expect(callsTo(fetch, LIST)).toBe(1);
+    },
+  );
+  // The rows, states and request rules are in MyRegistrations.test.tsx; W-R20 and W-R21
+  // (the organizer list) are in OrganizerRegistrations.test.tsx.
 });
 
 it("W-R20: the organizer screen is not the placeholder any more", async () => {
@@ -183,13 +187,15 @@ describe("W-R28: /registrations/scan is an organizer screen", () => {
     expect(location()).toBe("/registrations/scan");
   });
 
-  it("an attendee is redirected to /registrations/me, only the me request", async () => {
-    const fetch = mockFetch({ [ME]: () => json(200, ANN) });
+  it("an attendee is redirected to /registrations/me: only me, then the list request", async () => {
+    const fetch = mockFetch({ [ME]: () => json(200, ANN), [LIST]: noRegistrations });
     renderApp("/registrations/scan?event=abc");
     await waitFor(() => expect(location()).toBe("/registrations/me"));
     expect(await main().findByRole("heading", { level: 1, name: "My registrations" })).toBeTruthy();
     expect(screen.queryByText(/This page is for/)).toBeNull();
-    expect(fetch.mock.calls).toHaveLength(1);
+    expect(callsTo(fetch, ME)).toBe(1);
+    await waitFor(() => expect(callsTo(fetch, LIST)).toBe(1));
+    expect(fetch.mock.calls).toHaveLength(2);
   });
 
   it("logged out: redirect to the organizer login with next", async () => {
@@ -239,7 +245,7 @@ describe("W-R17: no redirect loop", () => {
     ["/registrations/scan", ANN, ["/registrations/scan", "/registrations/me"]],
   ])("%s as %o ends on the right screen after at most one redirect", async (path, me, trail) => {
     const seen: string[] = [];
-    const fetch = mockFetch({ [ME]: () => json(200, me), [EVENTS]: noEvents });
+    const fetch = mockFetch({ [ME]: () => json(200, me), [EVENTS]: noEvents, [LIST]: noRegistrations });
     renderWith(
       <>
         <App />
@@ -253,8 +259,11 @@ describe("W-R17: no redirect loop", () => {
     // Give a loop the chance to show itself.
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(seen).toEqual(trail);
-    // The redirect itself makes no request but me; the organizer screen reads its events.
+    // The redirect itself makes no request but me; the screen it lands on then makes its
+    // own: the organizer screens read their events, the attendee list reads GET
+    // /me/registrations (W-R41).
     expect(callsTo(fetch, ME)).toBe(1);
-    expect(fetch.mock.calls).toHaveLength(me.role === "organizer" ? 2 : 1);
+    await waitFor(() => expect(fetch.mock.calls).toHaveLength(2));
+    expect(callsTo(fetch, me.role === "organizer" ? EVENTS : LIST)).toBe(1);
   });
 });

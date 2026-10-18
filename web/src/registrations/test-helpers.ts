@@ -37,6 +37,29 @@ export const BEN: Me = {
 export const MY_REGISTRATION = `GET /events/${EVENT_ID}/registrations/me`;
 export const REGISTER = `POST /events/${EVENT_ID}/registrations`;
 
+// GET /me/registrations, the attendee list (my-registrations.md, registration-web.md W-R18).
+export const MY_REGISTRATIONS = "GET /me/registrations";
+
+// An item of GET /me/registrations (MyRegistration in api/openapi.yaml): the registration
+// keys plus the event's title, start and derived status.
+export type SampleMyRegistration = SampleRegistration & {
+  event_title: string;
+  event_starts_at: string;
+  event_status: "active" | "cancelled" | "passed";
+};
+
+export function myRegistration(
+  overrides: Partial<SampleMyRegistration> = {},
+): SampleMyRegistration {
+  return {
+    ...registration(),
+    event_title: "Spring meetup",
+    event_starts_at: "2030-01-01T10:00:00.000Z",
+    event_status: "active",
+    ...overrides,
+  };
+}
+
 // An item of GET /events/{id}/registrations (OrganizerRegistration in api/openapi.yaml).
 export type SampleOrganizerRegistration = Omit<SampleRegistration, "status"> & {
   status: "registered" | "waitlisted";

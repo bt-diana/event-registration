@@ -239,6 +239,34 @@ describe("W-R6: success, 201 or 200", () => {
   });
 });
 
+describe("W-R19: registering invalidates the attendee list", () => {
+  it('invalidates ["registrations", me.id] (exact) once and sends no list request', async () => {
+    const { fetch, queryClient } = await attendeePage(publicEvent(), NONE, {
+      [REGISTER]: () => json(201, registration()),
+    });
+    queryClient.setQueryData(["registrations", ANN.id], []);
+    queryClient.setQueryData(["registrations", BEN.id], []);
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    fireEvent.click(main().getByRole("button", { name: "Register" }));
+
+    expect(
+      await main().findByRole("heading", { level: 2, name: "You are registered" }),
+    ).toBeTruthy();
+    const listCalls = invalidate.mock.calls.filter(
+      ([filters]) => JSON.stringify(filters?.queryKey) === JSON.stringify(["registrations", ANN.id]),
+    );
+    expect(listCalls).toHaveLength(1);
+    expect(listCalls[0][0]?.exact).toBe(true);
+    expect(queryClient.getQueryState(["registrations", ANN.id])?.isInvalidated).toBe(true);
+    // Another account's list is not touched.
+    expect(queryClient.getQueryState(["registrations", BEN.id])?.isInvalidated).toBe(false);
+    // The list is not mounted, so nothing is read now.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(callsTo(fetch, "GET /me/registrations")).toBe(0);
+    invalidate.mockRestore();
+  });
+});
+
 describe("W-R8: the server decides the seat", () => {
   it("Register answered 201 waitlisted shows the waiting list ticket, no error", async () => {
     let n = 0;
