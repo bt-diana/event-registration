@@ -128,6 +128,58 @@ export async function insertRegistration(
   return { id: rows[0].id, ticketCode };
 }
 
+export type OutboxKind = "ticket" | "promotion" | "reminder" | "reschedule" | "event_cancelled";
+export type OutboxStatus = "pending" | "sent" | "error_sending";
+
+// One outbox row by SQL. Options left undefined are not named in the insert,
+// so the column DEFAULT applies (status, send_attempts, created_at ...).
+export async function insertOutbox(
+  pool: pg.Pool,
+  registrationId: string,
+  options: {
+    kind?: OutboxKind;
+    scheduleVersion?: number;
+    eventStartsAt?: Date;
+    toEmail?: string;
+    subject?: string;
+    body?: string;
+    createdAt?: Date;
+    sentAt?: Date | null;
+    status?: OutboxStatus;
+    sendAttempts?: number;
+    sendError?: string | null;
+  } = {},
+): Promise<string> {
+  const columns = ["registration_id", "kind", "schedule_version", "event_starts_at", "to_email", "subject", "body"];
+  const values: unknown[] = [
+    registrationId,
+    options.kind ?? "ticket",
+    options.scheduleVersion ?? 1,
+    options.eventStartsAt ?? new Date(),
+    options.toEmail ?? uniqueEmail("outbox"),
+    options.subject ?? "Subject",
+    options.body ?? "Body",
+  ];
+  const optional: [string, unknown][] = [
+    ["created_at", options.createdAt],
+    ["sent_at", options.sentAt],
+    ["status", options.status],
+    ["send_attempts", options.sendAttempts],
+    ["send_error", options.sendError],
+  ];
+  for (const [column, value] of optional) {
+    if (value === undefined) continue;
+    columns.push(column);
+    values.push(value);
+  }
+  const placeholders = values.map((_value, i) => `$${i + 1}`).join(", ");
+  const { rows } = await pool.query<{ id: string }>(
+    `INSERT INTO outbox (${columns.join(", ")}) VALUES (${placeholders}) RETURNING id`,
+    values,
+  );
+  return rows[0].id;
+}
+
 // Waits until the backend with this pid is blocked on a lock, so a test can
 // prove that two transactions really overlap.
 export async function waitUntilBlocked(pool: pg.Pool, pid: number): Promise<void> {
