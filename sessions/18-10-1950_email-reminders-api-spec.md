@@ -95,3 +95,20 @@ Started 18-10 19:50 +06.
 **What Claude did.** Added `EMAIL_API_KEY` and `MAIL_FROM` to the existing `.env.example` (commit 8bf76df; unused until real sending is in scope, D57). The `spec-writer` agent reworked `docs/specs/email-reminders.md` (ER1-ER38): migration `004_outbox_status.sql` (`status`, `send_attempts`, `send_error`), retries, the console stub. The agent could not read the first version, so I put the printed line back to the one of c36c710 (with the body) in ER7 and closed open question 2. Updated `ROADMAP.md` and `README.md`. Used Bash, Agent.
 
 **Decision.** None.
+
+## Step 8: real sending is back, with the `resend` package
+
+**Prompt** (22:13 +06, text cleaned)
+
+> suggest domain for my email
+> I added the email API key and the mail from. Here's the send email API: (pasted example with `import { Resend } from 'resend'` and `resend.emails.send`)
+
+**What Claude did.** Suggested domain names in chat (nothing written). The pasted example uses the `resend` npm package and the earlier decision said Resend was out of scope, so I asked two questions instead of building. Did not read `.env`. Delegated the spec rework to the `spec-writer` agent (below). Used AskUserQuestion, Bash, Agent.
+
+**Decision.**
+
+### D58: real email through Resend is in scope again, with the `resend` npm package
+22:13:13 +0600. Replaces D57 and the "no library" part of D53. The user answered "use import { Resend } from 'resend'", which also approves adding the package to `api/`. The retries and `error_sending` of D56 stay.
+
+### D59: the API refuses to start without `EMAIL_API_KEY` and `MAIL_FROM`
+22:13:13 +0600. Confirms D54. Reason: the user chose "Yes, as in D54".
