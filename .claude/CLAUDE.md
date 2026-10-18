@@ -25,6 +25,9 @@ The design mock-ups are in one design canvas: https://claude.ai/artifact/Ca1zKGz
 
 ## Working rules
 
+- Start every task with a spec in `docs/specs/` before any code or tests. A `UserPromptSubmit` hook (`.claude/hooks/spec-first.sh`) reminds you on every prompt.
+- Implement the UI from the design canvas (link above) and `docs/brand.md`. Read the canvas with the Artifact tool (`action: read`) before you write UI code.
+
 - Write the tests for the hard parts first: the last seat, the single reminder and the single check-in.
 - Do not call a step done before the tests, typecheck and linter pass.
 - Keep `README.md`, `ROADMAP.md` and the agent files in `.claude/agents/` up to date. When a step changes the stack, commands, files, decisions or progress, update them in the same step, before the commit. Mark finished roadmap steps.

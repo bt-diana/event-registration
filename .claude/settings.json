@@ -1,5 +1,12 @@
 {
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/spec-first.sh" }
+        ]
+      }
+    ],
     "SubagentStop": [
       {
         "matcher": "code-writer",
