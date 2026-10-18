@@ -45,3 +45,13 @@ Started 18-10 21:00 +06.
 **What Claude did.** Explained that only the API route was built. Delegated to the `spec-writer` agent: `docs/specs/registration-web.md` now has W-R18 and W-R19 as real behaviours, plus new W-R39 (loading, empty, error), W-R40 (event status badge) and W-R41 (request only for a known attendee); W-R17 and W-R22 adjusted; question 1 marked answered; board S3 "My registrations" described. Tried to read the design canvas twice more: it still returns only "Design / Loading...", so the board could not be checked. Used Agent, Artifact, Bash.
 
 **Decision.** None.
+
+## Step 5: build the attendee list screen
+
+**Prompt** (22:40 +06, text cleaned)
+
+> implement
+
+**What Claude did.** Delegated to the `code-writer` agent with the spec's recommended answers (no ticket code on rows, event status as an extra badge, duplicate rows kept). Two commits on `main`: `9063ce1` (red: `MyRegistrations.test.tsx`, invalidation case, placeholder tests removed; 38 failed for the right reasons) and `01daf85` (green: `useMyRegistrations`, `MyRegistrations.tsx`, helpers in `ticket.ts`, styles, `brand.md`, README, ROADMAP). Web: 863 tests pass, typecheck and lint pass on the committed content. `verify.sh` was red from other work in the tree (`api/test/db/outboxStatus.test.ts` from commit `648bb2a`, and uncommitted edits to `OrganizerRegistrations`). The design canvas could not be read (only "Design / Loading..."), so the screen was built from the spec's S3 text and `brand.md`; no board was added to the canvas. Not done: manual check with the real API, a look at phone and desktop widths. Used Agent, Bash.
+
+**Decision.** None.
