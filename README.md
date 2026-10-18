@@ -78,6 +78,7 @@ Planned. `[TODO: update after the build]`
 api/                 backend (Express, TypeScript)
 web/                 frontend (React, Vite, TypeScript)
 docker-compose.yml   PostgreSQL
+ROADMAP.md           the order of work, milestones and steps
 sessions/            the work log: one markdown file per session
 .claude/             agent rules (CLAUDE.md), agents and skills
 docs/
@@ -145,7 +146,8 @@ Why I chose this process is in decision D1 in [sessions/17-10-1532_research.md](
 ## Documentation
 
 - `sessions/*.md`: one file per session with its prompts and decisions (time, reason)
-- [docs/specs/SPEC_TEMPLATE.md](docs/specs/SPEC_TEMPLATE.md): the spec the build follows
+- [ROADMAP.md](ROADMAP.md): the order of work, milestones and steps
+- [docs/specs/SPEC_TEMPLATE.md](docs/specs/SPEC_TEMPLATE.md): the template for feature specs (one spec per feature)
 - [docs/planning/build_plan.md](docs/planning/build_plan.md): the build plan for this task
 - [docs/research/sdd/summary.md](docs/research/sdd/summary.md): the research summary (the full report and sources are in the same folder)
 - [.claude/skills/audited-research/SKILL.md](.claude/skills/audited-research/SKILL.md): the skill I used for the research
