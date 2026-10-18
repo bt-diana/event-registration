@@ -22,7 +22,7 @@ This is my solution for Task 9. I built it together with an AI agent.
 |---|---|
 | Backend | Node.js, TypeScript, Express, `pg`, Vitest |
 | Frontend | React, Vite, TypeScript, TanStack Query, Vitest |
-| Database | PostgreSQL 16 |
+| Database | PostgreSQL 18 |
 | Email | Stub. Every email is saved in an `outbox` table and printed to the console |
 | Accounts | None. The organizer pages use one shared key from an environment variable `[TODO: confirm]` |
 
@@ -36,7 +36,7 @@ The backend and the frontend are separate apps. They talk over HTTP, and the liv
 
 - Node.js 20 or newer
 - Docker (for PostgreSQL)
-- Free ports: 3000 (API), 5173 (web) and 5432 (database)
+- Free ports: 3000 (API), 5173 (web) and 5434 (database)
 
 ### Run locally
 

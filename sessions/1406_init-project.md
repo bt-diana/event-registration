@@ -53,3 +53,19 @@ Branches are for team work and there is one person on this project, so they only
 **Time:** 14:09:19 +0600
 
 The task needs a linter and the spec names none. ESLint with typescript-eslint is the common choice. It forced TypeScript ~6.0 because the newest release is outside its supported range.
+
+## Step 5: Postgres 18 in Docker
+
+**Prompt** (after the database options)
+
+> Use the Windows Postgres 18 with docker
+
+**What Claude did.** Found Docker 29.8.2 installed but not on the PATH, and the engine not running (Docker Desktop not started). Read the prompt as "run Postgres 18 in a Docker container". Changed `docker-compose.yml` to `postgres:18` on `127.0.0.1:5434` (the Windows services use 5432 and 5433) and moved the volume to `/var/lib/postgresql`, the data path for the 18 image. Changed "PostgreSQL 16" to 18 in `SPEC.md` and the README. Used Bash and PowerShell.
+
+**Decision.**
+
+### D18: PostgreSQL 18 in Docker on port 5434
+
+**Time:** 14:23:37 +0600
+
+Postgres 18 is installed here and is the latest version, so the container uses it instead of 16. Port 5434 is free; 5432 and 5433 belong to the Windows services.

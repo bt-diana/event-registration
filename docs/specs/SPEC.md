@@ -39,7 +39,7 @@ One document, kept short. The agent reads it before every step. Change it first 
 ## 3. Architecture decisions
 
 - **Apps:** `api/` (Express, TypeScript) and `web/` (React, Vite, TypeScript, TanStack Query). They talk over HTTP. `[TODO: confirm]`
-- **Database:** PostgreSQL 16, run with `docker compose`. `[TODO: tables and the constraints that matter]`
+- **Database:** PostgreSQL 18, run with `docker compose`. `[TODO: tables and the constraints that matter]`
 - **Concurrency:** `[TODO: how B4, B5 and B6 are made safe, for example a row lock, a unique constraint, a conditional UPDATE]`
 - **Email:** `[TODO: stub, outbox table and console]`
 - **Organizer access:** `[TODO: shared key from an environment variable]`
