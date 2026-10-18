@@ -37,3 +37,16 @@ Started 18-10 21:10 +06.
 **What Claude did.** Compared the Main, Signup and OrganizerLogin boards with `AuthForm.tsx` (Read). Changed the `COPY` table: `/login` intro "Use the email you registered with.", `/signup` `h1` "Create your account" and intro "Register for events and keep your tickets in one place.", `/organizer/login` `h1` "Organizer log in", intro "Manage your events and check people in." and the switch line "No organizer account? Sign up"; organizer sign-up unchanged. The scan back link reads "Back to registrations" (`ScanScreen.tsx`). Tests changed with the copy: `App.test.tsx` (sign-up `h1`; new intro checks for the three pages and the organizer switch line), and the back link name in `ScanScreen.test.tsx`, `OrganizerRegistrations.test.tsx`, `ArrivalsCounter.test.tsx`. Web tests (700 pass), typecheck and lint pass (Bash). README and ROADMAP have another agent's uncommitted header edits, so only this step's lines were staged (a small script that writes the changed index blob).
 
 **Decision.** None.
+
+## Step 4: DA7 reversed, the back link stays at the top
+
+**Prompt** (21:29 +06, relayed by the main agent, text cleaned)
+
+> DA7 is reversed. "Back to events" on the organizer event page must stay at the top above the h1 (as built). Do not move it to the bottom; I already edited the DA7 row in `docs/specs/design-alignment.md`.
+
+**What Claude did.** Read the new DA7 row (Bash, grep): keep as built, nothing to change in the code. `EventPage.tsx` was not changed yet, so nothing had to be moved back. The main agent asked for the ID D66, but D66 to D69 are already used in `18-10-2108_header-responsive-spec.md`, so the next free ID is used.
+
+**Decision.**
+
+### D70: the "Back to events" link stays at the top of the organizer event page
+21:29:47 +0600. The link stays above the `h1` as built, the share line keeps its own divider; the OrgEvent board (link at the bottom) differs and is not followed. Reason: the user's choice.
