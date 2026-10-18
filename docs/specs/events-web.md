@@ -1,6 +1,6 @@
 # Spec: Event screens (web, M2)
 
-Feature spec for the organizer event screens and the public event page, made from `SPEC_TEMPLATE.md` (sections 1-5). The API side is `events.md` (E1-E20) and `api/openapi.yaml`; this file does not change them. Login, session and guards are `auth-web.md` and are reused as they are (`RequireRole`, `useMe`, `ApiError`, header). Style values are `docs/brand.md`. Roadmap steps 10 (this spec), 11 (organizer screens) and 12 (public page).
+Feature spec for the organizer event screens and the public event page, made from `SPEC_TEMPLATE.md` (sections 1-5). The API side is `events.md` (E1-E20), `event-description.md` (DS1-DS13) and `api/openapi.yaml`; this file does not change them. Login, session and guards are `auth-web.md` and are reused as they are (`RequireRole`, `useMe`, `ApiError`, header). Style values are `docs/brand.md`. Roadmap steps 10 (this spec), 11 (organizer screens) and 12 (public page).
 
 ## 1. Goals and expected behaviour
 
@@ -13,8 +13,8 @@ Feature spec for the organizer event screens and the public event page, made fro
 | W-E1 | Events list (`/organizer`): calls `GET /events` once (key `["events"]`) and shows one row per event, in the API order (the client does not sort). Each row has the title (a link to the event page), start, status, and "registered / capacity". | |
 | W-E2 | Events list, empty: `{ events: [] }` shows "You have no events yet." and a "Create event" link. No table is drawn. | yes |
 | W-E3 | Events list shows "Loading..." (`role="status"`) while pending. On network error or 5xx it shows "Could not load your events" with a Retry button that refetches; the list is not shown. | |
-| W-E4 | Create form (`/organizer/events/new`) has fields title, start (date and time), duration in minutes, capacity. Submit sends `POST /events` with `{ title, starts_at, duration_minutes, capacity }` and nothing else. `starts_at` is the local date and time converted with `new Date(value).toISOString()` (UTC, with `Z`). Title is trimmed. | yes |
-| W-E5 | Client checks before sending, the same limits as E2: title 1-200 characters after trimming; start is a valid date and time and in the future by the browser clock; duration an integer 1-1440; capacity an integer 1-100000 (digits only, no decimals, no empty). A failing form sends nothing. | |
+| W-E4 | Create form (`/organizer/events/new`) has fields title, description (optional), start (date and time), duration in minutes, capacity. Submit sends `POST /events` with `{ title, description, starts_at, duration_minutes, capacity }` and nothing else (`description` is the trimmed text, `""` when empty). `starts_at` is the local date and time converted with `new Date(value).toISOString()` (UTC, with `Z`). Title is trimmed. | yes |
+| W-E5 | Client checks before sending, the same limits as E2: title 1-200 characters after trimming; description optional, at most 2000 characters after trimming, counted in code points as `[...text].length` (`event-description.md` DS6); start is a valid date and time and in the future by the browser clock; duration an integer 1-1440; capacity an integer 1-100000 (digits only, no decimals, no empty). A failing form sends nothing. | |
 | W-E6 | The server decides (as W-A11). The API answers 400 `invalid_input` without field names, so a 400 shows one form-level message "Some fields are not valid. Check them and try again." The typed values are kept. The client checks never replace this handling, also for input they accepted (for example a start that became past while typing). | yes |
 | W-E7 | While the create request is pending the button is disabled and reads "Creating..."; a second click sends no second request (a create is not idempotent, a double click would make two events). | yes |
 | W-E8 | On 201 the form puts the answer into `["events", id]`, invalidates `["events"]` and goes to `/event/{id}` (`replace`). The new event is then on the list without a stale copy. | |
@@ -32,6 +32,7 @@ Feature spec for the organizer event screens and the public event page, made fro
 | W-E20 | Accessibility: every input has a `<label>`; an invalid input has `aria-invalid="true"` and `aria-describedby` to its error text; field and form errors have `role="alert"`; loading uses `role="status"`; after a failed client check focus goes to the first invalid field, after a server or network error to the form-level error; each screen has one `h1`; the status is text, never colour alone; the list is a real `<table>` with `<th scope="col">`. | |
 | W-E21 | Header and links: the organizer pages show the existing header; the list links to "Create event" and each title to `/event/{id}`; the form has "Back to events". The organizer view links "Back to events" and shows the share link (`/event/{id}`, the same URL) as text. The public view has no extra links (no public list exists). | |
 | W-E22 | A logged-in organizer keeps the organizer look on every screen, also on the public view of `/event/:id` (own or other organizer's event) and on `/`: the header logo links to `/organizer` (not `/`), the logo and tab icon are the organizer ones, and the account block shows "Organizer". Attendees and logged-out people keep `/` and the attendee look. (Bug found after W-E10: the logo led an organizer to the attendee home.) | yes |
+| W-E23 | Description (`event-description.md`, API field `description`, always a string). The organizer view and the public view show it under the title as plain text with the line breaks kept (`white-space: pre-wrap`, a React text node, never `dangerouslySetInnerHTML`; `<b>hi</b>` is shown as typed). An empty description shows nothing: no heading, no empty block. It is shown for every status, also Cancelled and Ended. The events list does not show it. | yes |
 
 **Out of scope.** Register button and any registration, waiting list, my registration (M3, M4); cancel registration; changing capacity; check-in and arrivals counter; reschedule or cancel the event; editing or deleting an event; a public list of events; search, filters, sorting, pagination; live updates (the list and page refresh on reload, on Retry and after a create; no polling, no refetch on window focus beyond the default); sharing buttons, copy link, calendar export; translations; dark theme; per-event time zone (the zone is the viewer's).
 
@@ -60,13 +61,14 @@ Feature spec for the organizer event screens and the public event page, made fro
 | Field | Label | Input | Hint | Client error |
 |---|---|---|---|---|
 | title | "Title" | `type="text"`, `maxLength` not set (the check reports it) | "1 to 200 characters" | "Enter a title (1 to 200 characters)." |
+| description | "Description (optional)" | `<textarea>`, 5 rows, `maxLength` not set (the check reports it) | "Shown on the public event page, so everyone can read it. Up to 2000 characters." | "Description is too long (2000 characters at most)." |
 | start | "Starts" | `type="datetime-local"` | "Your local time ({zone})" with the browser zone name | "Choose a start in the future." |
 | duration | "Duration (minutes)" | `type="text"`, `inputMode="numeric"` | "1 to 1440" | "Enter whole minutes from 1 to 1440." |
 | capacity | "Capacity (seats)" | `type="text"`, `inputMode="numeric"` | "1 to 100000" | "Enter a whole number from 1 to 100000." |
 
 Text inputs with `inputMode` (not `type="number"`) so that the check, not the browser, decides what a bad value is and the error text is the same everywhere. Submit button "Create event" (pending: "Creating..."). Secondary link "Back to events".
 
-**Public page content.** Eyebrow "Event", `h1` title, status line (badge text plus the words of W-E17), "Starts", "Ends", "Duration", seats line (W-E16), and "Registration is closed." for Cancelled and Ended. For Open, Full and Already started the page has no registration text in M2. Registration is possible from now until the event ends, also after the start (`registration.md` R11), so only Cancelled and Ended are closed; M3 adds the register button for Open, Full (waiting list) and Already started.
+**Public page content.** Eyebrow "Event", `h1` title, description (W-E23), status line (badge text plus the words of W-E17), "Starts", "Ends", "Duration", seats line (W-E16), and "Registration is closed." for Cancelled and Ended. For Open, Full and Already started the page has no registration text in M2. Registration is possible from now until the event ends, also after the start (`registration.md` R11), so only Cancelled and Ended are closed; M3 adds the register button for Open, Full (waiting list) and Already started.
 
 **Copy for errors** (shared by the screens):
 
@@ -92,7 +94,7 @@ Text inputs with `inputMode` (not `type="number"`) so that the check, not the br
 - **API client:** `web/src/events/api.ts`, built on the same `request` idea as `auth/api.ts`: `fetch` with `credentials: "same-origin"`, throws `ApiError(status)` (reuse the class; export `request` from `auth/api.ts` rather than copy it). Functions: `listEvents`, `getEvent(id)`, `createEvent(body)`, `getPublicEvent(id)`. Types `OrganizerEvent`, `PublicEvent`, `NewEvent`, `EventStatus` follow `openapi.yaml`.
 - **Hooks** in `web/src/events/queries.ts`: `useEvents`, `useEvent(id)`, `useCreateEvent`, `usePublicEvent(id)`. Keys are the ones in section 2. The queries set `retry: false` and `refetchOnWindowFocus: false`. A shared `onApiError` sends 401/403 to `queryClient.invalidateQueries({ queryKey: ["me"] })` (W-E13). The 404 is read from `error.status`, not from the text.
 - **Dev proxy:** add `/events` and `/public` to the proxy in `vite.config.ts` next to `/auth`. Production serves one origin (README note from auth-web). Because of this the web routes avoid those two prefixes (assumptions).
-- **Time:** pure functions in `web/src/events/format.ts` (`formatDateTime`, `formatDuration`, `localToIso`) and `web/src/events/validate.ts` (`validateTitle`, `validateStart`, `validateDuration`, `validateCapacity`, all returning an error text or `null`, taking `now` as a parameter so tests need no fake clock). `localToIso("2030-01-01T10:00")` is `new Date(value).toISOString()` and an invalid date gives the start error. No date library.
+- **Time:** pure functions in `web/src/events/format.ts` (`formatDateTime`, `formatDuration`, `localToIso`) and `web/src/events/validate.ts` (`validateTitle`, `validateDescription`, `validateStart`, `validateDuration`, `validateCapacity`, all returning an error text or `null`, taking `now` as a parameter so tests need no fake clock). `localToIso("2030-01-01T10:00")` is `new Date(value).toISOString()` and an invalid date gives the start error. No date library.
 - **Status line:** one pure function `publicStatus(event)` returning `"cancelled" | "ended" | "started" | "full" | "open"` in the order of W-E17; the component only maps it to text.
 - **Create flow:** `useMutation`; `onSuccess`: `setQueryData(["events", id], data)`, `invalidateQueries({ queryKey: ["events"], exact: true })`, then `navigate`. The button is disabled by `isPending`, so the second click cannot send.
 - **Guards:** the two organizer routes (`/organizer`, `/organizer/events/new`) wrap their element in the existing `RequireRole role="organizer"`. `/event/:id` has none and picks its view from `me` (W-E10). `main.tsx` is unchanged.
@@ -107,7 +109,7 @@ Text inputs with `inputMode` (not `type="number"`) so that the check, not the br
 | `web/src/events/api.ts` | `listEvents`, `getEvent`, `createEvent`, `getPublicEvent`, types | W-E1, W-E4, W-E10, W-E15 |
 | `web/src/events/queries.ts` | Hooks, keys, 401/403 handling | W-E1, W-E8, W-E13 |
 | `web/src/events/format.ts` | `formatDateTime`, `formatDuration`, `localToIso` | W-E4, W-E19 |
-| `web/src/events/validate.ts` | Four field checks | W-E5 |
+| `web/src/events/validate.ts` | Five field checks | W-E5 |
 | `web/src/events/publicStatus.ts` | `publicStatus` | W-E17 |
 | `web/src/events/EventsList.tsx` | List, empty, loading, error states | W-E1-W-E3, W-E20, W-E21 |
 | `web/src/events/CreateEventForm.tsx` | Form, checks, pending, errors, focus | W-E4-W-E9, W-E20 |
@@ -129,7 +131,7 @@ Tests follow `auth-web.md` section 4: Vitest globals, files next to the code, `f
 ## 5. Done means
 
 - Tests, typecheck and linter pass in `web/`.
-- Every behaviour W-E1 to W-E22 has a test, or a note in the README that says it is not covered.
+- Every behaviour W-E1 to W-E23 has a test, or a note in the README that says it is not covered.
 - W-E2, W-E4, W-E6, W-E7, W-E11, W-E13, W-E14 and W-E17 have their tests written and committed before the code (step 11 for the organizer ones, step 12 for W-E17).
 - The mock `fetch` counts prove: one `GET /events` on the list, no event request while logged out or while `me` loads, one `POST /events` after a double click.
 - A manual check against the real API (two organizers): create an event, see it in the list and on its page, open the other organizer's id and see the public view only, open `/event/{id}` logged out and see the same data, open a made-up id and get "Event not found".
@@ -142,7 +144,7 @@ Boards for the design canvas, each at desktop and phone width. Names are the boa
 | Board | States shown |
 |---|---|
 | Organizer / Events list | with 3 events (one Active, one Cancelled, one Ended); empty; loading; load error with Retry |
-| Organizer / Create event | empty; filled; client errors on all four fields; form-level 400 error; pending ("Creating...") |
+| Organizer / Create event | empty; filled; client errors on all five fields (title, description too long, start, duration, capacity); form-level 400 error; pending ("Creating...") |
 | Organizer / Event page | active with numbers; cancelled; ended; loading; load error with Retry; not found |
 | Organizer / Session | wrong account (attendee on an organizer screen, exists in the auth canvas; reuse) |
 | Public / Event page | Open; Full; Already started; Cancelled (closed); Ended (closed); loading; load error with Retry; not found |

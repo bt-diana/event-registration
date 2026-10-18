@@ -75,3 +75,13 @@ The header logo of a logged-in organizer goes to `/organizer` and the organizer 
 **Time:** 17:44:44 +0600
 
 A running event still accepts registrations until it ends (same as `registration.md` R11). Reason: the user said so.
+
+## Step 7: description field in the web spec and mockup
+
+**Prompt** (cleaned)
+
+> add the description field to the spec and mock-up: docs\specs\event-description.md
+
+**What Claude did.** Read `event-description.md` (API only; it says the web part goes into `events-web.md`). Updated `events-web.md`: the create form has an optional "Description" textarea (W-E4, W-E5, field table, `validateDescription`, canvas boards), and new W-E23 shows the description as plain text with line breaks under the title on the organizer and public views, nothing when empty, not on the list. Mockup: description textarea with a "too long" error on the create board; description text on the organizer and public event boards. Used Read, Bash, Artifact (publish).
+
+**Decision.** None.
