@@ -26,10 +26,11 @@ Feature spec for milestone M3, made from `SPEC_TEMPLATE.md` (sections 1-5). The 
 | R14 | An event id that is unknown, or not a uuid, answers 404 `{ "error": "not_found" }`. A malformed id never reaches the database (same as E8). An organizer-owned event is registrable by any attendee: ownership plays no part. | |
 | R15 | Guards on `POST /events/:id/registrations`: no valid login answers 401 `not_logged_in`; an organizer cookie answers 403 `wrong_role`; no handler runs and nothing is written (`requireUser`, A14, A15). The guard runs first, so a malformed id from an anonymous caller is 401. | yes |
 | R16 | Everything in one request is one transaction: the registration row and its outbox row are both stored or neither is. | |
-| R17 | `GET /events/:id/registrations/me` with an attendee cookie answers 200 with the caller's active registration (status `registered` or `waitlisted`) for that event, in the registration shape: `ticket_code`, `status`, `waitlist_position`. For a seated person `waitlist_position` is `null`. | |
+| R17 | `GET /events/:id/registrations/me` with an attendee cookie answers 200 with the caller's registration for that event in whatever status it has (`registered`, `waitlisted` or `cancelled`), in the registration shape: `ticket_code`, `status`, `waitlist_position`. `waitlist_position` is `null` unless the status is `waitlisted`. If the caller has an active row (`registered` or `waitlisted`) that row is answered; otherwise the newest `cancelled` row (highest `created_at`, then `queue_no`) is answered. | |
 | R18 | The place on the waiting list is current: when waiting rows before it are set to `cancelled` (by SQL in the test), the next read of the same registration shows a smaller `waitlist_position`. It is a snapshot, read without a lock. | |
-| R19 | `GET /events/:id/registrations/me` answers 404 `{ "error": "not_found" }` when the event is unknown or not a uuid, or when the caller has no active registration for it (none at all, or only `cancelled` ones). Another attendee's registration is never shown: attendee A reading event X while only attendee B is registered gets 404, the same as for an unknown event. | yes |
+| R19 | `GET /events/:id/registrations/me` answers 404 `{ "error": "not_found" }` only when the event is unknown or not a uuid, or when the caller never registered for it (no row of any status for this caller and event). Another attendee's registration is never shown: attendee A reading event X while only attendee B is registered gets 404, the same as for an unknown event. | yes |
 | R20 | Guards on `GET /events/:id/registrations/me`: 401 `not_logged_in` with no valid login, 403 `wrong_role` with an organizer cookie. | |
+| R22 | The read in R17 does not look at the event status: for a cancelled event or a passed event the caller still gets their registration (any status) with 200, not 404 and not 409. A `cancelled` row (made by SQL in the test) is answered with `status` `cancelled`, its old `ticket_code` and `waitlist_position` `null`. After a cancelled row and a new registration (R12), the read answers the new active row, not the old one. | yes |
 | R21 | The registration shape has exactly these keys: `id`, `event_id`, `status`, `ticket_code`, `waitlist_position`, `checked_in_at`, `created_at`. It never contains `user_id`, `queue_no`, `cancelled_at`, email, name, `password_hash` or any other person's data. The test checks the exact key list. Errors use `{ "error": "<code>" }` (codes here: `not_logged_in`, `wrong_role`, `not_found`, `event_cancelled`, `event_passed`). | |
 
 **Not in this spec.** Cancelling a registration and promoting the first waiting person (B3), changing capacity (B10), check-in and the arrivals counter (B6, B7), reminders (B5), reschedule and event cancel (B8, B9), the `promotion` email, sending the outbox rows (they are only stored), an organizer view of who registered, a list of the attendee's registrations, registering for someone else, registering without login, the web screens (`registration-web.md`), live updates.
@@ -42,12 +43,13 @@ Feature spec for milestone M3, made from `SPEC_TEMPLATE.md` (sections 1-5). The 
 - The ticket code alphabet has 32 characters and the code is made with `crypto.randomInt`, so there is no modulo bias; a collision is vanishingly rare and handled by trying again.
 - The ticket page needs event title and time; it reads them from `GET /public/events/:id` (`events.md` E11), so the registration shape has no event details.
 - `waitlist_position` is counted at read time, not stored (no new column).
-- A 404 for "no registration" and for "unknown event" is the same answer on purpose. The web screen tells the two apart by first loading the public event page.
+- A 404 for "never registered" and for "unknown event" is the same answer on purpose. The web screen tells the two apart by first loading the public event page.
+- "My registration" shows history, not only the active ticket: a cancelled registration is answered with status `cancelled`. Effect for M4: the cancel route only sets `status = 'cancelled'` and `cancelled_at`; it does not delete the row, so this read keeps working. M4 must keep the row and its `ticket_code`; the same applies to the event-cancel step (M7), where registrations of a cancelled event may become `cancelled` and are still readable.
 - Rows made by tests (cancelled registrations, past events) are inserted by SQL with the helpers in `api/test/db/helpers.ts`.
 
 ## 2. UI decisions
 
-No screens in M3 API (API only). The register button and the ticket page are in `registration-web.md` (step 17). What the API gives them: 201 (new ticket, show code and status), 200 (already registered, show the same ticket), `waitlisted` with `waitlist_position` (show "you are number N on the waiting list"), 409 `event_cancelled` / `event_passed` (event closed), 401 (go to attendee login), 403 (organizers cannot register), 404 (not found, or on the ticket route: not registered).
+No screens in M3 API (API only). The register button and the ticket page are in `registration-web.md` (step 17). What the API gives them: 201 (new ticket, show code and status), 200 (already registered, show the same ticket), `waitlisted` with `waitlist_position` (show "you are number N on the waiting list"), 409 `event_cancelled` / `event_passed` (event closed), 401 (go to attendee login), 403 (organizers cannot register), 404 (not found, or on the ticket route: never registered). On the ticket route a `cancelled` status is shown as a cancelled ticket (the web decides the wording in `registration-web.md`), also when the event is cancelled or passed.
 
 ## 3. Architecture decisions
 
@@ -64,15 +66,15 @@ No screens in M3 API (API only). The register button and the ticket page are in 
   The count and the insert are never done outside the lock. The capacity is read from the locked row, not from an earlier query.
 - **Ticket code:** `makeTicketCode()` in a small module, `crypto.randomInt(32)` ten times over the alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`.
 - **Outbox text:** subject `Your ticket for <title>`; body has the title, the start time (ISO, UTC) and the ticket code. The exact words are not fixed by this spec; only that the title and the code are in them.
-- **My registration read:** no lock, one query: the caller's row for the event with status `<> 'cancelled'`, with `waitlist_position` from `CASE WHEN r.status = 'waitlisted' THEN (SELECT count(*) FROM registrations w WHERE w.event_id = r.event_id AND w.status = 'waitlisted' AND w.queue_no <= r.queue_no) END` (cast to number; `count` is a bigint string in `pg`). The index `registrations_waitlist` serves the count. A malformed uuid is answered 404 before any query.
+- **My registration read:** no lock, no event status check, one query: the caller's rows for the event (any status), `ORDER BY (r.status <> 'cancelled') DESC, r.created_at DESC, r.queue_no DESC LIMIT 1`, so an active row wins and otherwise the newest cancelled row is used (`DATABASE.md` index `registrations_one_active_per_user` allows many cancelled rows plus at most one active row per event and user, so the order is needed). The `ticket_code` of a cancelled row is kept as stored. Includes `waitlist_position` from `CASE WHEN r.status = 'waitlisted' THEN (SELECT count(*) FROM registrations w WHERE w.event_id = r.event_id AND w.status = 'waitlisted' AND w.queue_no <= r.queue_no) END` (cast to number; `count` is a bigint string in `pg`). The index `registrations_waitlist` serves the count. A malformed uuid is answered 404 before any query.
 - **Derived status reuse:** the passed rule must be the same function that `events.md` uses. `derive` in `api/src/events/routes.ts` is private today; move it (or just the passed check) to a shared module such as `api/src/events/status.ts` and import it from both routers, with the events tests still green. No behaviour change in `events.md`.
-- **Shape** (all JSON): registration `{ id, event_id, status, ticket_code, waitlist_position, checked_in_at, created_at }`. `status` is `registered` or `waitlisted` here (`cancelled` rows are never answered in M3); `checked_in_at` is `null` or an ISO string; `created_at` is an ISO string in UTC.
+- **Shape** (all JSON): registration `{ id, event_id, status, ticket_code, waitlist_position, checked_in_at, created_at }`. `status` is `registered`, `waitlisted` or `cancelled`; `cancelled` is answered only by the read route (never by `POST`, which answers an existing active row or a new row); `checked_in_at` is `null` or an ISO string; `created_at` is an ISO string in UTC.
 - **API:**
 
 | Route | Guard | Body | Success | Errors |
 |---|---|---|---|---|
 | `POST /events/:id/registrations` | `requireUser` | none (ignored) | 201 registration (new row), 200 registration (already registered) | 401 `not_logged_in`, 403 `wrong_role`, 404 `not_found`, 409 `event_cancelled`, 409 `event_passed` |
-| `GET /events/:id/registrations/me` | `requireUser` | none | 200 registration | 401, 403, 404 `not_found` (unknown or malformed event, or no active registration) |
+| `GET /events/:id/registrations/me` | `requireUser` | none | 200 registration (any status, any event status) | 401, 403, 404 `not_found` (unknown or malformed event, or the caller never registered) |
 
   Two routes. "My registration" is the caller's own row only: the user id always comes from the cookie.
 
@@ -82,7 +84,7 @@ No screens in M3 API (API only). The register button and the ticket page are in 
 |---|---|---|
 | `api/test/registrations/register.test.ts` | Tests first (step 14, red): R8, R9 (20 parallel attendees, capacity 1 and 3, repeated on fresh events), R4, R5 (same account, sequential and parallel), R6, R7 (waitlist by SQL-made seats or by registering). Needs many users: create them with the helpers and delete them in the test | R4-R9 |
 | `api/test/registrations/rules.test.ts` | Step 15: R1-R3, R10-R16, R21 (outbox row content, closed events, cancelled row by SQL, two events, 404, guards, exact key list) | R1-R3, R10-R16, R21 |
-| `api/test/registrations/me.test.ts` | Step 16: R17-R20 (shape, position moves, 404 for none or other attendee's, guards). R19 and R15 are written before their code | R17-R20 |
+| `api/test/registrations/me.test.ts` | Step 16: R17-R20, R22 (shape, position moves, cancelled row by SQL answered with 200, cancelled and passed events, new row wins after re-register, 404 only for never registered or other attendee's, guards). R19, R22 and R15 are written before their code | R17-R20, R22 |
 | `api/src/registrations/ticket.ts` | `makeTicketCode()` | R2 |
 | `api/src/registrations/service.ts` | `registerForEvent(pool, eventId, userId, now)`: the transaction above; returns `{ created, registration }` or a closed/not-found result | R1-R14, R16 |
 | `api/src/registrations/routes.ts` | `registrationsRouter(pool)`: the two routes, uuid check, `requireUser`, row to shape mapping, `waitlist_position` query | R14-R21 |
@@ -97,15 +99,17 @@ Tests use the existing style (`createApp().listen(0)` and `fetch`, the helpers i
 ## 5. Done means
 
 - Tests, typecheck and linter all pass in `api/`.
-- Every behaviour R1-R21 has a test, or a note in the README that says it is not covered.
-- R8 and R9 (B4) have their test written and committed before the register service; R4, R5 and R6 (B1, B2) go in the same red commit (roadmap step 14). R15 and R19 are written before their code.
+- Every behaviour R1-R22 has a test, or a note in the README that says it is not covered.
+- R8 and R9 (B4) have their test written and committed before the register service; R4, R5 and R6 (B1, B2) go in the same red commit (roadmap step 14). R15, R19 and R22 are written before their code.
 - The red run is shown failing for the right reason (no route, or over-sold seats), then green after step 15.
 - `api/openapi.yaml` and the README list the two routes; "Project status" says that cancel, promotion and the email sender are not built yet (rows are stored, nothing is sent).
 
-## 6. Open questions
+## 6. Open questions (all answered)
 
-1. Running event: R11 accepts registrations after the start until the end. Or refuse from the start (`has_started`)? Suggested: accept (as written).
-2. Repeat request on a closed event: R10 answers 409 even if the account already has a ticket there. Or return the existing ticket with 200? Suggested: 409 (as written, simpler).
-3. Repeat request status: 200 for an existing registration, 201 for a new one (R4). Or 201 both times? Suggested: 200 (as written, so the web can tell).
-4. "My registration" for a person whose only registration is `cancelled` answers 404 (R19). M4 may want to show a cancelled ticket; decide there (the shape already allows `cancelled`).
-5. Route name `GET /events/:id/registrations/me`. Or `GET /registrations/me?event_id=...`? Suggested: nested (as written).
+All answered. None open.
+
+1. Running event: accepts registrations until it ends (R11). Answered: accept.
+2. Repeat request on a closed event: 409 (R10). Answered: accept.
+3. Repeat request: 200 for an existing registration, 201 for a new one (R4). Answered: accept.
+4. "My registration" returns the registration in whatever status it has, including `cancelled`, also for cancelled and passed events; 404 only when the attendee never registered (R17, R19, R22). Answered: changed from the first draft (which gave 404 for cancelled). Effect for M4: cancel keeps the row and its ticket code.
+5. Route `GET /events/:id/registrations/me` (nested). Answered: accept.
