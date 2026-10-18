@@ -119,3 +119,13 @@ Started 18-10 20:44 +06.
 
 ### D73: the "All events" link is shown on desktop too
 21:55:44 +0600. Above 640 px it is the first item of the right group of the header row, with the nav link look; the logo still links to `/`. It is absent while `me` loads, as the rest of the menu. Reason: the user asked to bring the button back on desktop.
+
+## Step 10: build "All events" on desktop
+
+**Prompt** (22:00 +06, text cleaned)
+
+> (result of step 9)
+
+**What Claude did.** Delegated to the `code-writer` agent: tests `b3102ce` (15 new DOM tests; none failed first because jsdom does not read CSS), code `4aacb71` (the `display: none` rule for `.site-nav-all` removed, comments fixed; no logic change). Web tests (825 passed), typecheck and lint pass. The agent signed the commits "Opus 5.5" instead of "Sonnet 5.5". Not done: the hand check of the desktop layout (HR19), the canvas boards. Used Agent, Bash.
+
+**Decision.** None.
