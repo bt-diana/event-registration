@@ -1,8 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi, type MockInstance } from "vitest";
 import { createApp } from "../../src/app.js";
+import { SESSION_MAX_AGE_MS } from "../../src/auth/cookie.js";
 import { createTestDb, type TestDb } from "../db/helpers.js";
-import { listen, sessionCookie, sessionSetCookie, TEST_SECRET, type Running } from "./helpers.js";
+import {
+  listen,
+  mintSessionCookie,
+  sessionCookie,
+  sessionSetCookie,
+  TEST_SECRET,
+  type Running,
+} from "./helpers.js";
 
 // Every test password contains this marker, so the log check can find it.
 const MARK = "pw-secret-";
@@ -80,18 +88,19 @@ const ROLES = [
   { path: "organizers", table: "organizers", role: "organizer", otherPath: "users" },
 ] as const;
 
-describe.each(ROLES)("auth routes for /auth/$path", ({ path, table, otherPath }) => {
+describe.each(ROLES)("auth routes for /auth/$path", ({ path, table, role, otherPath }) => {
   const base = `/auth/${path}`;
 
   async function signup(address: string, name = "Ann", password = PASSWORD) {
     return call("POST", `${base}/signup`, { body: { email: address, name, password } });
   }
 
-  it("A4: sign-up creates the row, sets the cookie, answers 201 with { id, email, name }", async () => {
+  it("A4: sign-up creates the row, sets the cookie, answers 201 with { role, id, email, name }", async () => {
     const address = email();
     const reply = await signup(address, "Ann Smith");
     expect(reply.status).toBe(201);
-    expect(reply.body).toEqual({ id: expect.any(String), email: address, name: "Ann Smith" });
+    expect(reply.body).toEqual({ role, id: expect.any(String), email: address, name: "Ann Smith" });
+    expect(Object.keys(reply.body as object)).toEqual(["role", "id", "email", "name"]);
     expect(reply.cookie).toMatch(/^session=s%3A/);
 
     const { rows } = await db.pool.query(
@@ -111,7 +120,7 @@ describe.each(ROLES)("auth routes for /auth/$path", ({ path, table, otherPath })
     const id = randomUUID();
     const reply = await signup(`  Ann-${id}@Mail.COM `, "  Ann  ");
     expect(reply.status).toBe(201);
-    expect(reply.body).toMatchObject({ email: `ann-${id}@mail.com`, name: "Ann" });
+    expect(reply.body).toMatchObject({ role, email: `ann-${id}@mail.com`, name: "Ann" });
     expect(await countRows(table, `ann-${id}@mail.com`)).toBe(1);
 
     const login = await call("POST", `${base}/login`, {
@@ -196,11 +205,12 @@ describe.each(ROLES)("auth routes for /auth/$path", ({ path, table, otherPath })
     expect((await signup(longEmail)).status).toBe(201);
   });
 
-  it("A8: login with the right email and password sets the cookie and answers 200", async () => {
+  it("A8: login with the right email and password sets the cookie and answers 200 with { role, id, email, name }", async () => {
     const address = email();
     const created = await signup(address, "Bob");
     const login = await call("POST", `${base}/login`, { body: { email: address, password: PASSWORD } });
     expect(login.status).toBe(200);
+    expect(login.body).toEqual({ role, id: expect.any(String), email: address, name: "Bob" });
     expect(login.body).toEqual(created.body);
     expect(login.cookie).toMatch(/^session=s%3A/);
 
@@ -277,15 +287,28 @@ describe.each(ROLES)("auth routes for /auth/$path", ({ path, table, otherPath })
     expect((await call("GET", `${base}/me`, { cookie: unsigned })).status).toBe(401);
   });
 
-  it("A11: me reads the name from the database", async () => {
-    const created = await signup(email(), "Old Name");
+  it("A11: me answers { role, id, email, name } read from the database", async () => {
+    const address = email();
+    const created = await signup(address, "Old Name");
     const { id } = created.body as { id: string };
     await db.pool.query(`UPDATE ${table} SET name = 'New Name' WHERE id = $1`, [id]);
     const me = await call("GET", `${base}/me`, { cookie: created.cookie });
-    expect(me.body).toMatchObject({ id, name: "New Name" });
+    expect(me.status).toBe(200);
+    expect(me.body).toEqual({ role, id, email: address, name: "New Name" });
   });
 
-  it("me with a cookie of the other role answers 403", async () => {
+  it("A17: GET /auth/me answers 200 with { role, id, email, name } from the matching table", async () => {
+    const address = email();
+    const created = await signup(address, "Before");
+    const { id } = created.body as { id: string };
+    await db.pool.query(`UPDATE ${table} SET name = 'After' WHERE id = $1`, [id]);
+    const me = await call("GET", "/auth/me", { cookie: created.cookie });
+    expect(me.status).toBe(200);
+    expect(me.body).toEqual({ role, id, email: address, name: "After" });
+    expect(me.setCookie).toBeUndefined();
+  });
+
+  it("A19: me with a cookie of the other role answers 403", async () => {
     const other = await call("POST", `/auth/${otherPath}/signup`, {
       body: { email: email(), name: "Other", password: PASSWORD },
     });
@@ -318,12 +341,50 @@ describe("one email, two roles (A12)", () => {
     expect(login.body).toEqual(organizer.body);
     expect((await call("GET", "/auth/organizers/me", { cookie: login.cookie })).status).toBe(200);
     expect((await call("GET", "/auth/users/me", { cookie: login.cookie })).status).toBe(403);
+    const me = await call("GET", "/auth/me", { cookie: login.cookie });
+    expect(me.status).toBe(200);
+    expect(me.body).toEqual({ ...(organizer.body as object), role: "organizer" });
+    expect(me.body).not.toEqual({ ...(user.body as object), role: "organizer" });
 
     // The attendee password does not open the organizer account.
     const wrong = await call("POST", "/auth/organizers/login", {
       body: { email: address, password: PASSWORD },
     });
     expect(wrong.status).toBe(401);
+  });
+});
+
+describe("GET /auth/me without a valid login (A18)", () => {
+  it("answers 401 and sets no cookie for no cookie, a bad one or an expired one", async () => {
+    const created = await call("POST", "/auth/users/signup", {
+      body: { email: email(), name: "Ann", password: PASSWORD },
+    });
+    const { id } = created.body as { id: string };
+    const good = created.cookie!;
+    const cookies: Record<string, string | undefined> = {
+      none: undefined,
+      tampered: good.replace("s%3Auser.", "s%3Aorganizer."),
+      "bad signature": good.slice(0, -1) + (good.endsWith("A") ? "B" : "A"),
+      unsigned: `session=${encodeURIComponent(`user.${id}.${Date.now() + 1e6}`)}`,
+      expired: await mintSessionCookie("user", id, Date.now() - SESSION_MAX_AGE_MS - 1000),
+    };
+    for (const [name, cookie] of Object.entries(cookies)) {
+      const me = await call("GET", "/auth/me", { cookie });
+      expect(me.status, name).toBe(401);
+      expect(me.body, name).toEqual({ error: "not_logged_in" });
+      expect(me.setCookie, name).toBeUndefined();
+    }
+    // The same expired-cookie helper gives a working cookie when it is fresh.
+    expect((await call("GET", "/auth/me", { cookie: await mintSessionCookie("user", id) })).status).toBe(200);
+  });
+
+  it("never answers 403: both roles are accepted", async () => {
+    for (const path of ["users", "organizers"]) {
+      const created = await call("POST", `/auth/${path}/signup`, {
+        body: { email: email(), name: "Ann", password: PASSWORD },
+      });
+      expect((await call("GET", "/auth/me", { cookie: created.cookie })).status).toBe(200);
+    }
   });
 });
 
