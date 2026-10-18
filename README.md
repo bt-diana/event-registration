@@ -53,7 +53,7 @@ The tests use the same server: each test file creates and drops its own throw-aw
 
 ### Set up the environment
 
-Copy `.env.example` to `.env` in the repository root (the API reads it from there; it is git-ignored, never commit it) and fill in:
+Copy `api/.env.example` to `api/.env` (the API reads it from there; it is git-ignored, never commit it) and fill in:
 
 | Variable | What to put |
 |---|---|
@@ -108,7 +108,7 @@ Find the PC's Wi-Fi address with `ipconfig` (the IPv4 address of the Wi-Fi adapt
 
 The demo runs on Render: https://event-registration-web-rmbi.onrender.com. The web and the API are two services on two `onrender.com` origins (`docs/specs/api-base-url.md`, D79):
 
-- **API, a Web Service.** Root Directory `api`, Build Command `npm install --include=dev && npm run build` (compiles `api/src` with `tsconfig.build.json` into `api/dist/`, tests excluded), Start Command `npm start` (`node dist/index.js`). Environment: the variables from `.env.example` (`DATABASE_URL`, `COOKIE_SECRET`, `EMAIL_API_KEY`, `MAIL_FROM`), plus `NODE_ENV=production` and `CORS_ORIGIN=https://<web>.onrender.com` (the web origin exactly: https, no path, no trailing slash). With both set the API answers CORS for that one origin (credentials allowed, no wildcard) and the login cookie is `SameSite=None; Secure`, so the browser sends it on the cross-site calls. The API applies no migrations by itself: run `npm run db:migrate` against the production database first.
+- **API, a Web Service.** Root Directory `api`, Build Command `npm install --include=dev && npm run build` (compiles `api/src` with `tsconfig.build.json` into `api/dist/`, tests excluded), Start Command `npm start` (`node dist/index.js`). Environment: the variables from `api/.env.example` (`DATABASE_URL`, `COOKIE_SECRET`, `EMAIL_API_KEY`, `MAIL_FROM`), plus `NODE_ENV=production` and `CORS_ORIGIN=https://<web>.onrender.com` (the web origin exactly: https, no path, no trailing slash). With both set the API answers CORS for that one origin (credentials allowed, no wildcard) and the login cookie is `SameSite=None; Secure`, so the browser sends it on the cross-site calls. The API applies no migrations by itself: run `npm run db:migrate` against the production database first.
 - **Web, a Static Site.** Root Directory `web`, Build Command `npm install && npm run build`, Publish Directory `dist`. Environment: `VITE_API_URL=https://<api>.onrender.com` (the API origin only, no path; a trailing slash is ignored). Vite puts the value into the bundle at build time, so set it before the build and rebuild the site after every change. With it the web calls `<VITE_API_URL>/auth/...` with `credentials: "include"`.
 
 **Known limit.** `onrender.com` is on the public suffix list, so the two `*.onrender.com` origins are different sites and the session cookie is a third-party cookie for the web. Browsers that block third-party cookies (Safari, Chrome with that setting on) do not keep the login. A custom domain with the web and the API on sibling subdomains of one domain (for example `app.example.com` and `api.example.com`) fixes it; nothing in the code needs to change for that. `SameSite=None` also drops the `Lax` defence from `auth.md`: the exact `CORS_ORIGIN` check and `HttpOnly` remain, and CSRF protection is out of scope.
@@ -149,12 +149,12 @@ cd web && npm run e2e   # two-browser test [TODO: confirm]
 | `COOKIE_SECRET` | Signs the login cookie. At least 32 characters, or the API does not start |
 | `NODE_ENV` | `production` makes the cookie `Secure` |
 | `CORS_ORIGIN` | Optional. The one web origin allowed to call the API with the cookie (for example `https://<web>.onrender.com`). With `NODE_ENV=production` the cookie becomes `SameSite=None`. Leave it unset locally |
-| `VITE_API_URL` | Web, optional, read at build time. The API origin the web calls (for example `https://<api>.onrender.com`). Unset or empty: relative calls through the dev proxy. Leave it unset locally |
+| `VITE_API_URL` | Web, optional, read at build time. The API origin the web calls (for example `https://<api>.onrender.com`). Unset or empty: relative calls through the dev proxy. Leave it unset locally. Name documented in `web/.env.example` (Vite reads `web/.env`) |
 | `EMAIL_API_KEY` | The Resend API key. Required: missing or blank, the API prints the variable name and exits with code 1 (D59). Never commit it |
 | `MAIL_FROM` | The sender, passed to Resend as it is (`onboarding@resend.dev` or `Name <address>`). Required, like the key |
-| `EMAIL_JOB_INTERVAL_MS` | How often the email round runs (reminders, then the sender). Default in code 3600000 (1 h, D63); `.env.example` sets 10000 (10 s) for development. A whole number of at least 1000, else the API does not start |
+| `EMAIL_JOB_INTERVAL_MS` | How often the email round runs (reminders, then the sender). Default in code 3600000 (1 h, D63); `api/.env.example` sets 10000 (10 s) for development. A whole number of at least 1000, else the API does not start |
 
-The API reads the repository `.env` when `DATABASE_URL` or `COOKIE_SECRET` is not already set.
+The API reads `api/.env` when `DATABASE_URL` or `COOKIE_SECRET` is not already set.
 
 **Resend free tier:** without a verified domain Resend delivers only to the address of the account owner; emails to any other address end as `error_sending` after 3 tries (with the provider's reason in `send_error`, addresses replaced). Note that starting the API with a real key sends every `pending` outbox row of the dev database.
 

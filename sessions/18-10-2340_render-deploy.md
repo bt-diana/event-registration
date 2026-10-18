@@ -100,3 +100,14 @@
 On Render still to do by hand: set `VITE_API_URL` on the Static Site (before the build) and `CORS_ORIGIN` plus `NODE_ENV=production` on the Web Service, then redeploy. A Static Site with client-side routes probably also needs a `/*` to `/index.html` rewrite; this was not checked.
 
 **Decision.** None
+
+## Step 10: one env file per app
+
+**Prompt** (text cleaned)
+
+> add VITE_API_URL to .env.example
+> let's split env to api and web and add VITE_API_URL
+
+**What Claude did.** Added `VITE_API_URL=` to the root `.env.example` (`3ee3d7f`, `9d60d85`), then split the env files: `.env.example` moved to `api/.env.example` (without the web section), new `web/.env.example` with `VITE_API_URL`, the local `.env` moved to `api/.env`. `api/src/db/pool.ts` now loads `api/.env` (`../../.env`, which is right from both `src/db` and `dist/db`). Updated the README, a short section 7 in `docs/specs/api-base-url.md`. Typecheck, lint and 645 api tests pass; the built API starts and reads `api/.env` (Bash, Python, Edit).
+
+**Decision.** None

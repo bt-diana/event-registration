@@ -2,10 +2,10 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 
-// The .env file is in the repository root, three levels up from src/db.
-const envFile = fileURLToPath(new URL("../../../.env", import.meta.url));
+// The .env file is in api/, two levels up from src/db (and from dist/db).
+const envFile = fileURLToPath(new URL("../../.env", import.meta.url));
 
-// Loads the repository .env with Node's built-in loader when DATABASE_URL or
+// Loads api/.env with Node's built-in loader when DATABASE_URL or
 // COOKIE_SECRET is missing. Variables already in the environment win.
 export function loadEnv(): void {
   const missing = process.env.DATABASE_URL === undefined || process.env.COOKIE_SECRET === undefined;

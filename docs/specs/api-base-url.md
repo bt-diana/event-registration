@@ -80,3 +80,7 @@ No screens change. States: if the API is unreachable or CORS blocks the call, `f
 ## 6. Open questions
 
 None. Preflight methods `GET, POST, OPTIONS` are confirmed. There is no existing web test for `request()`, so `web/src/auth/api.test.ts` is a new file.
+
+## 7. Change: one env file per app
+
+The root `.env` and `.env.example` are split: `api/.env` and `api/.env.example` hold the API variables (including `CORS_ORIGIN`), `web/.env.example` documents `VITE_API_URL` (Vite reads `web/.env`; on Render it is set in the Static Site environment). `api/src/db/pool.ts` loads `api/.env` (`../../.env` from `src/db` and from `dist/db`). No behaviour changes when the variables are already in the environment.
