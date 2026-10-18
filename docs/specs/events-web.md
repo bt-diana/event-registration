@@ -26,7 +26,7 @@ Feature spec for the organizer event screens and the public event page, made fro
 | W-E14 | `/organizer` and `/organizer/events/new` are inside `RequireRole role="organizer"`. While `me` loads no request for events is made; logged out sends no request (the redirect happens first). `/event/:id` has no guard: it shows "Loading..." until `me` has an answer, then makes only the request for its view. | yes |
 | W-E15 | Public view (any viewer, including an organizer who does not own the event): calls `GET /public/events/:id` (key `["public-event", id]`) and looks the same for a user, another organizer or nobody. An organizer who owns the event does not call it. | |
 | W-E16 | Public page shows title, start, end, duration and the status line (W-E17). Seats are shown as "{seats_left} of {capacity} seats left" while the status line is Open, Full or Already started; for Cancelled and Ended no seat count is shown, only "Capacity: {capacity}". | |
-| W-E17 | Status line, first match wins: `status` `cancelled` gives "Cancelled"; `passed` gives "Ended"; `has_started` true gives "Already started"; `full` true gives "Full"; else "Open". Cancelled and Ended are "closed": the page says "Registration is closed." There is no register button in M2 for any status. | yes |
+| W-E17 | Status line, first match wins: `status` `cancelled` gives "Cancelled"; `passed` gives "Ended"; `has_started` true gives "Already started"; `full` true gives "Full"; else "Open". Cancelled and Ended are "closed": the page says "Registration is closed." Already started is not closed: registration stays possible until the event ends (`registration.md` R11), so that page never says "Registration is closed." There is no register button in M2 for any status. | yes |
 | W-E18 | Public page 404 shows "Event not found" and a link home (`/`). Loading shows "Loading..."; network error or 5xx shows "Could not load this event" with Retry. | |
 | W-E19 | Dates are shown in the browser's time zone, with the zone name (for example `Sat, 1 Jan 2030, 10:00 CET`), by one function `formatDateTime(iso, timeZone?)`. The optional `timeZone` is for tests (they pass `"UTC"`); the app passes nothing. Durations are shown as "{n} min", or "1 h 30 min" from 60 up. | |
 | W-E20 | Accessibility: every input has a `<label>`; an invalid input has `aria-invalid="true"` and `aria-describedby` to its error text; field and form errors have `role="alert"`; loading uses `role="status"`; after a failed client check focus goes to the first invalid field, after a server or network error to the form-level error; each screen has one `h1`; the status is text, never colour alone; the list is a real `<table>` with `<th scope="col">`. | |
@@ -66,7 +66,7 @@ Feature spec for the organizer event screens and the public event page, made fro
 
 Text inputs with `inputMode` (not `type="number"`) so that the check, not the browser, decides what a bad value is and the error text is the same everywhere. Submit button "Create event" (pending: "Creating..."). Secondary link "Back to events".
 
-**Public page content.** Eyebrow "Event", `h1` title, status line (badge text plus the words of W-E17), "Starts", "Ends", "Duration", seats line (W-E16), and "Registration is closed." for Cancelled and Ended. For Open, Full and Already started the page has no registration text in M2 (M3 adds the button; whether registering stays possible after the start is decided in `registration.md`).
+**Public page content.** Eyebrow "Event", `h1` title, status line (badge text plus the words of W-E17), "Starts", "Ends", "Duration", seats line (W-E16), and "Registration is closed." for Cancelled and Ended. For Open, Full and Already started the page has no registration text in M2. Registration is possible from now until the event ends, also after the start (`registration.md` R11), so only Cancelled and Ended are closed; M3 adds the register button for Open, Full (waiting list) and Already started.
 
 **Copy for errors** (shared by the screens):
 
@@ -153,7 +153,7 @@ The public boards use the attendee accent (teal) and the organizer boards the or
 
 No open questions are left.
 
-1. Registration after the start: a running event still accepts registrations until it ends (`registration.md` R11). M2 shows no register button; the public view keeps the "Already started" status and M3 adds the button.
+1. Registration after the start (decided by the user): people can register while the event is running, until it ends (`registration.md` R11). Already started is therefore not a closed status. M2 shows no register button; the public view keeps the "Already started" status and M3 adds the button.
 2. Badge colours: approved (user); they are in `brand.md`.
 3. One link `/event/:id` for the public and the organizer view (D38). The owner sees the organizer view, everyone else the public view. The path is singular only to avoid the API path `/events/:id` on one origin.
 4. Start time input: the native `datetime-local` is accepted, with the browser's own format and clock (no custom picker, no library). The canvas draws it that way.

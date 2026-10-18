@@ -62,3 +62,16 @@ The event page is `/event/:id` for everyone. The owner gets the organizer view, 
 **Time:** 17:41:31 +0600
 
 The header logo of a logged-in organizer goes to `/organizer` and the organizer look stays on public event pages too (W-E22). Reason: the user found that the logo led an organizer to the attendee home.
+
+## Step 6: registration after the start
+
+**Prompt** (cleaned)
+
+> update the spec: event registration is possible when event already started, until it ended
+
+**What Claude did.** Updated `events-web.md` (W-E17, public page content, section 7): Already started is not a closed status, its page never says "Registration is closed.", and only Cancelled and Ended are closed. Used Bash.
+
+### D40: registration stays open after the start, until the event ends
+**Time:** 17:44:44 +0600
+
+A running event still accepts registrations until it ends (same as `registration.md` R11). Reason: the user said so.
