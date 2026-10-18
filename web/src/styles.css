@@ -24,6 +24,8 @@
 
   --font-display: "Bricolage Grotesque", system-ui, sans-serif;
   --font-body: "Public Sans", system-ui, sans-serif;
+  /* Ticket codes (design-alignment.md DA10). */
+  --font-code: ui-monospace, Menlo, monospace;
 
   /* Role accent; attendee by default, organizer on [data-role="organizer"]. */
   --accent: var(--accent-attendee);
@@ -811,11 +813,12 @@ a:hover {
   font-weight: 600;
 }
 
-/* The code is plain selectable text (W-R22). */
+/* The code is plain selectable text (W-R22), in the monospace stack (DA10). */
 .ticket-code {
   margin: 2px 0 0;
+  font-family: var(--font-code);
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.12em;
   user-select: text;
   overflow-wrap: anywhere;
@@ -839,7 +842,17 @@ a:hover {
 }
 
 .ticket-page .ticket-code {
-  font-size: 28px;
+  font-size: 30px;
+}
+
+/* The ticket page panel: a 2 px border in the state colour (DA8); the event page
+   panel keeps 1 px. */
+.ticket-page .ticket {
+  border: 2px solid var(--border-input);
+}
+
+.ticket-page .ticket[data-status="registered"] {
+  border-color: var(--accent);
 }
 
 .ticket-checked-in {
@@ -859,10 +872,14 @@ a:hover {
   text-align: center;
 }
 
+/* DA9: left aligned, display font; the QR and the hints stay centred. */
 .ticket-qr h3 {
+  align-self: stretch;
   margin: 0 0 12px;
-  font-size: 16px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  text-align: left;
 }
 
 .qr-canvas {
@@ -906,8 +923,9 @@ a:hover {
 }
 
 .table-code {
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-family: var(--font-code);
+  font-weight: 600;
+  letter-spacing: 0.12em;
   white-space: nowrap;
 }
 
@@ -1207,6 +1225,18 @@ a:hover {
 
 .scan-manual {
   margin-top: 32px;
+}
+
+/* The typed ticket code (DA10). */
+.scan-manual input {
+  font-family: var(--font-code);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.scan-result .ticket-code {
+  font-size: 24px;
 }
 
 .scan-manual h2 {

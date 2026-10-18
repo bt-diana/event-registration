@@ -79,3 +79,11 @@ Started 18-10 21:10 +06.
 
 ### D71: phone page padding is 16 px on all sides
 21:33:22 +0600. Up to 520 px `.page` (and the scan screen) has 16 px padding on all four sides; the card padding stays 20 px (DA24). Reason: the user's choice.
+
+## Step 8: build the spec, step 6 (ticket page look, DA8-DA10)
+
+**Prompt** (same as step 2)
+
+**What Claude did.** Compared RegTicketQr, RegOrg and RegScan with the ticket and scan CSS (Read). CSS only in `styles.css` (the panel already has `data-status`, the code already has its classes): new `--font-code` (`ui-monospace, Menlo, monospace`); the ticket page panel has a 2 px `--border-input` border, `--accent` for `registered` (also checked in), the event page panel keeps 1 px; `h3` "Check-in code" 18 px 700 in the display font, left aligned (QR and hints still centred); ticket codes in the monospace stack with 0.12em spacing: ticket page 30 px 600, event page panel 20 px 600, organizer table, scan result 24 px, scan manual input 18 px 600. Web tests: all pass except 26 in `Header.test.tsx`, which has another agent's uncommitted drawer tests; the committed `Header.test.tsx` passes (135, temporary copy, removed after). Typecheck and lint pass (Bash). `docs/brand.md` "Ticket code" line comes with spec step 9.
+
+**Decision.** None.
