@@ -361,6 +361,8 @@ describe("W-R33: one request per code (tests first)", () => {
     act(() => onText(CODE));
     await act(async () => answer.resolve(json(200, CHECKED_IN)));
     expect(await main().findByRole("heading", { name: "Checked in" })).toBeTruthy();
+    // W-R34: the checked-in result stops the scanner; a late read still sends nothing.
+    expect(scannerStop).toHaveBeenCalled();
     act(() => {
       onText(CODE);
       onText("H4Z8WR5NCD");
@@ -388,6 +390,9 @@ describe("W-R33: one request per code (tests first)", () => {
     await main().findByRole("heading", { name: "Checked in" });
     fireEvent.click(main().getByRole("button", { name: "Scan next" }));
     expect(main().queryByRole("heading", { name: "Checked in" })).toBeNull();
+    // W-R34: the camera starts again by itself and hands a new scanner the video.
+    await main().findByText("Point the camera at the ticket QR code.");
+    await waitFor(() => expect(startScanner).toHaveBeenCalledTimes(2));
     act(() => onText("H4Z8WR5NCD"));
     await waitFor(() => expect(callsTo(fetch, CHECKIN)).toBe(2));
   });
@@ -537,6 +542,127 @@ describe("W-R35: the camera is released (tests first)", () => {
     await act(async () => pending.resolve(stream));
     for (const track of tracks) expect(track.stop).toHaveBeenCalled();
     expect(startScanner).not.toHaveBeenCalled();
+  });
+});
+
+describe("W-R34, bug report 18-10: no camera or form after a check-in (tests first)", () => {
+  const OTHER_CODE = "H4Z8WR5NCD";
+  const ALREADY: Handler = () =>
+    json(409, {
+      error: "already_checked_in",
+      checked_in_at: "2030-01-01T09:40:00.000Z",
+      attendee_name: "Ann Lee",
+    });
+
+  function expectNoCameraNoForm() {
+    expect(main().queryByLabelText("Camera preview")).toBeNull();
+    expect(main().queryByText("Point the camera at the ticket QR code.")).toBeNull();
+    expect(main().queryByText("Camera is off")).toBeNull();
+    expect(main().queryByRole("button", { name: "Start camera" })).toBeNull();
+    expect(main().queryByLabelText("Ticket code")).toBeNull();
+    expect(main().queryByRole("heading", { name: "Or enter the code" })).toBeNull();
+    expect(main().queryByRole("button", { name: "Check in" })).toBeNull();
+  }
+
+  function expectFormBack() {
+    const input = main().getByLabelText("Ticket code") as HTMLInputElement;
+    expect(input.value).toBe("");
+    expect(input.getAttribute("aria-invalid")).toBeNull();
+    expect(main().getByRole("heading", { level: 2, name: "Or enter the code" })).toBeTruthy();
+    expect(main().getByRole("button", { name: "Check in" })).toBeTruthy();
+    expect(
+      main().queryByText("Enter a valid ticket code: 10 characters, A-Z without I and O, and 2-9."),
+    ).toBeNull();
+  }
+
+  it.each<[string, Handler, string]>([
+    ["200", () => json(200, CHECKED_IN), "Checked in"],
+    ["409 already_checked_in", ALREADY, "Already checked in"],
+  ])("%s with an active camera: scanner and tracks stopped, camera and form removed", async (_case, answer, heading) => {
+    const { tracks } = await withCamera(answer);
+    act(() => onText(CODE));
+    expect(await main().findByRole("heading", { level: 2, name: heading })).toBeTruthy();
+    expect(scannerStop).toHaveBeenCalled();
+    for (const track of tracks) expect(track.stop).toHaveBeenCalled();
+    expectNoCameraNoForm();
+    expect(main().getByText("Ann Lee")).toBeTruthy();
+    expect(main().getByText(CODE)).toBeTruthy();
+    expect(main().getByRole("button", { name: "Scan next" })).toBeTruthy();
+    // The selector and the arrivals counter stay.
+    expect(main().getByLabelText("Event")).toBeTruthy();
+    expect(document.querySelector(".arrivals")).not.toBeNull();
+  });
+
+  it("Scan next after it: the empty form is back and the camera starts again", async () => {
+    const { fetch, getUserMedia } = await withCamera();
+    fireEvent.change(main().getByLabelText("Ticket code"), { target: { value: "K7M" } });
+    act(() => onText(CODE));
+    await main().findByRole("heading", { level: 2, name: "Checked in" });
+    fireEvent.click(main().getByRole("button", { name: "Scan next" }));
+    expectFormBack();
+    expect(await main().findByText("Point the camera at the ticket QR code.")).toBeTruthy();
+    expect(getUserMedia).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(startScanner).toHaveBeenCalledTimes(2));
+    act(() => onText(OTHER_CODE));
+    await waitFor(() => expect(callsTo(fetch, CHECKIN)).toBe(2));
+    expect(JSON.parse(String(fetch.mock.calls.filter(([input]) => input === "/checkin")[1][1]?.body))).toEqual({
+      ticket_code: OTHER_CODE,
+    });
+  });
+
+  it("the restart fails: the denied text is shown and the form is usable", async () => {
+    const { getUserMedia } = await withCamera();
+    getUserMedia.mockRejectedValueOnce(new DOMException("no", "NotAllowedError"));
+    act(() => onText(CODE));
+    await main().findByRole("heading", { level: 2, name: "Checked in" });
+    fireEvent.click(main().getByRole("button", { name: "Scan next" }));
+    expect(
+      await main().findByText(
+        "Camera access is blocked. Allow the camera in your browser settings, or enter the code below.",
+      ),
+    ).toBeTruthy();
+    expect(getUserMedia).toHaveBeenCalledTimes(2);
+    expect(startScanner).toHaveBeenCalledTimes(1);
+    expectFormBack();
+    expect((main().getByLabelText("Ticket code") as HTMLInputElement).disabled).toBe(false);
+  });
+
+  it("checked in by the manual form with the camera idle: Scan next asks for nothing", async () => {
+    const getUserMedia = vi.fn();
+    setMediaDevices({ getUserMedia });
+    await scanScreen();
+    typeCode(CODE);
+    await main().findByRole("heading", { level: 2, name: "Checked in" });
+    expectNoCameraNoForm();
+    fireEvent.click(main().getByRole("button", { name: "Scan next" }));
+    expect(main().getByRole("button", { name: "Start camera" })).toBeTruthy();
+    expect(main().getByText("Camera is off")).toBeTruthy();
+    expectFormBack();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(getUserMedia).not.toHaveBeenCalled();
+    expect(hasCamera).not.toHaveBeenCalled();
+  });
+
+  it.each<[string, Handler, string]>([
+    ["404 not_found", () => json(404, { error: "not_found" }), "Ticket not found."],
+    ["409 waitlisted", () => json(409, { error: "waitlisted" }), "On the waiting list, no seat yet."],
+    [
+      "409 registration_cancelled",
+      () => json(409, { error: "registration_cancelled" }),
+      "This ticket is cancelled.",
+    ],
+    ["409 event_cancelled", () => json(409, { error: "event_cancelled" }), "This event is cancelled."],
+    ["400 invalid_input", () => json(400, { error: "invalid_input" }), "This is not a ticket code."],
+    ["5xx", () => json(500, { error: "internal" }), "Something went wrong. Try again."],
+  ])("%s: the preview and the form stay", async (_case, answer, heading) => {
+    const { tracks } = await withCamera(answer);
+    act(() => onText(CODE));
+    expect(await main().findByRole("heading", { level: 2, name: heading })).toBeTruthy();
+    expect(main().getByLabelText("Camera preview").tagName).toBe("VIDEO");
+    expect(scannerStop).not.toHaveBeenCalled();
+    for (const track of tracks) expect(track.stop).not.toHaveBeenCalled();
+    expect(main().getByLabelText("Ticket code")).toBeTruthy();
+    expect(main().getByRole("button", { name: "Check in" })).toBeTruthy();
   });
 });
 
