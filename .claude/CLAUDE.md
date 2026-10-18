@@ -24,6 +24,7 @@ Read `docs/specs/SPEC_TEMPLATE.md` before you start. All specs are in `docs/spec
 
 - Write the tests for the hard parts first: the last seat, the single reminder and the single check-in.
 - Do not call a step done before the tests, typecheck and linter pass.
+- Keep `README.md`, `ROADMAP.md` and the agent files in `.claude/agents/` up to date. When a step changes the stack, commands, files, decisions or progress, update them in the same step, before the commit. Mark finished roadmap steps.
 - Keep it simple. Do not add libraries or tooling that are not in the spec. Ask me first.
 - When you review your own work, flag only problems that affect correctness or the requirements.
 - Use the `spec-writer` agent (Sonnet 5.5, medium) for research and specs, and the `code-writer` agent (Opus 5.5, high) for code. Their files are in `.claude/agents/`.
