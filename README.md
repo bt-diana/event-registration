@@ -6,7 +6,7 @@ This is my solution for Task 9. I built it together with an AI agent.
 
 **Demo:** https://event-registration-web-rmbi.onrender.com (log in with the accounts in "Demo logins" below).
 
-To test the email sender, register for an event with your own email address (sign up as a new attendee with a real mailbox you can open). The demo accounts use placeholder `@seed.test` addresses, which have no mailbox, so no emails are sent for them.
+The sending domain in Resend is verified, so emails go to any real address. To test the email sender, register for an event with your own email address (sign up as a new attendee with a real mailbox you can open). The demo accounts use placeholder `@seed.test` addresses, which have no mailbox, so no emails are sent for them.
 
 ## Features
 
@@ -29,7 +29,7 @@ To test the email sender, register for an event with your own email address (sig
 | Deploy | Render: the API is a Web Service with a Render Postgres, the web is a Static Site (see "Deploy on Render") |
 | Accounts | Attendees and organizers sign up with email and password. Passwords are stored as an `scrypt` hash with a random salt (`node:crypto`). Login is one signed `session` cookie that lasts 7 days; no sessions table |
 
-The backend and the frontend are separate apps. They talk over HTTP. The reasons for these choices are in the decisions in `sessions/`. Email is sent for real through Resend (D58); without a verified domain Resend delivers only to the address of the account owner (see "Environment").
+The backend and the frontend are separate apps. They talk over HTTP. The reasons for these choices are in the decisions in `sessions/`. Email is sent for real through Resend (D58); the sending domain is verified in Resend, so mail reaches any address when `MAIL_FROM` is on that domain; with the default `onboarding@resend.dev` Resend delivers only to the account owner (see "Environment").
 
 ## Getting started
 
@@ -258,11 +258,12 @@ Not done yet: a real email delivery through Resend by hand, and the two-browser 
 - Live updates: nothing refreshes by itself.
 
 **Known limits**
-- Without a verified domain, Resend delivers only to the account owner's address. Other addresses end as `error_sending`.
+- Resend delivers to any address only when `MAIL_FROM` is on the verified domain. With `onboarding@resend.dev` (no domain) only the account owner's address works and other addresses end as `error_sending`.
 - On `onrender.com` the login cookie is a third-party cookie, so Safari and Chrome with third-party cookies blocked do not keep the login (see "Deploy on Render").
 - The cookie cannot be revoked before its 7 days end (no sessions table). There is no rate limiting, password reset or email verification.
 - `sent` means the provider accepted the email, not that it arrived. Delivery is at least once.
-- Not checked by hand yet: the real camera and QR scan on a phone, the phone layout at 320 and 390 px, and one real email delivery.
+- Checked by hand: the real camera and QR scan work.
+- Not checked by hand yet: the phone layout at 320 and 390 px, and one real email delivery.
 
 ## How it was built
 
