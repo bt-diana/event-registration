@@ -94,12 +94,14 @@ describe("W-R11: the ticket page", () => {
     expect(main().getByText("K7M2QX9TPA")).toBeTruthy();
   });
 
-  it("W-R38: the registration badge is the Status row of the details list", async () => {
+  it("W-R38: the registration badge is right under the h1, as on the event page", async () => {
     await ticketPage(ok(publicEvent()), ok(registration()));
-    const status = main().getByText("Status");
-    expect(status.tagName).toBe("DT");
-    expect(status.closest("dl")!.contains(main().getByText("Registered"))).toBe(true);
+    const h1 = main().getByRole("heading", { level: 1 });
+    const line = h1.nextElementSibling!;
+    expect(line.classList.contains("event-status")).toBe(true);
+    expect(line.textContent).toBe("Registered");
     expect(main().getByText("Registered").closest(".ticket-flat")).toBeNull();
+    expect(main().queryByText("Status")).toBeNull();
   });
 
   it("W-R38: the code and the QR are in the main card, not in an inner panel", async () => {
