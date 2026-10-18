@@ -59,6 +59,9 @@ function OrganizerEventView({ event }: { event: OrganizerEvent }) {
         <Detail label="Seats left">{String(event.seats_left)}</Detail>
         <Detail label="Created">{formatDateTime(event.created_at)}</Detail>
       </dl>
+      <Link to={`/registrations?event=${encodeURIComponent(event.id)}`} className="button-link">
+        Registrations
+      </Link>
       <p className="share">
         Share link (same for everyone, others see the public view):{" "}
         <Link to={link} className="action-link">

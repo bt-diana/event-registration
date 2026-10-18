@@ -14,7 +14,7 @@ export function App() {
       <Header />
       <main className="page">
         <Routes>
-          {/* Public: no guard. An organizer is sent to /organizer (W-L8). */}
+          {/* Public: no guard. An organizer stays here and sees the list (W-L8, D60). */}
           <Route path="/" element={<PublicEventsList />} />
           {/* One link for everyone, no guard: the page picks its view from me (W-E10). */}
           <Route path="/event/:id" element={<EventPage />} />

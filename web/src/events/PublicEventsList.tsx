@@ -1,7 +1,8 @@
 // `/`, the attendee home: the public events list (events-public-list-web.md W-L1-W-L13).
-// No guard. Waits for me; an organizer goes to /organizer without a list request (W-L8).
+// No guard, for every role. Waits for me, then makes one list request; an organizer
+// stays on / and gets the organizer look from the header (W-L8, W-L9, D60).
 // No role eyebrow: the header shows the role (RE1).
-import { Link, Navigate } from "react-router";
+import { Link } from "react-router";
 import { useMe } from "../auth/session";
 import type { PublicListItem } from "./api";
 import { formatDateTime, formatDuration } from "./format";
@@ -39,9 +40,8 @@ function EventCard({ event }: { event: PublicListItem }) {
 
 export function PublicEventsList() {
   const me = useMe();
-  const organizer = me.data?.role === "organizer";
   // me 401 is null (logged out); a me error is treated as logged out (W-L9).
-  const events = usePublicEvents(!me.isPending && !organizer);
+  const events = usePublicEvents(!me.isPending);
 
   if (me.isPending) {
     return (
@@ -52,7 +52,6 @@ export function PublicEventsList() {
       </section>
     );
   }
-  if (organizer) return <Navigate to="/organizer" replace />;
 
   // A 401/403 re-checks me and shows no text of its own (W-L10).
   if (events.isPending || (events.isError && isAuthError(events.error))) {

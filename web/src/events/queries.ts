@@ -74,8 +74,8 @@ export function usePublicEvent(id: string) {
   });
 }
 
-// The attendee home list (W-L1). `enabled` is false until me has answered and for an
-// organizer, so W-L8 and W-L9 make no list request. A 401/403 re-checks me (W-L10).
+// The public list on / (W-L1). `enabled` is false until me has answered, for any role,
+// so W-L8 and W-L9 make no list request while me loads. A 401/403 re-checks me (W-L10).
 export function usePublicEvents(enabled: boolean) {
   const queryClient = useQueryClient();
   return useQuery({
