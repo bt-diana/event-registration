@@ -126,3 +126,13 @@ Started 18-10 19:50 +06.
 
 ### D60: add an organizer-only route that lists the email (outbox) rows of the organizer's own events
 22:16:13 +0600. Organizers can read the reminders table (the `outbox` rows, with their status) of events they own; attendees and other organizers cannot. Reason: the user asked for it. Details (path, kinds, shape) are in `email-outbox.md`.
+
+## Step 10: spec reworked for Resend
+
+**Prompt** (22:17 +06, text cleaned)
+
+> (result of step 8)
+
+**What Claude did.** The `spec-writer` agent reworked `docs/specs/email-reminders.md` (ER1-ER47): `createResendTransport` over the `resend` package (`^6.34.1`), a returned `error` is thrown, the outbox row id as idempotency key, a timeout, `readMailConfig` and start-up failure, no address or body in logs. Updated `ROADMAP.md` and `README.md`. Still to do: `email-reminders-web.md` (W-EM2, the ER7 remark) needs a small edit. Used Agent, Bash.
+
+**Decision.** None.
