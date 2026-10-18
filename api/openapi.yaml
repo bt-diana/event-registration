@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
-  title: Event registration API - accounts, login, events and registration
-  version: 0.4.0
+  title: Event registration API - accounts, login, events, registration and check-in
+  version: 0.5.0
   description: |
     Hand-written description of the seven auth routes (milestone M1, docs/specs/auth.md):
     signup, login and logout for each role, and GET /auth/me for either role. All bodies are JSON. Errors use the body { "error": "<code>" }; the status is
@@ -28,10 +28,12 @@ info:
     registration is `waitlisted`. A seat writes one `ticket` row to the outbox table
     (stored only; nothing is sent yet). Cancelling and promotion are not built yet (M4).
 
-    The organizer registrations list (milestone M5, docs/specs/checkin.md):
+    Check-in and the organizer registrations list (milestone M5, docs/specs/checkin.md):
+    `POST /checkin` checks a ticket in at the door, once (one conditional UPDATE, so
+    of many parallel calls with one code exactly one succeeds).
     `GET /events/{id}/registrations` lists the `registered` and `waitlisted` rows of
     the organizer's own event with the attendee's name and email; the arrivals
-    counter is counted from it. `POST /checkin` is specified but not built yet.
+    counter is counted from it (polled; no live updates yet).
 
     Login is one signed cookie named `session` (cookie-parser), valid 7 days,
     httpOnly, sameSite=lax, secure only when NODE_ENV=production. Its signed value is
@@ -53,6 +55,8 @@ tags:
     description: Routes that need no login.
   - name: registrations
     description: Registering and the attendee's own registration (requireUser), and the registrations list of an organizer's own event (requireOrganizer).
+  - name: checkin
+    description: Checking a ticket in at the door, for the logged-in organizer's own events (requireOrganizer).
 
 paths:
   /auth/users/signup:
@@ -356,7 +360,8 @@ paths:
         passed event still answers 200. The guard runs first, so a malformed id from
         an anonymous caller is 401; a malformed id is answered 404 before any
         database query. Another organizer's event answers the same 404 as an unknown
-        one. `POST /checkin` is not built yet.
+        one. After a successful `POST /checkin` only that item's `checked_in_at`
+        changes; a refused check-in changes nothing.
       security:
         - session: []
       parameters:
@@ -415,6 +420,60 @@ paths:
           $ref: "#/components/responses/AttendeeOnly"
         "404":
           $ref: "#/components/responses/NoRegistration"
+
+  /checkin:
+    post:
+      tags: [checkin]
+      operationId: checkIn
+      summary: Check a ticket in at the door
+      description: |
+        The organizer is the account in the cookie, never a body field; other body
+        fields are ignored (docs/specs/checkin.md C1-C14, C19). The guard runs
+        first, so a bad body from an anonymous caller is 401 (a body that is not JSON
+        at all is refused with 400 by the JSON parser before any route runs). The
+        code is trimmed and upper-cased, then must be 10 characters of the ticket
+        alphabet; anything else is 400 before any database query.
+
+        One conditional UPDATE, no lock, no explicit transaction: it sets
+        `checked_in_at = now()` only for a `registered` ticket that is not checked in
+        yet, on an event of this organizer whose stored status is `active`. So of
+        many parallel calls with one code exactly one answers 200 and the others 409
+        `already_checked_in`. There is no time window: a passed event and an event
+        that has not started yet both allow check-in. Only `checked_in_at` of that
+        one registration changes; no email is written.
+
+        When the UPDATE changes no row, the ticket is read once (joined to this
+        organizer's events) and the answer is, in this order: no row 404
+        `not_found` (an unknown code and another organizer's ticket give the same
+        body); `event_cancelled` (also for a ticket already checked in);
+        `registration_cancelled`; `waitlisted`; `already_checked_in` with the
+        original time and the name. If the read shows a free ticket (promoted from
+        the waiting list in between), the UPDATE runs once more.
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckInBody"
+      responses:
+        "200":
+          description: Checked in now.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckIn"
+        "400":
+          $ref: "#/components/responses/InvalidTicketCode"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/WrongRole"
+        "404":
+          $ref: "#/components/responses/UnknownTicket"
+        "409":
+          $ref: "#/components/responses/CheckInRefused"
 
 components:
   securitySchemes:
@@ -741,6 +800,58 @@ components:
         attendee_email:
           type: string
           format: email
+    CheckInBody:
+      type: object
+      required: [ticket_code]
+      properties:
+        ticket_code:
+          type: string
+          description: |
+            Trimmed and upper-cased, then exactly 10 characters from A-Z without I
+            and O, and 2-9 (no spaces inside, look-alike letters are not mapped).
+          example: " k7qm2xwp9d "
+    CheckIn:
+      type: object
+      required: [registration_id, ticket_code, event_id, event_title, attendee_name, checked_in_at]
+      additionalProperties: false
+      description: |
+        Exactly these keys. No email, user id, queue number or other person's data.
+      properties:
+        registration_id:
+          type: string
+          format: uuid
+        ticket_code:
+          type: string
+          pattern: "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$"
+          description: The stored (normalised) code.
+          example: K7QM2XWP9D
+        event_id:
+          type: string
+          format: uuid
+        event_title:
+          type: string
+          description: The ticket may belong to any of the organizer's own events; the title names it.
+        attendee_name:
+          type: string
+        checked_in_at:
+          type: string
+          format: date-time
+          description: The stored time, UTC, for example `2030-01-01T10:00:00.000Z`.
+    AlreadyCheckedIn:
+      type: object
+      required: [error, checked_in_at, attendee_name]
+      additionalProperties: false
+      description: The only error body with more keys than `error`.
+      properties:
+        error:
+          type: string
+          enum: [already_checked_in]
+        checked_in_at:
+          type: string
+          format: date-time
+          description: The first (stored) check-in time, not the time of the repeat.
+        attendee_name:
+          type: string
     Error:
       type: object
       required: [error]
@@ -879,6 +990,54 @@ components:
             $ref: "#/components/schemas/Error"
           example:
             error: not_found
+    InvalidTicketCode:
+      description: |
+        Bad body: not an object, `ticket_code` missing or not a string, or after
+        trimming and upper-casing not 10 characters of the ticket alphabet. Answered
+        before any database query; nothing is written.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: invalid_input
+    UnknownTicket:
+      description: |
+        No ticket with this code on the organizer's own events: an unknown code and
+        a ticket of another organizer's event give the same body. Nothing is written.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: not_found
+    CheckInRefused:
+      description: |
+        The ticket cannot be checked in; nothing is written. Checked in this order:
+        `event_cancelled` (the event was cancelled; also for a ticket already checked
+        in), `registration_cancelled`, `waitlisted` (no seat yet),
+        `already_checked_in` (with the first check-in time and the attendee's name).
+      content:
+        application/json:
+          schema:
+            anyOf:
+              - $ref: "#/components/schemas/AlreadyCheckedIn"
+              - $ref: "#/components/schemas/Error"
+          examples:
+            eventCancelled:
+              value:
+                error: event_cancelled
+            registrationCancelled:
+              value:
+                error: registration_cancelled
+            waitlisted:
+              value:
+                error: waitlisted
+            alreadyCheckedIn:
+              value:
+                error: already_checked_in
+                checked_in_at: "2030-01-01T10:02:03.456Z"
+                attendee_name: Ann
     InvalidEvent:
       description: |
         Bad body: not an object; a field missing or of the wrong type; a title empty
