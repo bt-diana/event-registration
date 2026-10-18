@@ -112,3 +112,17 @@ Started 18-10 19:50 +06.
 
 ### D59: the API refuses to start without `EMAIL_API_KEY` and `MAIL_FROM`
 22:13:13 +0600. Confirms D54. Reason: the user chose "Yes, as in D54".
+
+## Step 9: organizer-only endpoint for the reminders table
+
+**Prompt** (22:16 +06, text cleaned)
+
+> are there any endpoints we'll need for the web implementation?
+> let's also implement an endpoint just to show the reminders table of the organizer's events, just for the organizers
+
+**What Claude did.** Answered the first question in chat (no route is needed for M6 itself; a `ticket_email` field on `registrations/me` would be needed for a ticket-page note). For the second, started a separate spec `docs/specs/email-outbox.md` with the `spec-writer` agent (own file, so it does not collide with the `email-reminders.md` rework that is still running). Used Bash, Agent.
+
+**Decision.**
+
+### D60: add an organizer-only route that lists the email (outbox) rows of the organizer's own events
+22:16:13 +0600. Organizers can read the reminders table (the `outbox` rows, with their status) of events they own; attendees and other organizers cannot. Reason: the user asked for it. Details (path, kinds, shape) are in `email-outbox.md`.
