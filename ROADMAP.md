@@ -34,6 +34,7 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 | M7 | Reschedule and event cancel | `email-reminders.md` (extend) | `email-reminders-web.md` (extend) | B8, B9 | |
 | M8 | Live updates | `checkin.md` (extend) | `checkin-web.md` (extend) | B7 | |
 | M9 | Review and README | | | all | |
+| M10 | Test data (seed) | `seed.md` | | | |
 
 ## Steps
 
@@ -106,6 +107,11 @@ Specs are not written all at once. The first steps of each milestone write (or e
 44. Review the diff against the specs with the reviewer (correctness and requirements only). Fix what it finds.
 45. Two-tab check by hand: check in on one tab, the counter moves on the other.
 46. README: run instructions and the honest state (SSE in one process, polling worker, no real email). Every behaviour has a test or a README note.
+
+### M10. Test data (seed)
+47. API spec: `seed.md`: what the seed script creates (organizers, attendees, events in every state: open, full with a waiting list, started, ended, cancelled; registrations with tickets, some checked in), the command to run it, safe to run twice, development database only.
+48. Test, then code: the seed script in `api/` (uses the existing services and migrator, no new libraries). Test: a run fills the tables, a second run adds nothing, it refuses to run when `DATABASE_URL` is not the development database.
+49. README: how to run the seed and the demo logins.
 
 ## Rules for every step
 
