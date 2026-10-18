@@ -36,7 +36,7 @@ Specs are not written all at once. The first step of each milestone writes (or e
 4. Auth middleware that puts `user` or `organizer` on the request. Tests: no cookie gives 401, an attendee cookie cannot use organizer routes (done).
 
 ### M2. Events
-5. Spec: `events.md`.
+5. Spec: `events.md` (done).
 6. Test, then code: organizer creates, lists and reads own events. Another organizer's event answers 404 (`DATABASE.md` 3.8).
 7. Public event page route (no login): title, start, seats left, full or not.
 
