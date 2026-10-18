@@ -15,7 +15,7 @@ The sending domain in Resend is verified, so emails go to any real address. To t
 - **Waiting list:** when seats run out, new people go to the list. A cancellation gives the seat to the first person on the list, and they get an email.
 - **Tickets:** every registered person gets a ticket with a code. A ticket can be checked in only once.
 - **Check-in screen:** the organizer scans the ticket QR code with the camera, or types the ticket code.
-- **Organizer screen:** how many people are registered, on the waiting list, and have arrived. The arrivals counter is read again when the organizer opens the page (not live).
+- **Organizer screen:** how many people are registered, on the waiting list, and have arrived. The arrivals counter is read again when the organizer opens the page.
 - **Emails:** ticket on registration, seat from the waiting list, one reminder one day before the event, and a notice when the event is rescheduled.
 
 ## Tech stack
