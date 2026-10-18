@@ -262,7 +262,7 @@ Not done yet: a real email delivery through Resend by hand, and the two-browser 
 - On `onrender.com` the login cookie is a third-party cookie, so Safari and Chrome with third-party cookies blocked do not keep the login (see "Deploy on Render").
 - The cookie cannot be revoked before its 7 days end (no sessions table). There is no rate limiting, password reset or email verification.
 - `sent` means the provider accepted the email, not that it arrived. Delivery is at least once.
-- Checked by hand: the real camera and QR scan work.
+- Checked by hand: the real camera and QR scan work, and the organizer screen runs on the Render demo.
 - Not checked by hand yet: the phone layout at 320 and 390 px, and one real email delivery.
 
 ## How it was built
