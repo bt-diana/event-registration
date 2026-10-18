@@ -14,3 +14,13 @@ Started 18-10 15:26 +06.
 **Time:** 15:26:58 +0600
 
 `SPEC.md` keeps the structure and `[TODO]` markers only. Decisions live in `DATABASE.md`, the session files and git history.
+
+## Step 2: rename to SPEC_TEMPLATE.md
+
+**Prompt** (15:28:07 +0600, text cleaned)
+
+> rename it to SPEC_TEMPLATE
+
+**What Claude did.** Ran `git mv docs/specs/SPEC.md docs/specs/SPEC_TEMPLATE.md`. Did not change the other files that still mention `SPEC.md` (`CLAUDE.md`, both agent files, `README.md`, `DATABASE.md`, `build_plan.md`); asked the user first. Used Bash.
+
+**Decision.** None.
