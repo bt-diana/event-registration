@@ -71,6 +71,7 @@ cd api && npm test      # runs against the real database (each test file uses a 
 cd api && npm run typecheck && npm run lint
 cd web && npm test      # unit tests
 cd web && npm run typecheck && npm run lint
+bash scripts/verify.sh      # typecheck, lint and tests for api and web, stops at the first failure
 cd web && npm run e2e   # two-browser test [TODO: confirm]
 ```
 
@@ -173,7 +174,7 @@ My process is a light version of spec-driven development:
 
 1. One spec document. It has the goals and expected behaviour, the UI decisions, the architectural decisions, and the files to touch with what to do in each.
 2. Tests first for the hard parts: the last seat, the single reminder and the single check-in.
-3. A verification hook that blocks "done" until the tests, typecheck and linter pass.
+3. A `SubagentStop` hook on `code-writer` (`.claude/settings.json`, `.claude/hooks/verify-then-review.sh`): it runs `scripts/verify.sh` (typecheck, lint, tests) and blocks until it passes, then makes the agent run a code review and fix the findings.
 
 Why I chose this process is in decision D1 in [sessions/17-10-1532_research.md](sessions/17-10-1532_research.md). The research is in `docs/research/sdd/`, and the skill I used for it is in `.claude/skills/audited-research/`.
 

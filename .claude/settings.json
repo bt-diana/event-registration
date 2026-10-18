@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "code-writer",
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/verify-then-review.sh" }
+        ]
+      }
+    ]
+  }
+}

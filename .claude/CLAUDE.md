@@ -8,6 +8,7 @@ Read `docs/specs/SPEC_TEMPLATE.md` before you start. All specs are in `docs/spec
 
 - API tests: `cd api && npm test`
 - Web tests: `cd web && npm test`
+- All checks: `bash scripts/verify.sh` (typecheck, lint, tests for api and web)
 - Typecheck: `cd api && npm run typecheck`, `cd web && npm run typecheck`
 - Lint: `cd api && npm run lint`, `cd web && npm run lint`
 - Database: `psql -p 5433 -U postgres` (PostgreSQL 18 on Windows)
