@@ -69,3 +69,16 @@ Started 18-10 20:44 +06.
 **What Claude did.** Delegated to the `code-writer` agent: W-L8 tests (`37db0ed`), the code that keeps organizers on `/`, the header tests (`7bf0d2d`, 49 new, failing first) and the link with styles (`82c47ae`). Another process committed to `main` at the same time, so the code for W-L8 went into `c807773` (message about the registrations link) instead of its own commit; history was not rewritten. Checked: web tests, typecheck and lint pass. Not done: HB10 (phone layout by hand). Used Agent, Bash.
 
 **Decision.** None.
+
+## Step 6: header button and Log out look like links
+
+**Prompt** (21:04 +06, text cleaned)
+
+> the button should look like a link; same goes for the log out button; fix that
+
+**What Claude did.** Changed `web/src/styles.css`: `.button-link-secondary` and the Log out button in `.site-account` now look like the nav links (no border or background, 15 px semibold, underline on hover; the current page is underlined). Updated the look rows in `header-events-link.md`. Markup and tests are unchanged. Web tests, typecheck and lint pass. Used Bash.
+
+**Decision.**
+
+### D63: the "Watch all events" button and Log out look like links
+21:04:41 +0600. Replaces the outlined look of the spec. Reason: the user asked for it.

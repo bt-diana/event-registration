@@ -35,8 +35,8 @@ Feature spec made from `SPEC_TEMPLATE.md` (sections 1-5). Decisions D58 and D59:
 | Part | Decision |
 |---|---|
 | Place | Right side of the header, first element of the right group, before the account links / `Log in` nav. The logo stays on the left. |
-| Look | Outlined (secondary) button: surface background, `--border-input` border, `--text`, 8 px radius, 16 px semibold, 48 px high, 0 16 px padding (same as `button-secondary`). Not filled, so it does not compete with page actions (Create event, Register). A new class `button-link-secondary` next to `button-link`. |
-| Current state | `aria-current="page"` plus a visible difference that is not colour alone: border in `--accent` (organizer purple or attendee teal, as the page) and a 2 px border width. Hover: text and border `--accent`. |
+| Look | Looks like the other header links (D63): no border, no background, `--text`, 15 px semibold, 44 px high, underline on hover. Log out in the header gets the same look. The class `button-link-secondary` stays as the name. |
+| Current state | `aria-current="page"` plus an underline and the accent colour (not colour alone). |
 | Label | "Watch all events" (sentence case, always). |
 | Desktop | One row: logo, then the right group (button, then nav or account). Gap 16 px between the button and the account block. |
 | Phone (up to 520 px, the width used in `styles.css`) | The right group wraps below the logo, full label visible; the button, then the account block, wrap inside it in the existing 8 px row gap. |
@@ -55,7 +55,7 @@ Feature spec made from `SPEC_TEMPLATE.md` (sections 1-5). Decisions D58 and D59:
 - **Target:** the constant `/`. No role map and no `useMe` check for the button.
 - **Current state:** `aria-current={pathname === "/" ? "page" : undefined}` using the `pathname` the header already reads. (`NavLink` is not used, to keep one `Link` as D58 says and exact matching explicit.)
 - **Structure:** the button is rendered by `Header` itself, outside the `Account` component and outside the `nav` elements, wrapped with them in one `div.site-header-end` (flex, wrap, gap). It is not inside `nav aria-label="Account"` so logged out and logged in have the same markup for it. It renders in every state, including while `me` is pending (HB3).
-- **Styling:** `web/src/styles.css`: `.button-link-secondary` (outlined link-button) and `.site-header-end`. The rule `.site-nav a` is not applied because the link is outside the nav. Colours from `brand.md` tokens; no new colour.
+- **Styling:** `web/src/styles.css`: `.button-link-secondary` (looks like a nav link, also used for the header Log out look) and `.site-header-end`. The rule `.site-nav a` is not applied because the link is outside the nav. Colours from `brand.md` tokens; no new colour.
 - **Landmarks:** the header keeps its two nav landmarks ("Main" for the logged-in account, "Account" for logged out). The button is a plain link in the `banner`.
 
 ## 4. Files to touch
@@ -91,6 +91,6 @@ New boards for the existing design canvas (not a new artifact); not drawn yet. E
 
 Decided: the target is `/` for everyone (D59), so the button is shown while `me` loads and the earlier questions on the `href` per role are closed. Also decided: an organizer who clicks the button stays on `/` and sees the list (D60), so the old question 4 (redirect) is closed and removed. Ids are kept.
 
-1. Look: outlined (default) or filled like `button-link` (Create event)? Filled competes with page actions and with Log out.
+1. Look: closed by D63 (link look, also for Log out).
 2. Current state: keep the link visible and mark it `aria-current` on `/` (default, HB5), or hide it there?
 3. Should the logged-in account nav ("Registrations") and this button share one `nav` landmark? Default: no, the button is a plain link in the header.
