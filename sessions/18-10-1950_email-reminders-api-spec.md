@@ -56,3 +56,13 @@ Started 18-10 19:50 +06.
 
 ### D55: the email provider is Resend
 19:59:57 +0600. The HTTP API of D53 is Resend's. Reason: the user chose it.
+
+## Step 5: spec reworked for real email
+
+**Prompt** (20:02 +06, text cleaned)
+
+> (result of step 3)
+
+**What Claude did.** The `spec-writer` agent reworked `docs/specs/email-reminders.md` (ER1-ER34): an `EmailTransport` with a Resend implementation over `fetch`, `readMailConfig` and start-up failure (ER29), at-least-once delivery with one row claimed per transaction, a fake HTTP server for tests, no secrets in logs. Four new open questions with recommendations. Updated step 30 and the M6 line in `ROADMAP.md` and the line in `README.md`. Used Agent, Bash.
+
+**Decision.** None.
