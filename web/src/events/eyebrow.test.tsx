@@ -1,7 +1,7 @@
 // Tests first (docs/specs/role-eyebrow.md): RE1, the role word only in the header, never in page content.
 import { screen, within } from "@testing-library/react";
 import { ANN, OLGA, deferred, json, mockFetch, renderApp } from "../auth/test-helpers";
-import { EVENT_ID, organizerEvent } from "./test-helpers";
+import { EVENT_ID, organizerEvent, publicListItem } from "./test-helpers";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -63,7 +63,10 @@ describe("RE1: no role eyebrow in page content", () => {
   });
 
   it("attendee home: no Attendee eyebrow, the h1 comes first", async () => {
-    mockFetch({ "GET /auth/me": () => json(200, ANN) });
+    mockFetch({
+      "GET /auth/me": () => json(200, ANN),
+      "GET /public/events": () => json(200, { events: [publicListItem()] }),
+    });
     renderApp("/");
     expect(await screen.findByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
     expectNoRoleWord();

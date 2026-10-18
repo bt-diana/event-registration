@@ -35,6 +35,9 @@ export type SamplePublicEvent = {
   full: boolean;
 };
 
+// An item of GET /public/events (events-public-list.md PL5): the ten keys, no description.
+export type SamplePublicListItem = Omit<SamplePublicEvent, "description">;
+
 export function organizerEvent(
   overrides: Partial<SampleOrganizerEvent> = {},
 ): SampleOrganizerEvent {
@@ -61,6 +64,24 @@ export function publicEvent(overrides: Partial<SamplePublicEvent> = {}): SampleP
     id: EVENT_ID,
     title: "Spring meetup",
     description: "",
+    starts_at: "2030-01-01T10:00:00.000Z",
+    ends_at: "2030-01-01T11:30:00.000Z",
+    duration_minutes: 90,
+    capacity: 25,
+    status: "active",
+    has_started: false,
+    seats_left: 25,
+    full: false,
+    ...overrides,
+  };
+}
+
+export function publicListItem(
+  overrides: Partial<SamplePublicListItem> = {},
+): SamplePublicListItem {
+  return {
+    id: EVENT_ID,
+    title: "Spring meetup",
     starts_at: "2030-01-01T10:00:00.000Z",
     ends_at: "2030-01-01T11:30:00.000Z",
     duration_minutes: 90,

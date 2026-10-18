@@ -23,10 +23,13 @@ describe("App", () => {
     );
   });
 
-  it("shows the attendee home placeholder at /", () => {
-    loggedOut();
+  it("shows the public events list at /", async () => {
+    mockFetch({
+      "GET /auth/me": () => json(401, { error: "not_logged_in" }),
+      "GET /public/events": () => json(200, { events: [] }),
+    });
     renderApp("/");
-    expect(screen.getByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
   });
 
   it("shows the events list at /organizer to an organizer", async () => {
