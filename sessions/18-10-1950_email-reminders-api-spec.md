@@ -27,3 +27,19 @@ Started 18-10 19:50 +06.
 
 ### D52: accept all five recommendations of `email-reminders.md`
 19:56:21 +0600. Checked-in people get no reminder; print before commit; period 10 s (`EMAIL_JOB_INTERVAL_MS`); reminder text as in ER10; queued reminders after a reschedule or cancel are left to M7. Reason: the user accepted all recommendations.
+
+## Step 3: rework the spec for real email
+
+**Prompt** (19:59 +06, text cleaned)
+
+> actually, let's rework the spec and send the real notification to registered email
+
+**What Claude did.** Stopped the `code-writer` agent before it changed any file in `api/` (nothing of the build was committed). Asked two questions because real sending needs a library or a service and the rules say to ask first. Delegated the spec rework to the `spec-writer` agent (below). Used TaskStop, AskUserQuestion, Bash, Agent.
+
+**Decision.**
+
+### D53: send real email through an HTTP email API, with the built-in `fetch`, no new library
+19:59:53 +0600. The stub sender is replaced by a sender that posts each outbox row to a provider's HTTP API. Reason: the user chose this option over nodemailer and a hand-written SMTP client.
+
+### D54: the API refuses to start without mail settings
+19:59:53 +0600. No console fallback in the running API; tests pass a fake transport. Reason: the user chose "fail at start" over keeping the console stub.
