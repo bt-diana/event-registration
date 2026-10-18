@@ -41,7 +41,8 @@ The backend and the frontend are separate apps. They talk over HTTP, and the liv
 ### Run locally
 
 ```bash
-# 1. Create the database once: createdb -p 5433 -U postgres events
+# 1. Create the database once, then copy .env.example to .env and set the password
+psql -p 5433 -U postgres -c "CREATE DATABASE events"
 
 # 2. Backend
 cd api

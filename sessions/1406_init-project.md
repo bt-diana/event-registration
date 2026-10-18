@@ -85,3 +85,13 @@ Postgres 18 is installed here and is the latest version, so the container uses i
 **Time:** 14:23:55 +0600
 
 Postgres 18 is already installed and running here, so Docker only adds a second database to keep running. This replaces D18 (container on port 5434) and the spec's "PostgreSQL 16 with `docker compose`".
+
+## Step 7: create the database
+
+**Prompt** (14:3x +06, text cleaned)
+
+> I ran `psql -p 5433 -U postgres events` and got: `FATAL: database "events" does not exist`.
+
+**What Claude did.** Explained that the login works and only the database is missing, and gave the `CREATE DATABASE events` command to run (the password is not shared with Claude). Added `.env.example` with `DATABASE_URL` and updated the README step. Used Bash.
+
+**Decision.** None.
