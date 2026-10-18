@@ -111,7 +111,7 @@ describe.each(ROLES)("auth routes for /auth/$path", ({ path, table, role, otherP
     expect(rows[0].id).toBe((reply.body as { id: string }).id);
     expect(rows[0].password_hash).toMatch(/^scrypt\$[0-9a-f]{32}\$[0-9a-f]{128}$/);
 
-    const me = await call("GET", `${base}/me`, { cookie: reply.cookie });
+    const me = await call("GET", "/auth/me", { cookie: reply.cookie });
     expect(me.status).toBe(200);
     expect(me.body).toEqual(reply.body);
   });
@@ -242,7 +242,7 @@ describe.each(ROLES)("auth routes for /auth/$path", ({ path, table, role, otherP
     expect(login.body).toEqual(created.body);
     expect(login.cookie).toMatch(/^session=s%3A/);
 
-    const me = await call("GET", `${base}/me`, { cookie: login.cookie });
+    const me = await call("GET", "/auth/me", { cookie: login.cookie });
     expect(me.status).toBe(200);
     expect(me.body).toEqual(created.body);
   });
@@ -310,30 +310,8 @@ describe.each(ROLES)("auth routes for /auth/$path", ({ path, table, role, otherP
   it("A10 limitation: a copy of the cookie stays valid after logout (no sessions table)", async () => {
     const created = await signup(email());
     await call("POST", `${base}/logout`, { cookie: created.cookie });
-    const me = await call("GET", `${base}/me`, { cookie: created.cookie });
+    const me = await call("GET", "/auth/me", { cookie: created.cookie });
     expect(me.status).toBe(200);
-  });
-
-  it("A11: me without a valid cookie answers 401", async () => {
-    const none = await call("GET", `${base}/me`);
-    expect(none.status).toBe(401);
-    expect(none.body).toEqual({ error: "not_logged_in" });
-
-    const created = await signup(email());
-    const tampered = created.cookie!.replace(/.$/, (c) => (c === "A" ? "B" : "A"));
-    expect((await call("GET", `${base}/me`, { cookie: tampered })).status).toBe(401);
-    const unsigned = `session=${encodeURIComponent(`${ROLES[0].role}.${randomUUID()}.${Date.now() + 1e6}`)}`;
-    expect((await call("GET", `${base}/me`, { cookie: unsigned })).status).toBe(401);
-  });
-
-  it("A11: me answers { role, id, email, name } read from the database", async () => {
-    const address = email();
-    const created = await signup(address, "Old Name");
-    const { id } = created.body as { id: string };
-    await db.pool.query(`UPDATE ${table} SET name = 'New Name' WHERE id = $1`, [id]);
-    const me = await call("GET", `${base}/me`, { cookie: created.cookie });
-    expect(me.status).toBe(200);
-    expect(me.body).toEqual({ role, id, email: address, name: "New Name" });
   });
 
   it("A17: GET /auth/me answers 200 with { role, id, email, name } from the matching table", async () => {
@@ -347,14 +325,25 @@ describe.each(ROLES)("auth routes for /auth/$path", ({ path, table, role, otherP
     expect(me.setCookie).toBeUndefined();
   });
 
-  it("A19: me with a cookie of the other role answers 403", async () => {
+  it("A11, A19 (removed): GET /auth/<role>/me answers the JSON 404 not_found with any cookie", async () => {
+    const own = await signup(email());
     const other = await call("POST", `/auth/${otherPath}/signup`, {
       body: { email: email(), name: "Other", password: PASSWORD },
     });
+    expect(own.status).toBe(201);
     expect(other.status).toBe(201);
-    const me = await call("GET", `${base}/me`, { cookie: other.cookie });
-    expect(me.status).toBe(403);
-    expect(me.body).toEqual({ error: "wrong_role" });
+    const cookies: Record<string, string | undefined> = {
+      none: undefined,
+      "own role": own.cookie,
+      "other role": other.cookie,
+    };
+    for (const [name, cookie] of Object.entries(cookies)) {
+      const res = await fetch(`${api.url}${base}/me`, { headers: cookie ? { cookie } : {} });
+      expect(res.status, name).toBe(404);
+      expect(res.headers.get("content-type"), name).toMatch(/^application\/json/);
+      expect(await res.json(), name).toEqual({ error: "not_found" });
+      expect(sessionSetCookie(res), name).toBeUndefined();
+    }
   });
 });
 
@@ -378,8 +367,6 @@ describe("one email, two roles (A12)", () => {
     });
     expect(login.status).toBe(200);
     expect(login.body).toEqual(organizer.body);
-    expect((await call("GET", "/auth/organizers/me", { cookie: login.cookie })).status).toBe(200);
-    expect((await call("GET", "/auth/users/me", { cookie: login.cookie })).status).toBe(403);
     const me = await call("GET", "/auth/me", { cookie: login.cookie });
     expect(me.status).toBe(200);
     expect(me.body).toEqual({ ...(organizer.body as object), role: "organizer" });
@@ -394,28 +381,35 @@ describe("one email, two roles (A12)", () => {
 });
 
 describe("GET /auth/me without a valid login (A18)", () => {
-  it("answers 401 and sets no cookie for no cookie, a bad one or an expired one", async () => {
-    const created = await call("POST", "/auth/users/signup", {
-      body: { email: email(), name: "Ann", password: PASSWORD },
-    });
-    const { id } = created.body as { id: string };
-    const good = created.cookie!;
-    const cookies: Record<string, string | undefined> = {
-      none: undefined,
-      tampered: good.replace("s%3Auser.", "s%3Aorganizer."),
-      "bad signature": good.slice(0, -1) + (good.endsWith("A") ? "B" : "A"),
-      unsigned: `session=${encodeURIComponent(`user.${id}.${Date.now() + 1e6}`)}`,
-      expired: await mintSessionCookie("user", id, Date.now() - SESSION_MAX_AGE_MS - 1000),
-    };
-    for (const [name, cookie] of Object.entries(cookies)) {
-      const me = await call("GET", "/auth/me", { cookie });
-      expect(me.status, name).toBe(401);
-      expect(me.body, name).toEqual({ error: "not_logged_in" });
-      expect(me.setCookie, name).toBeUndefined();
-    }
-    // The same expired-cookie helper gives a working cookie when it is fresh.
-    expect((await call("GET", "/auth/me", { cookie: await mintSessionCookie("user", id) })).status).toBe(200);
-  });
+  it.each(ROLES)(
+    "answers 401 and sets no cookie for no cookie, a bad one or an expired one ($role)",
+    async ({ path, role }) => {
+      const created = await call("POST", `/auth/${path}/signup`, {
+        body: { email: email(), name: "Ann", password: PASSWORD },
+      });
+      const { id } = created.body as { id: string };
+      const good = created.cookie!;
+      const otherRole = role === "user" ? "organizer" : "user";
+      const cookies: Record<string, string | undefined> = {
+        none: undefined,
+        tampered: good.replace(`s%3A${role}.`, `s%3A${otherRole}.`),
+        "bad signature": good.slice(0, -1) + (good.endsWith("A") ? "B" : "A"),
+        unsigned: `session=${encodeURIComponent(`${role}.${id}.${Date.now() + 1e6}`)}`,
+        expired: await mintSessionCookie(role, id, Date.now() - SESSION_MAX_AGE_MS - 1000),
+      };
+      expect(cookies.tampered).not.toBe(good);
+      for (const [name, cookie] of Object.entries(cookies)) {
+        const me = await call("GET", "/auth/me", { cookie });
+        expect(me.status, name).toBe(401);
+        expect(me.body, name).toEqual({ error: "not_logged_in" });
+        expect(me.setCookie, name).toBeUndefined();
+      }
+      // The same expired-cookie helper gives a working cookie when it is fresh.
+      const fresh = await call("GET", "/auth/me", { cookie: await mintSessionCookie(role, id) });
+      expect(fresh.status).toBe(200);
+      expect(fresh.body).toMatchObject({ role, id });
+    },
+  );
 
   it("never answers 403: both roles are accepted", async () => {
     for (const path of ["users", "organizers"]) {
