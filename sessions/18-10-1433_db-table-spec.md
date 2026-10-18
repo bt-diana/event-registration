@@ -16,7 +16,7 @@ Build session, Claude Code. Times are Asia/Bishkek (UTC+06). The date is in the 
 
 **Prompt.** None (the `spec-writer` agent's report came back).
 
-**What Claude did.** The `spec-writer` agent (Sonnet 5.5, medium; Read, Glob, Grep, Write, Edit) wrote `docs/specs/DATABASE.md`: tables `events`, `registrations` (a ticket is one row) and `outbox` (the stub email), a SQL sketch, how B1 to B8 are made safe, and 9 open questions with defaults. It filled the Database and Concurrency parts in section 3 of `SPEC.md` and the migrations row in section 4. B4 uses a row lock on the event, B5 a unique key on the outbox, B6 a conditional UPDATE. Claude read the result and committed it. The agent did not find the task text in the repo, so the spec rests on B1 to B8.
+**What Claude did.** The `spec-writer` agent (Sonnet 5.5, medium; Read, Glob, Grep, Write, Edit) wrote `docs/DATABASE.md`: tables `events`, `registrations` (a ticket is one row) and `outbox` (the stub email), a SQL sketch, how B1 to B8 are made safe, and 9 open questions with defaults. It filled the Database and Concurrency parts in section 3 of `SPEC.md` and the migrations row in section 4. B4 uses a row lock on the event, B5 a unique key on the outbox, B6 a conditional UPDATE. Claude read the result and committed it. The agent did not find the task text in the repo, so the spec rests on B1 to B8.
 
 **Decision.** None. The open questions in section 6 of `DATABASE.md` are still waiting for my answers.
 

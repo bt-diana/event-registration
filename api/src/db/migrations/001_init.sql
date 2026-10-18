@@ -1,4 +1,4 @@
--- Initial schema. See docs/specs/DATABASE.md.
+-- Initial schema. See docs/DATABASE.md.
 -- uuidv7() is built in since PostgreSQL 18.
 
 CREATE TABLE organizers (

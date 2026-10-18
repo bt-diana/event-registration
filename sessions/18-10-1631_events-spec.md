@@ -22,7 +22,7 @@ Started 18-10 16:31 +06.
 > 3. yes
 > 4. it's fine
 
-**What Claude did.** Gave the `spec-writer` agent the answers. It updated `docs/specs/DATABASE.md` (new column `duration_minutes`, 1 to 1440, default 60, added by a new migration `002_event_duration.sql`; new section 3.10 and decision 17 for the derived status) and `docs/specs/events.md` (duration in create and in both shapes, `ends_at`, `capacity` on the public page, derived status `active`/`passed`/`cancelled`, E18-E20, no open questions left). The migration itself is not written yet (step 6). Notes for later milestones: M3, M4, M5 and M7 must decide what a passed event allows (suggested: refuse register, reschedule and capacity change; allow check-in). Used Read, Bash, Agent (`spec-writer`).
+**What Claude did.** Gave the `spec-writer` agent the answers. It updated `docs/DATABASE.md` (new column `duration_minutes`, 1 to 1440, default 60, added by a new migration `002_event_duration.sql`; new section 3.10 and decision 17 for the derived status) and `docs/specs/events.md` (duration in create and in both shapes, `ends_at`, `capacity` on the public page, derived status `active`/`passed`/`cancelled`, E18-E20, no open questions left). The migration itself is not written yet (step 6). Notes for later milestones: M3, M4, M5 and M7 must decide what a passed event allows (suggested: refuse register, reschedule and capacity change; allow check-in). Used Read, Bash, Agent (`spec-writer`).
 
 **Decision.**
 

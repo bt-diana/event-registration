@@ -1,6 +1,6 @@
 # Roadmap
 
-Order of work for the event registration service. One row = one step = one commit (or a tests-first commit, then a code commit). Every milestone has two specs, an API spec and a UI spec, and two parts of work: the API in `api/`, then the screens in `web/`. A step is done only when tests, typecheck and linter pass. Behaviour ids (B1-B10) are from `docs/specs/SPEC_TEMPLATE.md` and `docs/specs/DATABASE.md`.
+Order of work for the event registration service. One row = one step = one commit (or a tests-first commit, then a code commit). Every milestone has two specs, an API spec and a UI spec, and two parts of work: the API in `api/`, then the screens in `web/`. A step is done only when tests, typecheck and linter pass. Behaviour ids (B1-B10) are from `docs/specs/SPEC_TEMPLATE.md` and `docs/DATABASE.md`.
 
 `build_plan.md` is the first plan and is out of date (Fastify, Docker, PostgreSQL 16, no accounts). This file follows the current decisions: Express, PostgreSQL 18 on Windows, attendee and organizer accounts, signed cookie.
 
