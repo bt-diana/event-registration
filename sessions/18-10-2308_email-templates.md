@@ -33,3 +33,17 @@ Reason: the user kept the same package as the web ticket page over a pure-JS lib
 **What Claude did.** Delegated to the `spec-writer` agent. It wrote `docs/specs/email-templates.md` (ET1-ET26) and edited ER4, ER9, ER10, ER39, ER40, ER51 and the "Not in this spec" line in `email-reminders.md`, plus ROADMAP steps 34a and 34b (nothing marked done). Key choices: html rendered at send time from the stored `kind`, `subject` and `body` (no migration); QR as an inline attachment made at send time; `qr.ts` must set `globalThis.HTMLCanvasElement` to the node-canvas class because `qr-creator` checks `instanceof HTMLCanvasElement`. Seven open questions remain, each with a recommendation. Used Agent, SendMessage, Bash.
 
 **Decision.** None.
+
+## Step 4: go ahead, without the design canvas
+
+**Prompt** (23:14 +06, text cleaned)
+
+> yes
+> you don't need the design
+
+**What Claude did.** The user rejected a read of the design canvas and said it is not needed, so no email boards are added; the emails are built from `docs/brand.md` and `email-templates.md` only. Saved this as a memory. Delegated the build (step 34b) to the `code-writer` agent. Used Artifact (rejected), Write, Bash, Agent.
+
+**Decision.**
+
+### D78: no design canvas boards for the emails
+23:16 +0600. Reason: the user said the design is not needed; the emails follow `docs/brand.md` and the spec.
