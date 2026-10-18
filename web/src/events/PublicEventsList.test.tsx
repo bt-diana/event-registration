@@ -105,7 +105,7 @@ describe("W-L8: an organizer stays on / and sees the list (D60)", () => {
     expect(link.getAttribute("href")).toBe("/event/e1");
     expect(location()).toBe("/");
     const logo = within(screen.getByRole("banner")).getByRole("link", { name: "Event Registration" });
-    expect(logo.getAttribute("href")).toBe("/organizer");
+    expect(logo.getAttribute("href")).toBe("/");
     expect(within(screen.getByRole("banner")).getByText("Organizer")).toBeTruthy();
     // RE1: no role word in the content.
     expect(main().queryByText("Organizer")).toBeNull();
