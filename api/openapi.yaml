@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Event registration API - accounts, login, events, registration and check-in
-  version: 0.6.0
+  version: 0.7.0
   description: |
     Hand-written description of the seven auth routes (milestone M1, docs/specs/auth.md):
     signup, login and logout for each role, and GET /auth/me for either role. All bodies are JSON. Errors use the body { "error": "<code>" }; the status is
@@ -27,6 +27,10 @@ info:
     over-sold: when the `registered` count has reached `capacity`, the new
     registration is `waitlisted`. A seat writes one `ticket` row to the outbox table
     (stored only; nothing is sent yet). Cancelling and promotion are not built yet (M4).
+
+    My registrations (docs/specs/my-registrations.md): `GET /me/registrations` lists
+    all of the logged-in attendee's own registrations in every status, newest first,
+    each with the event's title, start and derived status, read in one statement.
 
     Check-in and the organizer registrations list (milestone M5, docs/specs/checkin.md):
     `POST /checkin` checks a ticket in at the door, once (one conditional UPDATE, so
@@ -57,7 +61,7 @@ tags:
   - name: public
     description: Routes that need no login.
   - name: registrations
-    description: Registering and the attendee's own registration (requireUser), and the registrations list of an organizer's own event (requireOrganizer).
+    description: Registering, the attendee's own registration and the list of all their own registrations (requireUser), and the registrations list of an organizer's own event (requireOrganizer).
   - name: checkin
     description: Checking a ticket in at the door and the arrivals counts, for the logged-in organizer's own events (requireOrganizer).
 
@@ -424,6 +428,48 @@ paths:
         "404":
           $ref: "#/components/responses/NoRegistration"
 
+  /me/registrations:
+    get:
+      tags: [registrations]
+      operationId: myRegistrations
+      summary: All of the logged-in attendee's own registrations
+      description: |
+        Every row of the caller (the user id comes from the cookie only; a query
+        string or body is ignored), in any status: `registered`, `waitlisted` and
+        `cancelled`, also for a cancelled or passed event. After a cancel and a new
+        registration for the same event both rows are listed. Ordered by the
+        registration's `created_at`, newest first, then `id` descending. Each item
+        carries the event's title, start and status (derived at the instant of the
+        request: `cancelled` wins, else `passed` from `starts_at + duration_minutes`
+        on, else `active`). One statement, no lock, no paging, no cache,
+        `Cache-Control: no-store`. The route has no input, so there is no 400 and no
+        404; it writes nothing (docs/specs/my-registrations.md MR1-MR15).
+      security:
+        - session: []
+      responses:
+        "200":
+          description: The caller's registrations, possibly none.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [registrations]
+                additionalProperties: false
+                properties:
+                  registrations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MyRegistration"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/AttendeeOnly"
+
   /events/{id}/arrivals:
     get:
       tags: [checkin]
@@ -785,7 +831,7 @@ components:
         status:
           type: string
           enum: [registered, waitlisted, cancelled]
-          description: "`cancelled` is answered only by GET .../registrations/me."
+          description: "`cancelled` is answered only by GET .../registrations/me and GET /me/registrations."
         ticket_code:
           type: string
           pattern: "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$"
@@ -846,6 +892,53 @@ components:
         attendee_email:
           type: string
           format: email
+    MyRegistration:
+      type: object
+      required:
+        [id, event_id, status, ticket_code, waitlist_position, checked_in_at, created_at, event_title, event_starts_at, event_status]
+      additionalProperties: false
+      description: |
+        An item of the attendee's own registrations list: the keys of `Registration`
+        plus the event's title, start and derived status. Written out instead of
+        `allOf` because `Registration` forbids additional properties. No user id,
+        queue number, `cancelled_at`, organizer id, capacity, description, email or
+        name.
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [registered, waitlisted, cancelled]
+        ticket_code:
+          type: string
+          pattern: "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$"
+          description: Kept on a cancelled row.
+          example: K7QM2XWP9D
+        waitlist_position:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Counted as in `Registration`; `null` unless `status` is `waitlisted`.
+        checked_in_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        event_title:
+          type: string
+          description: The event's current title.
+        event_starts_at:
+          type: string
+          format: date-time
+          description: The event's current start, in UTC.
+        event_status:
+          $ref: "#/components/schemas/EventStatus"
     Arrivals:
       type: object
       required: [capacity, registered, arrived]

@@ -1,5 +1,5 @@
 import type pg from "pg";
-import { deriveStatus, type StoredStatus } from "../events/status.js";
+import { deriveStatus, type EventStatus, type StoredStatus } from "../events/status.js";
 import { makeTicketCode } from "./ticket.js";
 
 // registration.md section 3: the register service (B4, B1, B2) in one
@@ -26,6 +26,40 @@ export const REGISTRATION_COLUMNS = `r.id, r.event_id, r.status, r.ticket_code, 
     SELECT count(*)::int FROM registrations w
      WHERE w.event_id = r.event_id AND w.status = 'waitlisted' AND w.queue_no <= r.queue_no
   ) END AS waitlist_position`;
+
+// docs/specs/my-registrations.md: the attendee's own registrations in every
+// status, with the event's title, start and derived status. One statement
+// (the waiting place is a correlated subquery in it, not a query per row), no
+// lock, no transaction; newest first, id as the tie-break (MR4-MR10, MR13).
+const MY_REGISTRATIONS_SQL = `SELECT ${REGISTRATION_COLUMNS},
+       e.title AS event_title, e.starts_at AS event_starts_at,
+       e.status AS event_stored_status, e.duration_minutes
+  FROM registrations r
+  JOIN events e ON e.id = r.event_id
+ WHERE r.user_id = $1
+ ORDER BY r.created_at DESC, r.id DESC`;
+
+export type MyRegistrationRow = RegistrationRow & {
+  event_title: string;
+  event_starts_at: Date;
+  event_status: EventStatus;
+};
+
+// `now` is read once by the route, so every row is judged at the same instant.
+export async function listMyRegistrations(pool: pg.Pool, userId: string, now: Date): Promise<MyRegistrationRow[]> {
+  const { rows } = await pool.query<
+    RegistrationRow & {
+      event_title: string;
+      event_starts_at: Date;
+      event_stored_status: StoredStatus;
+      duration_minutes: number;
+    }
+  >(MY_REGISTRATIONS_SQL, [userId]);
+  return rows.map(({ event_stored_status, duration_minutes, ...row }) => ({
+    ...row,
+    event_status: deriveStatus(event_stored_status, row.event_starts_at, duration_minutes, now),
+  }));
+}
 
 export type RegisterResult =
   | { kind: "not_found" }

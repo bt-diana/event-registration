@@ -8,6 +8,8 @@ const proxy = {
   "/events": "http://localhost:3000",
   "/public": "http://localhost:3000",
   "/checkin": "http://localhost:3000",
+  // GET /me/registrations (my-registrations.md); no web route may start with /me.
+  "/me": "http://localhost:3000",
 };
 
 export default defineConfig({
