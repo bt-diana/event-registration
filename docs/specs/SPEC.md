@@ -39,8 +39,8 @@ One document, kept short. The agent reads it before every step. Change it first 
 ## 3. Architecture decisions
 
 - **Apps:** `api/` (Express, TypeScript) and `web/` (React, Vite, TypeScript, TanStack Query). They talk over HTTP. `[TODO: confirm]`
-- **Database:** PostgreSQL 18, installed on Windows (port 5433), no Docker. The connection string is in `DATABASE_URL`. `[TODO: tables and the constraints that matter]`
-- **Concurrency:** `[TODO: how B4, B5 and B6 are made safe, for example a row lock, a unique constraint, a conditional UPDATE]`
+- **Database:** PostgreSQL 18, installed on Windows (port 5433), no Docker. The connection string is in `DATABASE_URL`. Three tables: `events`, `registrations` (one row is one ticket), `outbox`. Details in [DATABASE.md](DATABASE.md).
+- **Concurrency:** B4 uses `SELECT ... FOR UPDATE` on the event row, then count and insert. B5 uses `UNIQUE (registration_id, kind, event_starts_at)` on `outbox` with `ON CONFLICT DO NOTHING`. B6 uses a conditional `UPDATE ... WHERE checked_in_at IS NULL RETURNING`. B1 uses a partial unique index on `(event_id, email)`. See [DATABASE.md](DATABASE.md) section 3.
 - **Email:** `[TODO: stub, outbox table and console]`
 - **Organizer access:** `[TODO: shared key from an environment variable]`
 - **Live updates:** `[TODO: server-sent events with polling as a fallback]`
@@ -52,7 +52,7 @@ What to create or change, and what to do in each. Updated as the build goes.
 
 | File | What to do | Behaviours |
 |---|---|---|
-| `api/src/db/migrations/...` | `[TODO]` | |
+| `api/src/db/migrations/001_init.sql` | Create `events`, `registrations`, `outbox` with the constraints and indexes in `DATABASE.md`. | B1-B8 |
 | `api/src/...` | `[TODO]` | |
 | `api/test/...` | `[TODO: tests for B4, B5, B6 first]` | B4, B5, B6 |
 | `web/src/...` | `[TODO]` | |
