@@ -529,11 +529,11 @@ a:hover {
   font-weight: 600;
 }
 
-.card-form .back-link {
-  margin-top: 16px;
-}
-
-.card-event > .back-link {
+/* The back link is the first element, above the h1 (design-alignment.md DA35, DA48):
+   8 px to what follows, at least 44 px high, wraps when long. */
+.card > .back-link,
+.list-page > .back-link,
+.scan-page > .back-link {
   margin-bottom: 8px;
 }
 

@@ -129,3 +129,11 @@ Started 18-10 21:10 +06.
 **What Claude did.** `PublicEventPage.tsx`: "Back to events" to `/` above the "Event" eyebrow (DA38, question 16). `TicketPage.tsx`: "Back to event" to `/event/{id from the URL, encoded}` above the `h1` in the loaded and the load-error states (DA41, DA42, question 18); none while loading, for "no ticket" or "Event not found" (DA40, DA43). `OrganizerRegistrations.tsx`: "Back to events" to `/organizer` above the `h1` in every state, outside `.list-head` (DA44, question 17). Tests: new describes in `PublicEventPage.test.tsx`, `TicketPage.test.tsx`, `OrganizerRegistrations.test.tsx` and `App.test.tsx` (DA47: `/`, `/organizer`, the four auth pages, the wrong-account card, "Could not check your login" have no "Back to" link); each checks there is at most one back link (DA49). Changed with the spec: `ownership.test.tsx` (the public view's "Back to events" now exists and goes to `/`, never `/organizer`) and the W-E21 link list in `PublicEventPage.test.tsx` (the back link, then the login link). Web tests (809), typecheck and lint pass (Bash).
 
 **Decision.** None.
+
+## Step 14: build the spec, step 11 (d) (back link spacing, DA35, DA48)
+
+**Prompt** (same as step 12)
+
+**What Claude did.** `styles.css`: one rule gives every back link that is the first element of a `.card`, `.list-page` or `.scan-page` 8 px to the `h1`; the old `.card-form .back-link { margin-top: 16px }` (for the link under the form) is gone. `.back-link` has no `white-space: nowrap` and keeps `min-height: 44px`. Web tests (809), typecheck and lint pass (Bash). `styles.css`, `README.md` and `ROADMAP.md` have another agent's uncommitted header edits, so only this step's lines were staged (index blob script). Earlier, the step 11 (c) commit had taken that agent's two header lines in `README.md` and `ROADMAP.md` by mistake (they changed the files between my check and `git add`); I amended my own commit (not pushed) to drop them, so they are uncommitted in the working copy again. The same race hit this step: the other agent committed its header CSS (`b672022`) between my staging and my commit, so my commit first undid it; I checked that the working copy was exactly `b672022` plus my lines and amended my commit to that, so `b672022` stays intact. **Hand check of DA48 at 320 and 390 px: not done** (no browser in this agent).
+
+**Decision.** None.
