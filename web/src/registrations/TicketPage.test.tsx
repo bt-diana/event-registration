@@ -49,23 +49,21 @@ const ok = (body: unknown): Handler => () => json(200, body);
 const NOT_FOUND: Handler = () => json(404, { error: "not_found" });
 
 describe("W-R11: the ticket page", () => {
-  it.each<[string, SampleRegistration, string, string | null, string]>([
-    ["registered", registration(), "You are registered", null, "Registered"],
+  it.each<[string, SampleRegistration, string | null, string]>([
+    ["registered", registration(), null, "Registered"],
     [
       "waitlisted",
       registration({ status: "waitlisted", waitlist_position: 3, ticket_code: "H4Z8WR5NCD" }),
-      "You are on the waiting list",
       "Your place: 3",
       "Waiting list",
     ],
     [
       "cancelled",
       registration({ status: "cancelled" }),
-      "Registration cancelled",
       "This ticket is no longer valid.",
       "Cancelled",
     ],
-  ])("%s: title, start, status line and the ticket", async (_case, r, h2, line, badge) => {
+  ])("%s: title, start, the registration badge and the ticket", async (_case, r, line, badge) => {
     const fetch = await ticketPage(ok(publicEvent()), ok(r));
     expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual([
       "Your ticket",
@@ -74,8 +72,10 @@ describe("W-R11: the ticket page", () => {
     expect(main().getByText("Spring meetup").closest("a")).toBeNull();
     expect(main().queryByRole("link", { name: "Spring meetup" })).toBeNull();
     expect(main().getByText(formatDateTime("2030-01-01T10:00:00.000Z"))).toBeTruthy();
-    expect(main().getByText("Open")).toBeTruthy();
-    expect(main().getByRole("heading", { level: 2, name: h2 })).toBeTruthy();
+    // W-R38: no ticket heading, no event status line; the registration badge only.
+    expect(main().queryByRole("heading", { level: 2 })).toBeNull();
+    expect(main().queryByText("Open")).toBeNull();
+    expect(main().queryByRole("region")).toBeNull();
     expect(main().getByText(r.ticket_code)).toBeTruthy();
     expect(main().getByText(badge)).toBeTruthy();
     if (line) expect(main().getByText(line)).toBeTruthy();
@@ -88,10 +88,22 @@ describe("W-R11: the ticket page", () => {
   it.each<[string, Partial<SamplePublicEvent>, string]>([
     ["cancelled", { status: "cancelled", seats_left: 0 }, "Cancelled"],
     ["ended", { status: "passed", has_started: true, seats_left: 0 }, "Ended"],
-  ])("a ticket on a %s event is still shown with the event status", async (_case, overrides, word) => {
+  ])("a ticket on a %s event shows the registration status, not the event status", async (_case, overrides, word) => {
     await ticketPage(ok(publicEvent(overrides)), ok(registration()));
-    expect(main().getByText(word)).toBeTruthy();
-    expect(main().getByRole("heading", { level: 2, name: "You are registered" })).toBeTruthy();
+    expect(main().queryByText(word)).toBeNull();
+    expect(main().getByText("Registered")).toBeTruthy();
+    expect(main().getByText("K7M2QX9TPA")).toBeTruthy();
+  });
+
+  it("W-R38: the code and the QR are in the main card, not in an inner panel", async () => {
+    await ticketPage(ok(publicEvent()), ok(registration()));
+    const card = main().getByRole("heading", { level: 1 }).closest("section")!;
+    expect(card.classList.contains("ticket-page")).toBe(true);
+    expect(card.querySelector(".ticket")).toBeNull();
+    expect(card.contains(main().getByText("K7M2QX9TPA"))).toBe(true);
+    expect(card.contains(main().getByRole("img", { name: "QR code for ticket K7M2QX9TPA" }))).toBe(
+      true,
+    );
   });
 
   it("starts both reads together", async () => {
@@ -152,9 +164,7 @@ describe("W-R12: the other states of the ticket page", () => {
     const fetch = await ticketPage(event, mine);
     expect(main().getByRole("alert").textContent).toBe("Could not load your ticket");
     fireEvent.click(main().getByRole("button", { name: "Retry" }));
-    expect(
-      await main().findByRole("heading", { level: 2, name: "You are registered" }),
-    ).toBeTruthy();
+    expect(await main().findByText("Registered")).toBeTruthy();
     expect(callsTo(fetch, PUBLIC)).toBe(which === "event" ? 2 : 1);
     expect(callsTo(fetch, MY_REGISTRATION)).toBe(which === "mine" ? 2 : 1);
   });
