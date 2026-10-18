@@ -169,3 +169,16 @@ Started 18-10 19:50 +06.
 **What Claude did.** The `spec-writer` agent added `registration_id` to `docs/specs/email-outbox.md` (OB16-OB18; OB2, OB7, OB15 changed; open question 6). An unknown or foreign registration id gives 200 with an empty list, not 404. Updated the ids in `ROADMAP.md`. Used Agent, Bash.
 
 **Decision.** None.
+
+## Step 14: implement
+
+**Prompt** (22:22 +06, text cleaned)
+
+> implement
+
+**What Claude did.** Took "implement" as: build `email-reminders.md` (ER1-ER47) and `email-outbox.md` (OB1-OB18) with the recommended answers to the open questions. Started the `code-writer` agent (steps 30-32a, below). Used Bash, Agent.
+
+**Decision.**
+
+### D62: accept the recommendations of the open questions of `email-reminders.md` and `email-outbox.md`
+22:22:06 +0600. Batch size 5, keep `send_error`, database errors are not tries; `truncated` kept, all kinds by default, `invalid_status`, cap 200, code in `api/src/email/`, `registration_id` filter. Reason: the user said "implement" after the recommendations were listed.
