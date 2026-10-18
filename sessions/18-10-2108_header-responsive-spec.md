@@ -24,3 +24,5 @@ Started 18-10 21:08 +06.
 
 ### D65: header spec open questions answered with the recommendations
 21:12:19 +0600. Phone layout A (always-visible rows, no Menu button), header not sticky, name weight 400 with a desktop divider, one 520 px breakpoint. Reason: the user accepted the recommendations.
+
+**Result.** The `code-writer` agent found D64 already built by another process (`ab197e5`, `259e9f0`, `ed2d970`), so it built only the responsive header: tests first `c2f18c7` (9 failing), code and docs `750228d` (`div.account-info`, `title` on the name, phone rows at 520 px, name weight 400, desktop divider, accent hover). Checked: web tests 652 passed, 4 todo; typecheck and lint pass. Not done: the canvas boards are not drawn, so "phone view" stays under "Not decided yet" in `brand.md`; HR7-HR10 are not checked by hand. Deviation: from 521 to about 640 px a logged-in header does not fit one row (HR9), so it wraps below the logo. The canvas was not read before the build (the saved page showed only "Loading..." earlier, and the rule to read it was added after the spec). Used Agent, Bash.
