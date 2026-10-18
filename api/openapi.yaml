@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
-  title: Event registration API - accounts, login, events, registration and check-in
-  version: 0.7.0
+  title: Event registration API - accounts, login, events, registration, check-in and emails
+  version: 0.8.0
   description: |
     Hand-written description of the seven auth routes (milestone M1, docs/specs/auth.md):
     signup, login and logout for each role, and GET /auth/me for either role. All bodies are JSON. Errors use the body { "error": "<code>" }; the status is
@@ -26,7 +26,7 @@ info:
     Registering runs in one transaction that locks the event row, so seats are never
     over-sold: when the `registered` count has reached `capacity`, the new
     registration is `waitlisted`. A seat writes one `ticket` row to the outbox table
-    (stored only; nothing is sent yet). Cancelling and promotion are not built yet (M4).
+    (sent through Resend by the outbox sender, docs/specs/email-reminders.md). Cancelling and promotion are not built yet (M4).
 
     My registrations (docs/specs/my-registrations.md): `GET /me/registrations` lists
     all of the logged-in attendee's own registrations in every status, newest first,
@@ -41,6 +41,11 @@ info:
     The arrivals counter (docs/specs/arrivals.md): `GET /events/{id}/arrivals`
     answers `{ capacity, registered, arrived }` for the organizer's own event, read
     in one statement (polled; no live updates yet).
+
+    The emails of an event (docs/specs/email-outbox.md): `GET /events/{id}/emails`
+    lists the outbox rows of the organizer's own event with their delivery status,
+    newest first, at most 200, optionally of one kind, one status or one
+    registration. Never the body (it holds the ticket code).
 
     Login is one signed cookie named `session` (cookie-parser), valid 7 days,
     httpOnly, sameSite=lax, secure only when NODE_ENV=production. Its signed value is
@@ -64,6 +69,8 @@ tags:
     description: Registering, the attendee's own registration and the list of all their own registrations (requireUser), and the registrations list of an organizer's own event (requireOrganizer).
   - name: checkin
     description: Checking a ticket in at the door and the arrivals counts, for the logged-in organizer's own events (requireOrganizer).
+  - name: email
+    description: The emails (outbox rows) of the logged-in organizer's own events (requireOrganizer). Read only.
 
 paths:
   /auth/users/signup:
@@ -506,6 +513,86 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Arrivals"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/WrongRole"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /events/{id}/emails:
+    get:
+      tags: [email]
+      operationId: eventEmails
+      summary: The emails of one of the logged-in organizer's events
+      description: |
+        The outbox rows of the registrations of this event, in every kind and
+        status by default, also of waiting and cancelled registrations
+        (docs/specs/email-outbox.md OB1-OB18). Newest first (`created_at`
+        descending, then `id`), at most 200 rows after the filters;
+        `truncated` is true when more matched. `status` is as stored: `pending`
+        (waiting for the sender; `send_attempts` counts failed tries), `sent`
+        (the provider accepted it, not that it arrived) or `error_sending` (3
+        failed tries, not retried). `to_email` is the address the row was written
+        to; `attendee_name` is the person's current name. The body is never
+        returned (it holds the ticket code). One statement, no lock, nothing
+        written, `Cache-Control: no-store` on 200, 400 and 404. Order of checks:
+        the guard (401, 403), the path id (404 without a query), `kind`,
+        `status`, then `registration_id` (400), then the ownership (404).
+        Another organizer's event answers the same 404 as an unknown one. Other
+        query parameters are ignored.
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - name: kind
+          in: query
+          required: false
+          description: Only this kind. Any other value, an empty or a repeated one answers 400 `invalid_kind`.
+          schema:
+            type: string
+            enum: [ticket, promotion, reminder, reschedule, event_cancelled]
+        - name: status
+          in: query
+          required: false
+          description: Only this status. Any other value, an empty or a repeated one answers 400 `invalid_status`.
+          schema:
+            type: string
+            enum: [pending, sent, error_sending]
+        - name: registration_id
+          in: query
+          required: false
+          description: |
+            Only the emails of this registration (one attendee). Empty list if it is
+            not a registration of this event (no 404, so the route never says whether
+            the id exists elsewhere). A value that is not a uuid, an empty or a
+            repeated one answers 400 `invalid_registration_id`.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The event's emails.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailList"
+        "400":
+          description: A bad query value; `error` is `invalid_kind`, `invalid_status` or `invalid_registration_id`.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           $ref: "#/components/responses/NotLoggedIn"
         "403":
@@ -1015,6 +1102,67 @@ components:
           description: The first (stored) check-in time, not the time of the repeat.
         attendee_name:
           type: string
+    EmailList:
+      type: object
+      required: [emails, truncated]
+      additionalProperties: false
+      properties:
+        emails:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/EmailItem"
+        truncated:
+          type: boolean
+          description: True when more than 200 rows matched; the newest 200 are listed.
+    EmailItem:
+      type: object
+      required:
+        [id, registration_id, kind, status, send_attempts, send_error, to_email, subject, schedule_version, event_starts_at, created_at, sent_at, attendee_name]
+      additionalProperties: false
+      description: One outbox row. Never the body or the ticket code.
+      properties:
+        id:
+          type: string
+          format: uuid
+        registration_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [ticket, promotion, reminder, reschedule, event_cancelled]
+        status:
+          type: string
+          enum: [pending, sent, error_sending]
+        send_attempts:
+          type: integer
+          minimum: 0
+          description: Failed tries (3 for an `error_sending` row).
+        send_error:
+          type: string
+          nullable: true
+          description: The short reason of the last failed try (addresses replaced), or null.
+        to_email:
+          type: string
+          description: The address stored in the row when it was written.
+        subject:
+          type: string
+        schedule_version:
+          type: integer
+        event_starts_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set only when `status` is `sent`.
+        attendee_name:
+          type: string
+          description: The current name of the registration's person.
     Error:
       type: object
       required: [error]
