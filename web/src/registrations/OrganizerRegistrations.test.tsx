@@ -154,6 +154,7 @@ describe("W-R20: the registrations of the chosen event", () => {
       ["Arrival", "col"],
       ["Ticket code", "col"],
       ["Registered", "col"],
+      ["Emails", "col"],
     ]);
     const body = within(table).getAllByRole("row").slice(1);
     expect(body.map(cellsOf)).toEqual([
@@ -163,6 +164,7 @@ describe("W-R20: the registrations of the chosen event", () => {
         "Not yet",
         "K7M2QX9TPA",
         formatDateTime("2026-10-18T10:00:00.000Z"),
+        "View emails",
       ],
       [
         "Ivan Test",
@@ -170,6 +172,7 @@ describe("W-R20: the registrations of the chosen event", () => {
         "",
         "H4Z8WR5NCD",
         formatDateTime("2026-10-18T11:00:00.000Z"),
+        "View emails",
       ],
     ]);
     const select = main().getByLabelText("Event") as HTMLSelectElement;
@@ -347,7 +350,56 @@ describe("W-R22: one h1, a real table", () => {
     expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual([
       "Registrations",
     ]);
-    expect(main().getAllByRole("columnheader")).toHaveLength(5);
+    expect(main().getAllByRole("columnheader")).toHaveLength(6);
+  });
+});
+
+describe("email-reminders-web.md W-EM1: a View emails link in every row (test first)", () => {
+  function emailsLink(name: string): HTMLElement {
+    return main().getByRole("link", { name: `View emails of ${name}` });
+  }
+
+  it("two rows, two links in the last column, each with its own href and label; no extra request", async () => {
+    const fetch = screenAt("/registrations", {
+      [EVENTS]: ok(EVENT_LIST),
+      [FIRST]: rows({ ...OLGA_ROW, checked_in_at: "2030-01-01T09:55:00.000Z" }, IVAN_ROW),
+    });
+    await main().findByText("Olga Test");
+    const headers = main().getAllByRole("columnheader");
+    expect(headers[headers.length - 1].textContent).toBe("Emails");
+
+    const olga = emailsLink("Olga Test");
+    expect(olga.textContent).toBe("View emails");
+    expect(olga.getAttribute("aria-label")).toBe("View emails of Olga Test");
+    expect(olga.getAttribute("href")).toBe(`/registrations/${OLGA_ROW.id}/emails?event=${EVENT_ID}`);
+    const olgaCells = within(rowOf("Olga Test")).getAllByRole("cell");
+    expect(olgaCells[olgaCells.length - 1].contains(olga)).toBe(true);
+
+    const ivan = emailsLink("Ivan Test");
+    expect(ivan.textContent).toBe("View emails");
+    expect(ivan.getAttribute("href")).toBe(`/registrations/${IVAN_ROW.id}/emails?event=${EVENT_ID}`);
+    const ivanCells = within(rowOf("Ivan Test")).getAllByRole("cell");
+    expect(ivanCells[ivanCells.length - 1].contains(ivan)).toBe(true);
+
+    await main().findByText(wholeText("Arrived: 0 / 1 registered"));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    // Still the two requests of the page (checkin-web.md W-C17), and no emails request.
+    expect(fetch.mock.calls.map(([input]) => String(input)).sort()).toEqual(
+      ["/auth/me", "/events", `/events/${EVENT_ID}/arrivals`, `/events/${EVENT_ID}/registrations`].sort(),
+    );
+  });
+
+  it("the link carries the chosen event", async () => {
+    screenAt(`/registrations?event=${SECOND_EVENT_ID}`, {
+      [EVENTS]: ok(EVENT_LIST),
+      [SECOND]: rows(IVAN_ROW),
+    });
+    await main().findByText("Ivan Test");
+    expect(emailsLink("Ivan Test").getAttribute("href")).toBe(
+      `/registrations/${IVAN_ROW.id}/emails?event=${SECOND_EVENT_ID}`,
+    );
   });
 });
 

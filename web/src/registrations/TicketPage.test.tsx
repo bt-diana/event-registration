@@ -404,3 +404,13 @@ describe("design-alignment.md DA40-DA43: the ticket page back link", () => {
     expect(backLinks()).toHaveLength(0);
   });
 });
+
+describe("email-reminders-web.md W-EM14: no email line on the ticket page", () => {
+  it("a registered ticket has no email, reminder or server log text and no emails link", async () => {
+    const fetch = await ticketPage(ok(publicEvent()), ok(registration()));
+    const text = screen.getByRole("main").textContent ?? "";
+    expect(text).not.toMatch(/email|reminder|server log/i);
+    expect(main().queryByRole("link", { name: /emails/i })).toBeNull();
+    expect(fetch.mock.calls.filter(([input]) => String(input).includes("/emails"))).toEqual([]);
+  });
+});
