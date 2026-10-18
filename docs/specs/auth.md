@@ -86,7 +86,7 @@ No screens in M1 (API only). The sign-up and login forms for both roles are in `
 | `api/test/auth/middleware.test.ts` | No cookie gives 401; attendee cookie on an organizer route and the reverse give 403; a bad cookie gives 401 | A13-A15 |
 | `.env.example` | Add `COOKIE_SECRET=` with a note: at least 32 random characters, never commit the real value | A2 |
 | `.env` (local only, not committed) | Add a `COOKIE_SECRET` for development and tests | |
-| `README.md` | Env var, the nine routes, and the two limitations (logout, CSRF) | |
+| `README.md` | Env var, the seven routes, and the two limitations (logout, CSRF) | |
 | `ROADMAP.md` | Mark M1 steps done as they finish; note that the cookie package was installed | |
 
 Tests use the existing style (`createApp().listen(0)` and `fetch`; no new test library) and set `COOKIE_SECRET` for the test process. Tests that need rows delete only the emails they created.
