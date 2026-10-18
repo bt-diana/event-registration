@@ -58,8 +58,8 @@ function notDisplayed(element: HTMLElement | null): boolean {
 // The Menu (burger) button, the backdrop and the drawer (header-responsive.md D66-D69, HR6,
 // HR11-HR17, HR21-HR35). The drawer is always rendered; at 640 px and below CSS slides it in from
 // the right while data-open is "true" and hides it (off-screen and visibility: hidden) while it is
-// "false"; above 640 px the button, backdrop, Close and All events are hidden and the drawer is
-// the one-row header (HR18-HR20). It is a modal dialog only while open (HR29).
+// "false"; above 640 px the button, backdrop and Close are hidden and the drawer is the one-row
+// header, All events first (HR18-HR20, HR27, D73). It is a modal dialog only while open (HR29).
 function NavMenu({
   look,
   logoRef,
@@ -201,7 +201,8 @@ function NavMenu({
             <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
-        {/* Only in the drawer; above 640 px the logo is the way to the list (HR27, HR28). */}
+        {/* At every width: first in the drawer on a phone, first in the row above 640 px; a
+            second link to /, not the logo (HR27, HR28, D73). */}
         <nav aria-label="Site" className="site-nav site-nav-all">
           <Link to="/" aria-current={pathname === "/" ? "page" : undefined}>
             All events

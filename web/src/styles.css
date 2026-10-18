@@ -130,16 +130,15 @@ body {
   outline-offset: 2px;
 }
 
-/* The backdrop and "All events" exist only with the phone drawer; above 640 px the logo is the
-   way to the list (HR19, HR27). */
-.nav-backdrop,
-.site-nav-all {
+/* The backdrop exists only with the phone drawer (HR19, HR32). "All events" (.site-nav-all) is
+   a normal .site-nav at every width, no rule hides it (HR27, D73). */
+.nav-backdrop {
   display: none;
 }
 
 /* The drawer of the Menu button: Close menu, All events, then the logged-in account block or
    the logged-out Account nav. Above 640 px it is always shown as one row, whatever data-open
-   says, with no drawer behaviour (HR19). */
+   says, with no drawer behaviour: All events first, then the account items, 16 px apart (HR19). */
 .site-header-end {
   display: flex;
   flex-wrap: wrap;
@@ -1055,8 +1054,10 @@ a:hover {
    row, the logo left and the Menu button right; the drawer is off-screen and visibility: hidden,
    so its items are not on the screen, not in the Tab order and not in the accessibility tree.
    Open: a modal drawer the full width of the page opens downward out of the header row, which
-   stays visible above it (user requests, replace the right-edge drawer of D70); items stacked in the DOM order (no CSS order): Close
-   menu, All events, the nav link, a line, the account info left and Log out right, the log-out error; or the three logged-out links. The visibility change waits
+   stays visible above it (user requests, replace the right-edge drawer of D70); items stacked
+   in the DOM order (no CSS order): Close menu, All events, the nav link, a line, the account
+   info left and Log out right, the log-out error; or the three logged-out links. All events
+   needs no rule here: it is a .site-nav at every width (D73). The visibility change waits
    200 ms on close so the exit is seen. The phone header row is 61 px high (8 px padding, 44 px
    row, 8 px padding, 1 px border); the backdrop and the drawer start under it. The header has no
    transform, filter or contain, so they are fixed to the viewport. */
@@ -1131,10 +1132,6 @@ a:hover {
     position: fixed;
     top: 8px;
     right: 16px;
-  }
-
-  .site-nav-all {
-    display: flex;
   }
 
   .site-nav {
