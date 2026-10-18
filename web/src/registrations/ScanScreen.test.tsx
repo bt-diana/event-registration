@@ -737,3 +737,51 @@ describe("checkin-web.md W-C11: a check-in is counted once (test first)", () => 
     expect(main().getByText(wholeText(COUNT_11))).toBeTruthy();
   });
 });
+
+describe("design-alignment.md DA46: Back to registrations above the h1 in every state (test first)", () => {
+  function backLink(): HTMLElement {
+    const links = main().getAllByRole("link", { name: /^Back to/ });
+    expect(links).toHaveLength(1);
+    return main().getByRole("link", { name: "Back to registrations" });
+  }
+
+  function beforeHeading(link: HTMLElement) {
+    const heading = main().getByRole("heading", { level: 1, name: "Check in" });
+    expect(link.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  }
+
+  it("loaded: to the registrations of the chosen event", async () => {
+    await scanScreen(undefined, `/registrations/scan?event=${SECOND_EVENT_ID}`);
+    const link = backLink();
+    expect(link.getAttribute("href")).toBe(`/registrations?event=${SECOND_EVENT_ID}`);
+    beforeHeading(link);
+  });
+
+  it("no events: to /registrations", async () => {
+    mockFetch({ [ME]: () => json(200, OLGA), [EVENTS]: () => json(200, { events: [] }) });
+    renderApp("/registrations/scan");
+    await main().findByText("You have no events yet.");
+    const link = backLink();
+    expect(link.getAttribute("href")).toBe("/registrations");
+    beforeHeading(link);
+  });
+
+  it("events error: to /registrations", async () => {
+    mockFetch({ [ME]: () => json(200, OLGA), [EVENTS]: () => json(500, { error: "internal" }) });
+    renderApp("/registrations/scan");
+    await main().findByText("Could not load events");
+    const link = backLink();
+    expect(link.getAttribute("href")).toBe("/registrations");
+    beforeHeading(link);
+  });
+
+  it("loading: to /registrations", async () => {
+    const events = deferred<Response>();
+    mockFetch({ [ME]: () => json(200, OLGA), [EVENTS]: () => events.promise });
+    renderApp("/registrations/scan");
+    expect((await main().findByRole("status")).textContent).toBe("Loading...");
+    const link = backLink();
+    expect(link.getAttribute("href")).toBe("/registrations");
+    beforeHeading(link);
+  });
+});

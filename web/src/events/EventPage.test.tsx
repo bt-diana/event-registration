@@ -144,3 +144,19 @@ describe("W-E12: loading and load errors", () => {
     expect(callsTo(fetch, OWN)).toBe(2);
   });
 });
+
+describe("design-alignment.md DA39: the load error has a back link (test first)", () => {
+  it("organizer, the owner view fails: Back to events goes to /organizer, Retry stays", async () => {
+    mockFetch({
+      "GET /auth/me": () => json(200, OLGA),
+      [OWN]: () => json(500, { error: "internal" }),
+    });
+    renderApp(`/event/${EVENT_ID}`);
+    const heading = await screen.findByRole("heading", { level: 1, name: "Could not load this event" });
+    const back = main().getByRole("link", { name: "Back to events" });
+    expect(back.getAttribute("href")).toBe("/organizer");
+    expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(main().getAllByRole("link", { name: /^Back to/ })).toHaveLength(1);
+    expect(main().getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+});

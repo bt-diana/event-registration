@@ -199,3 +199,19 @@ describe("W-E18: not found, loading and errors", () => {
     expect(callsTo(fetch, PUBLIC)).toBe(2);
   });
 });
+
+describe("design-alignment.md DA39: the load error has a back link (test first)", () => {
+  it("logged out, the public view fails: Back to events goes to /, Retry stays", async () => {
+    mockFetch({
+      "GET /auth/me": () => json(401, { error: "not_logged_in" }),
+      [PUBLIC]: () => json(500, { error: "internal" }),
+    });
+    renderApp(`/event/${EVENT_ID}`);
+    const heading = await screen.findByRole("heading", { level: 1, name: "Could not load this event" });
+    const back = main().getByRole("link", { name: "Back to events" });
+    expect(back.getAttribute("href")).toBe("/");
+    expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(main().getAllByRole("link", { name: /^Back to/ })).toHaveLength(1);
+    expect(main().getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+});
