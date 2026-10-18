@@ -29,3 +29,15 @@ A logged-out person on a protected screen goes to that role's login page with `?
 **Time:** 15:47 +0600
 
 The user approved `react-router` (v7) as a new library for `web/`. Not installed yet; it comes with the code step (ROADMAP step 28).
+
+## Step 2: design canvas and brand notes
+
+**Prompt** (15:5x +06, text cleaned)
+
+> create a Claude design project from the README, the roadmap and the auth-web spec
+
+> extract the core brand-book descriptions from the generated UI in the design artifact and write them down in a separate .md file in docs
+
+**What Claude did.** Made a design canvas (https://claude.ai/artifact/Ca1zKGzeKDGuXHhn7J5L76) with four auth screens: attendee login, attendee sign-up with field errors, organizer login with the 401 error, and the wrong-account page. Three listed screens (organizer sign-up, states board, phone login) are not written yet. Then wrote `docs/brand.md` from the values used in those screens (colours, type, spacing, components, rules) and linked it in the README. Used Artifact, Write, Bash.
+
+**Decision.** None.

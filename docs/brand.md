@@ -1,0 +1,71 @@
+# Brand and UI style
+
+Taken from the login and sign-up screens in the design canvas (https://claude.ai/artifact/Ca1zKGzeKDGuXHhn7J5L76), made from `specs/auth-web.md`. There was no design system, so this is the first set of values. Four screens exist (attendee login, attendee sign-up, organizer login, wrong account). Change this file first when a value changes, then the code. Use these values for the other web screens too.
+
+## Character
+
+Plain and calm, a tool for forms and lists. One card on a light gray-green ground, large text, big touch targets, no decoration. Each role has its own accent colour, so a person can see which side they are on.
+
+## Colour
+
+| Token | Value | Use |
+|---|---|---|
+| ground | `#EEF1F0` | Page background |
+| surface | `#FFFFFF` | Header, cards, inputs |
+| border | `#C9D3D0` | Card and header borders, dividers |
+| border-input | `#7C8D89` | Input and secondary button borders |
+| text | `#101C1A` | Body text, headings |
+| text-muted | `#4A5A57` | Hints, secondary text |
+| accent-attendee | `#0B6E5F` | Attendee buttons, eyebrow label, links (hover `#074D43`) |
+| accent-organizer | `#3A3AA0` | Organizer buttons, eyebrow label, links (hover `#26267A`) |
+| error | `#B3261E` | Invalid input border, error text |
+| error-text-on-tint | `#8C1D18` | Text inside the form error box |
+| error-tint | `#FDECEA` | Form error box background |
+
+- The logo square in the header is always the attendee accent, also on organizer pages.
+- White text goes only on an accent button. Error is never shown by colour alone: it also has text, a 2px border and `aria-invalid`.
+
+## Typography
+
+| Role | Font | Size and weight |
+|---|---|---|
+| Page title (h1) | Bricolage Grotesque | 34px, 700, line height 1.1 (30px on message pages) |
+| Logo text | Bricolage Grotesque | 20px, 700 |
+| Body, inputs, buttons | Public Sans | 16px; buttons 600 |
+| Label | Public Sans | 14px, 600 |
+| Eyebrow (role name) | Public Sans | 13px, 600, uppercase, letter spacing 0.08em, accent colour |
+| Hint, links, nav | Public Sans | 15px (nav and links 600) |
+| Field error | Public Sans | 14px, error colour |
+
+Both from Google Fonts. Fallback: `system-ui, sans-serif`.
+
+## Layout and shape
+
+- Page: header on top, then the content centred, padding `64px 16px`. Only a fluid width, so it works at phone width.
+- Header: white, 1px bottom border, padding `8px 40px`, items wrap. Logged out: Log in, Sign up, For organizers. Logged in: name, role, Log out button.
+- Card: white, 1px border, radius 12px, padding 32px, max width 440px (520px for message pages).
+- Spacing: 20px between fields, 24px between the intro and the form, 8px between label and input groups.
+- Radius: 8px for inputs and buttons, 12px for cards, 5px for the logo square.
+
+## Components
+
+- **Input:** 48px high, 1px `border-input`, radius 8, 16px text, a visible `<label>` above it. Invalid: 2px `error` border, `aria-invalid="true"`, error text below with `role="alert"` linked by `aria-describedby`.
+- **Password field:** input plus a "Show"/"Hide" button (48px high, `aria-pressed`) in a row with an 8px gap.
+- **Primary button:** 48px high, full width in a form, accent background, white 16px 600 text, radius 8. Disabled and relabelled while a request is pending (`auth-web.md` W-A12).
+- **Secondary button:** same size, white background, 1px `border-input`, dark text.
+- **Form error box:** above the form, padding `12px 14px`, `error-tint` background, 1px `error` border, radius 8, `role="alert"`.
+- **Links:** accent colour, 600 when they are actions ("Sign up", "I organize events"). The switch to the other role is a link under a divider.
+- **Eyebrow:** the role name ("Attendee", "Organizer") above the title in the role accent. "Wrong account" uses the dark error colour.
+
+## Rules
+
+- Touch targets are at least 44px (48px for fields and buttons).
+- Real `<button>`, `<a>` and `<input>` with `<label>`. No emoji, no icons without a text label.
+- Text contrast at least 4.5:1. Check every new colour pair before adding it.
+- Copy is short and plain; error texts are in `specs/auth-web.md`.
+
+## Not decided yet
+
+- Dark theme (out of scope in `auth-web.md`).
+- Success and warning colours, table and list styles, and the ticket and check-in screens. Add them here when `web.md` is written.
+- The design canvas is still missing organizer sign-up, the loading and error states board, and the phone view.
