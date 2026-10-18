@@ -43,3 +43,16 @@ Started 18-10 19:50 +06.
 
 ### D54: the API refuses to start without mail settings
 19:59:53 +0600. No console fallback in the running API; tests pass a fake transport. Reason: the user chose "fail at start" over keeping the console stub.
+
+## Step 4: provider is Resend
+
+**Prompt** (19:59 +06, text cleaned)
+
+> I'll use Resend
+
+**What Claude did.** Nothing to change: the brief to the `spec-writer` agent already names Resend (`POST https://api.resend.com/emails`) behind a small `EmailTransport` function. Logged the decision. Used Bash.
+
+**Decision.**
+
+### D55: the email provider is Resend
+19:59:57 +0600. The HTTP API of D53 is Resend's. Reason: the user chose it.
