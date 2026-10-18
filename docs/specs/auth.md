@@ -48,7 +48,7 @@ Feature spec for milestone M1, made from `SPEC_TEMPLATE.md` (sections 1-5). The 
 
 ## 2. UI decisions
 
-No screens in M1 (API only). The sign-up and login forms for both roles are in `auth-web.md` (M9). States the API gives them: 400 (show field errors), 401 (show "wrong email or password"), 409 (show "email already used"), success (go on as logged in).
+No screens in M1 (API only). The sign-up and login forms for both roles are in `auth-web.md` (M1 UI). States the API gives them: 400 (show field errors), 401 (show "wrong email or password"), 409 (show "email already used"), success (go on as logged in).
 
 ## 3. Architecture decisions
 

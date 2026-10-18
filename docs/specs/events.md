@@ -28,7 +28,7 @@ Feature spec for milestone M2, made from `SPEC_TEMPLATE.md` (sections 1-5). The 
 | E16 | `GET /public/events/:id` with an unknown id or an id that is not a uuid answers 404 `{ "error": "not_found" }`. | |
 | E17 | Errors use the body `{ "error": "<code>" }` as in `auth.md`. Codes used here: `invalid_input`, `not_logged_in`, `wrong_role`, `not_found`. No response contains `password_hash`. | |
 
-**Not in this spec.** Registering, the waiting list, cancelling a registration and my registration (M3, M4); changing capacity (B10, M4); check-in and the arrivals counter (M5); reschedule and cancelling the whole event (B8, B9, M7); reminders and email; live updates; the web screens (M9); editing or deleting an event; search, filters and pagination; a public list of events; organizer details on the public page.
+**Not in this spec.** Registering, the waiting list, cancelling a registration and my registration (M3, M4); changing capacity (B10, M4); check-in and the arrivals counter (M5); reschedule and cancelling the whole event (B8, B9, M7); reminders and email; live updates; the web screens (`events-web.md`); editing or deleting an event; search, filters and pagination; a public list of events; organizer details on the public page.
 
 Fields that are **only readable now** (nothing in M2 changes them after create): `starts_at`, `capacity`, `status` (always `active` in M2 apart from rows made directly in tests), `cancelled_at` (always null), `schedule_version` (always 1). `registered` is always 0 until M3. The tests for E10-E15 insert `registrations` and cancelled events straight into the database with SQL, as the tests in `api/test/db/` already do.
 
@@ -43,7 +43,7 @@ Fields that are **only readable now** (nothing in M2 changes them after create):
 
 ## 2. UI decisions
 
-No screens in M2 (API only). The screens are in `web.md` (M9). What the API gives them: 400 (show field errors), 401/403 (go to organizer login), 404 (event not found), public page states from `status`, `has_started`, `full` (open, full, closed, already started).
+No screens in M2 (API only). The screens are in `events-web.md` (M2 UI). What the API gives them: 400 (show field errors), 401/403 (go to organizer login), 404 (event not found), public page states from `status`, `has_started`, `full` (open, full, closed, already started).
 
 ## 3. Architecture decisions
 
@@ -93,7 +93,7 @@ Tests use the existing style (`createApp().listen(0)` and `fetch`, the helpers i
 
 ## 6. Open questions
 
-1. Past event on the public page: show it with `has_started` true (chosen here), or answer 404? Same for cancelled (chosen: 200 with `status` `cancelled`). This changes what the web page shows in M9.
+1. Past event on the public page: show it with `has_started` true (chosen here), or answer 404? Same for cancelled (chosen: 200 with `status` `cancelled`). This changes what the web page shows in `events-web.md`.
 2. Is the public path `/public/events/:id` acceptable, or should it be `/events/:id/public`? A plain `/events/:id` for both is not possible, because the organizer route needs a login and the public one must not.
 3. Should the public page show `capacity` as well as `seats_left`? Chosen: no (smaller leak, nothing in the task needs it).
 4. Is "no pagination" fine for the organizer list, and is `starts_at` ascending the order you want (soonest first, past events first)?

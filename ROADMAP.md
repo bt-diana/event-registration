@@ -1,94 +1,104 @@
 # Roadmap
 
-Order of work for the event registration service. One row = one step = one commit (or a tests-first commit, then a code commit). Every milestone starts with its feature spec. A step is done only when tests, typecheck and linter pass. Behaviour ids (B1-B10) are from `docs/specs/SPEC_TEMPLATE.md` and `docs/specs/DATABASE.md`.
+Order of work for the event registration service. One row = one step = one commit (or a tests-first commit, then a code commit). Every milestone has two specs, an API spec and a UI spec, and two parts of work: the API in `api/`, then the screens in `web/`. A step is done only when tests, typecheck and linter pass. Behaviour ids (B1-B10) are from `docs/specs/SPEC_TEMPLATE.md` and `docs/specs/DATABASE.md`.
 
 `build_plan.md` is the first plan and is out of date (Fastify, Docker, PostgreSQL 16, no accounts). This file follows the current decisions: Express, PostgreSQL 18 on Windows, attendee and organizer accounts, signed cookie.
+
+The web app is not a milestone of its own any more (D35). Its screens are built in the milestone of their feature. Step numbers changed with D35; the old step 28 (web login and session) is step 6 now. Older session files keep the old numbers.
 
 ## Done
 
 - Repo, `api/` and `web/` set up, eslint, env example, database setup.
 - Database schema, migrator and schema tests (`DATABASE.md`).
-- M1 accounts and login (`auth.md`, A1-A18, A11 removed): hashing, signed cookie, seven auth routes, middleware and guards, `api/openapi.yaml`.
-- M9 step 28 web login and session (`auth-web.md`, W-A1-W-A20): sign-up, login and logout pages for both roles, `me` session, guards, dev proxy.
+- M1 API: accounts and login (`auth.md`, A1-A18, A11 removed): hashing, signed cookie, seven auth routes, middleware and guards, `api/openapi.yaml`.
+- M1 UI: web login and session (`auth-web.md`, W-A1-W-A20): sign-up, login and logout pages for both roles, `me` session, guards, dev proxy.
+- M2 API spec: `events.md`.
 
 ## Milestones
 
-| # | Milestone | Spec | Behaviours | Tests first |
-|---|---|---|---|---|
-| M1 | Accounts and login | `auth.md` | | auth basics |
-| M2 | Events (organizer) | `events.md` | | ownership |
-| M3 | Register and waiting list | `registration.md` | B1, B2, B4 | B4 |
-| M4 | Cancel, promote, capacity change | `registration.md` (extend) | B3, B10 | |
-| M5 | Check-in and arrivals counter | `checkin.md` | B6, B7 | B6 |
-| M6 | Outbox sender and reminder worker | `email-reminders.md` | B5 | B5 |
-| M7 | Reschedule and event cancel | `email-reminders.md` (extend) | B8, B9 | |
-| M8 | Live updates | `checkin.md` (extend) | B7 | |
-| M9 | Web app | `auth-web.md`, `web.md` | all | session and guards |
-| M10 | Review and README | | all | |
+| # | Milestone | API spec | UI spec | Behaviours | Tests first |
+|---|---|---|---|---|---|
+| M1 | Accounts and login | `auth.md` | `auth-web.md` | | auth basics; session and guards |
+| M2 | Events (organizer) | `events.md` | `events-web.md` | | ownership |
+| M3 | Register and waiting list | `registration.md` | `registration-web.md` | B1, B2, B4 | B4 |
+| M4 | Cancel, promote, capacity change | `registration.md` (extend) | `registration-web.md` (extend) | B3, B10 | |
+| M5 | Check-in and arrivals counter | `checkin.md` | `checkin-web.md` | B6, B7 | B6 |
+| M6 | Outbox sender and reminder worker | `email-reminders.md` | `email-reminders-web.md` | B5 | B5 |
+| M7 | Reschedule and event cancel | `email-reminders.md` (extend) | `email-reminders-web.md` (extend) | B8, B9 | |
+| M8 | Live updates | `checkin.md` (extend) | `checkin-web.md` (extend) | B7 | |
+| M9 | Review and README | | | all | |
 
 ## Steps
 
-Specs are not written all at once. The first step of each milestone writes (or extends) its feature spec in `docs/specs/`, made from `SPEC_TEMPLATE.md` with the `spec-writer` agent. A spec lists only the behaviours, UI states and routes of its own feature. `DATABASE.md` already exists. The template stays untouched.
+Specs are not written all at once. The first steps of each milestone write (or extend) its API spec and its UI spec in `docs/specs/`, made from `SPEC_TEMPLATE.md` with the `spec-writer` agent. A spec lists only the behaviours, UI states and routes of its own feature. The UI spec says which API route each screen uses and which states it shows (loading, error, empty, and the cases of the feature). `DATABASE.md` already exists. The template stays untouched. UI steps are test first: component tests, then the screens, with typecheck and lint clean.
 
-### M1. Accounts (`api/`)
-1. Spec: `auth.md` (done).
+### M1. Accounts and login
+1. API spec: `auth.md` (done).
 2. Test, then code: password hashing (scrypt, random salt) and the signed cookie (7 days) (done; `cookie-parser` and `@types/cookie-parser` installed with the user's OK).
-3. Test, then code: attendee sign-up, login, logout. Same for organizers. Also `GET /auth/me` ("who am I", the only "me" route) and `role` in the answers (`auth.md` A17, A18), which the web app needs (done; described in `api/openapi.yaml`). The role-specific `GET /auth/users/me` and `GET /auth/organizers/me` (A11, A19) were removed later (done).
+3. Test, then code: attendee sign-up, login, logout. Same for organizers. Also `GET /auth/me` ("who am I", the only "me" route) and `role` in the answers (`auth.md` A17, A18). The role-specific `GET /auth/users/me` and `GET /auth/organizers/me` (A11, A19) were removed later (done; described in `api/openapi.yaml`).
 4. Auth middleware that puts `user` or `organizer` on the request. Tests: no cookie gives 401, an attendee cookie cannot use organizer routes (done).
+5. UI spec: `auth-web.md` (done: login and sign-up screens, session, guards).
+6. Test, then code: `react-router` (approved), app shell, API client, TanStack Query `me`, guards, sign-up and login pages for both roles (W-A1 to W-A20) (done: Vite dev proxy for `/auth` (D34)).
 
 ### M2. Events
-5. Spec: `events.md` (done).
-6. Test, then code: organizer creates, lists and reads own events. Another organizer's event answers 404 (`DATABASE.md` 3.8).
-7. Public event page route (no login): title, start, seats left, full or not.
+7. API spec: `events.md` (done).
+8. Test, then code: organizer creates, lists and reads own events. Another organizer's event answers 404 (`DATABASE.md` 3.8).
+9. Test, then code: public event route (no login): title, start, seats left, full or not.
+10. UI spec: `events-web.md`: organizer events list, create form and event page; the public event page (read only).
+11. Test, then code: organizer events list, create form and event page (states: loading, error, empty list, field errors).
+12. Test, then code: public event page (states: loading, not found, open, full, closed, already started).
 
 ### M3. Registration
-8. Spec: `registration.md` (B1, B2, B4).
-9. **Red:** B4 concurrency test (capacity 1, 20 parallel attendees: 1 registered, 19 waitlisted; repeat). Add B1 (same account twice = same ticket, one seat) and B2 (full goes to the list).
-10. **Green:** the register service in one transaction with `FOR UPDATE` on the event, a `ticket` outbox row, route `POST /events/:id/registrations`.
-11. "My registration" route (ticket code, status, place on the list).
+13. API spec: `registration.md` (B1, B2, B4).
+14. **Red:** B4 concurrency test (capacity 1, 20 parallel attendees: 1 registered, 19 waitlisted; repeat). Add B1 (same account twice = same ticket, one seat) and B2 (full goes to the list).
+15. **Green:** the register service in one transaction with `FOR UPDATE` on the event, a `ticket` outbox row, route `POST /events/:id/registrations`.
+16. "My registration" route (ticket code, status, place on the list).
+17. UI spec: `registration-web.md`: the register button on the public event page, the ticket page.
+18. Test, then code: registration form (states: loading, error, full so the list, already registered, not logged in) and the ticket page (code, status, place on the list).
 
 ### M4. Cancel and capacity
-12. Spec: extend `registration.md` (B3, B10).
-13. Test, then code: cancel a registration and promote the first waiting person with a `promotion` row (B3). Cancelling a waiting person promotes nobody. A checked-in ticket answers 409.
-14. Test, then code: change capacity, promote up to the free seats, refuse below the registered count (B10).
+19. API spec: extend `registration.md` (B3, B10).
+20. Test, then code: cancel a registration and promote the first waiting person with a `promotion` row (B3). Cancelling a waiting person promotes nobody. A checked-in ticket answers 409.
+21. Test, then code: change capacity, promote up to the free seats, refuse below the registered count (B10).
+22. UI spec: extend `registration-web.md`: cancel button on the ticket page, capacity form on the organizer event page.
+23. Test, then code: cancel button (confirm, pending, error, checked-in 409) and the capacity form (field error below the registered count, new seats left).
 
 ### M5. Check-in
-15. Spec: `checkin.md` (B6, B7).
-16. **Red:** B6 test (5 parallel check-ins of one code: one wins, four get 409). Also unknown code, waiting, cancelled event, another organizer's ticket.
-17. **Green:** conditional UPDATE, route `POST /checkin`, arrivals counter route (B7).
+24. API spec: `checkin.md` (B6, B7).
+25. **Red:** B6 test (5 parallel check-ins of one code: one wins, four get 409). Also unknown code, waiting, cancelled event, another organizer's ticket.
+26. **Green:** conditional UPDATE, route `POST /checkin`, arrivals counter route (B7).
+27. UI spec: `checkin-web.md`: check-in by code and the arrivals counter (polling).
+28. Test, then code: check-in screen (states: ok, already checked in, unknown code, waiting, cancelled event) and the counter that refreshes by polling.
 
 ### M6. Email and reminder
-18. Spec: `email-reminders.md` (stub sender, B5).
-19. Stub sender: prints unsent outbox rows and sets `sent_at`. Test: sends once, a repeat run sends nothing.
-20. **Red:** B5 test (fake clock at one day before, worker run 10 times and with two workers: one `reminder` row per registered person, none for waiting people).
-21. **Green:** reminder worker with `INSERT ... SELECT ... ON CONFLICT DO NOTHING`, a timer to start it, a clock that can be injected.
+29. API spec: `email-reminders.md` (stub sender, B5).
+30. Stub sender: prints unsent outbox rows and sets `sent_at`. Test: sends once, a repeat run sends nothing.
+31. **Red:** B5 test (fake clock at one day before, worker run 10 times and with two workers: one `reminder` row per registered person, none for waiting people).
+32. **Green:** reminder worker with `INSERT ... SELECT ... ON CONFLICT DO NOTHING`, a timer to start it, a clock that can be injected.
+33. UI spec: `email-reminders-web.md`: what the screens say about emails (for example "a ticket email was sent" on the ticket page). Only what the API can tell; no new route unless the spec asks for it.
+34. Test, then code: the email notes on the ticket page.
 
 ### M7. Reschedule and event cancel
-22. Spec: extend `email-reminders.md` (B8, B9).
-23. Test, then code: reschedule bumps `schedule_version`, writes a `reschedule` row for registered and waiting people, a same-time reschedule is a no-op (B8). Test A -> B -> A -> B gets a fresh reminder each time.
-24. Test, then code: cancel the event, refuse after the start, cancelled event refuses register, check-in, reschedule and capacity change (B9).
+35. API spec: extend `email-reminders.md` (B8, B9).
+36. Test, then code: reschedule bumps `schedule_version`, writes a `reschedule` row for registered and waiting people, a same-time reschedule is a no-op (B8). Test A -> B -> A -> B gets a fresh reminder each time.
+37. Test, then code: cancel the event, refuse after the start, cancelled event refuses register, check-in, reschedule and capacity change (B9).
+38. UI spec: extend `email-reminders-web.md`: reschedule form and cancel-event button on the organizer event page; the cancelled and rescheduled states on the public page and the ticket page.
+39. Test, then code: reschedule form, cancel-event button (confirm, error), cancelled state on the public page and the ticket page.
 
 ### M8. Live updates
-25. Spec: extend `checkin.md` (live counter).
-26. Server-sent events for the arrivals counter, with a test that a check-in reaches a connected client. Polling stays as the fallback in the web app.
+40. API spec: extend `checkin.md` (live counter).
+41. Server-sent events for the arrivals counter, with a test that a check-in reaches a connected client.
+42. UI spec: extend `checkin-web.md`: live counter states (connecting, live, lost, polling fallback).
+43. Test, then code: the counter listens to the event stream and falls back to polling. Each UI step adds the Vite dev proxy entries for the routes it uses (D34 covers `/auth` only).
 
-### M9. Web (`web/`)
-27. Spec: `auth-web.md` (done: login and sign-up screens, session, guards) and `web.md` (the other screens, states, which API route each one uses).
-28. Test, then code: `react-router` (approved), app shell, API client, TanStack Query `me`, guards, sign-up and login pages for both roles (`auth-web.md`, W-A1 to W-A20). (done: `react-router`, routes, header, shared `AuthForm`, brand styles, API client, `me`, guards, validation, submit, errors, focus, logout, tests for W-A1 to W-A20; Vite dev proxy for `/auth` (D34).)
-29. Public event page and registration form (states: loading, error, full, already registered).
-30. Ticket page: code, status, place on the list, cancel button.
-31. Organizer: events list, create, reschedule, capacity, cancel event.
-32. Organizer: check-in by code and the live arrivals counter (states: already checked in, unknown code).
-33. Component tests for the states above. Typecheck and lint clean.
-
-### M10. Review and finish
-34. Review the diff against the feature specs with the reviewer (correctness and requirements only). Fix what it finds.
-35. Two-tab check by hand: check in on one tab, the counter moves on the other.
-36. README: run instructions and the honest state (SSE in one process, polling worker, no real email). Every behaviour has a test or a README note.
+### M9. Review and finish
+44. Review the diff against the specs with the reviewer (correctness and requirements only). Fix what it finds.
+45. Two-tab check by hand: check in on one tab, the counter moves on the other.
+46. README: run instructions and the honest state (SSE in one process, polling worker, no real email). Every behaviour has a test or a README note.
 
 ## Rules for every step
 
-- The feature spec exists before the feature is built, and is written at the start of its milestone.
+- The API spec and the UI spec of a milestone exist before it is built, and are written at the start of the milestone.
 - Tests first for B4, B5 and B6.
 - Work on `main`, one Conventional Commit per finished step, tests-first commit before the code commit.
 - Add the step to the session file right after it is done.
@@ -97,5 +107,7 @@ Specs are not written all at once. The first step of each milestone writes (or e
 
 ## Open points
 
-- The two-tab check (step 35) is by hand. Playwright was in the first plan but is not in the spec; ask before adding it.
+- The two-tab check (step 45) is by hand. Playwright was in the first plan but is not in the spec; ask before adding it.
 - Email stays a stub (outbox row plus console).
+- M6 has little to show in the UI (email is a stub). Step 33 may end up as a short spec.
+- Specs that point to `web.md` or "M9" are updated to their `*-web.md` file (D35).

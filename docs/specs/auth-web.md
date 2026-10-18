@@ -1,6 +1,6 @@
-# Spec: Accounts and login screens (web, M9)
+# Spec: Accounts and login screens (web, M1)
 
-Feature spec for the sign-up and login screens, the session in the web app and the route guards, made from `SPEC_TEMPLATE.md` (sections 1-5). The API side is `auth.md` (A1-A19); this file does not change it. Other screens (events, tickets, check-in) are in `web.md`.
+Feature spec for the sign-up and login screens, the session in the web app and the route guards, made from `SPEC_TEMPLATE.md` (sections 1-5). The API side is `auth.md` (A1-A19); this file does not change it. Screens for events, tickets and check-in are in the UI specs of their milestones (`events-web.md`, `registration-web.md`, `checkin-web.md`).
 
 ## 1. Goals and expected behaviour
 
@@ -49,8 +49,8 @@ Feature spec for the sign-up and login screens, the session in the web app and t
 | `/signup` | Logged out, or an organizer | Attendee sign-up form (email, name, password). Links: log in, "I organize events" (`/organizer/signup`). Calls `POST /auth/users/signup`. |
 | `/organizer/login` | Logged out, or an attendee | Organizer login form. Links: sign up, "I am an attendee" (`/login`). Calls `POST /auth/organizers/login`. |
 | `/organizer/signup` | Logged out, or an attendee | Organizer sign-up form. Links: log in, "I am an attendee" (`/signup`). Calls `POST /auth/organizers/signup`. |
-| `/` | Everyone | Attendee home. A placeholder here; the event screens come from `web.md`. Public: no guard. |
-| `/organizer` | Organizers (guarded) | Organizer home. A placeholder here; the organizer screens come from `web.md`. Logged out: redirect to `/organizer/login?next=/organizer`. Attendee: wrong-account message (W-A6). |
+| `/` | Everyone | Attendee home. A placeholder here; the event screens come from `events-web.md`. Public: no guard. |
+| `/organizer` | Organizers (guarded) | Organizer home. A placeholder here; the organizer screens come from `events-web.md`. Logged out: redirect to `/organizer/login?next=/organizer`. Attendee: wrong-account message (W-A6). |
 | Header (all screens) | Everyone | Logged out: "Log in", "Sign up", and "For organizers" (attendee pages) or "For attendees" (`/organizer...` pages). Logged in: name, role, "Log out" button (W-A18). |
 
 Fields (labels in this order; the same four pages share one form component with props `role` and `mode`):
@@ -112,7 +112,7 @@ Client error texts: email "Enter a valid email address."; name "Enter your name 
 | `web/src/auth/validate.test.ts` | Email, name, password limits; `safeNext` (`//evil.com`, `https://x`, `/a?b=1`, empty) | W-A5, W-A10 |
 | `web/src/auth/AuthForm.test.tsx` | Both roles, both modes: client checks, status mapping, pending button, focus, aria, show/hide, links | W-A10-W-A17, W-A19, W-A20 |
 | `web/src/auth/Header.test.tsx` | Logged-out and logged-in header, logout flow and failure | W-A9, W-A18 |
-| `README.md`, `ROADMAP.md` | Routes, `react-router` added, M9 step 28 done | |
+| `README.md`, `ROADMAP.md` | Routes, `react-router` added, M1 step 6 done | |
 
 Tests follow the existing style (`App.test.tsx`: Vitest globals, files next to the code in `web/src/`, `render` and `screen` from Testing Library). The only installed helper is `@testing-library/react`, so use `fireEvent` and `findBy*` queries and `toBeTruthy()` (no `jest-dom`, no `user-event`; do not add them). `fetch` is replaced with `vi.stubGlobal("fetch", vi.fn())` returning `Response` objects; each test builds a fresh `QueryClient` (`retry: false`) and renders under `MemoryRouter` with a start path. Rendering is done through a small `renderApp(path)` helper in the test files.
 
