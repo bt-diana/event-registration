@@ -136,3 +136,13 @@ Started 18-10 19:50 +06.
 **What Claude did.** The `spec-writer` agent reworked `docs/specs/email-reminders.md` (ER1-ER47): `createResendTransport` over the `resend` package (`^6.34.1`), a returned `error` is thrown, the outbox row id as idempotency key, a timeout, `readMailConfig` and start-up failure, no address or body in logs. Updated `ROADMAP.md` and `README.md`. Still to do: `email-reminders-web.md` (W-EM2, the ER7 remark) needs a small edit. Used Agent, Bash.
 
 **Decision.** None.
+
+## Step 11: organizer outbox route spec written
+
+**Prompt** (22:17 +06, text cleaned)
+
+> (result of step 9)
+
+**What Claude did.** The `spec-writer` agent wrote `docs/specs/email-outbox.md` (OB1-OB15): `GET /events/:id/emails`, organizer only, filters `kind` and `status`, newest first, cap 200 with a `truncated` flag, no body or ticket code, one read-only statement, code in `api/src/email/`. Added step 32a to `ROADMAP.md` and the spec to `README.md`. Used Agent, Bash.
+
+**Decision.** None.
