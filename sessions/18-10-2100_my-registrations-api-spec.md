@@ -92,3 +92,13 @@ Started 18-10 21:00 +06.
 **Decision.** None.
 
 **Result (steps 7 and 8).** `code-writer` made three commits: `37347f6` (red: 34 new failures for the right reason), `9c932f5` (`BackLink` renders "← {name}" with "Events", "Event", "Registrations"; comments, `brand.md`, README, ROADMAP), `2fac134` (select: `appearance: none`, own chevron, padding `0 36px 0 12px`, ellipsis, forced-colors fallback, `EventSelect.test.tsx`). Added test helpers `backLinks` and `arrowLinksIn` in `web/src/auth/test-helpers.tsx`. Web typecheck and lint pass; web tests 863 pass and 4 fail (known, `OrganizerRegistrations.test.tsx`, from `835a4a9`). `verify.sh` is red because of other work: those 4 tests and 21 api tests in `api/test/email/outbox.test.ts` (route not built yet, commit `b0ac92f`). Not done: browser checks of the back links at 320 and 390 px and of the select arrow, ellipsis and forced-colors look; canvas boards. Used Agent, Bash.
+
+## Step 9: "Checked in" instead of "Registered"
+
+**Prompt** (23:20 +06, text cleaned)
+
+> replace "Registered" with "checked in" if status checked in
+
+**What Claude did.** Read it as the registration badge on the ticket page and on the "My registrations" cards (the API already sends `checked_in_at`). Spec first: `spec-writer` added W-R42 to `registration-web.md` (tone stays Open, the separate "Checked in" line goes from the ticket page and stays on the event page panel, waitlisted and cancelled rows keep their own badge, organizer table unchanged), committed as `be65343`. Then `code-writer`: `a20db97` (red, 8 tests failed for the right reason) and `0450180` (`ticket.ts`, `TicketPanel.tsx`, README, ROADMAP). It also changed `OrganizerRegistrations.tsx` so the organizer table still shows "Registered" (the table reused `ticketLabel().badge`); the spec's files table does not list that file yet. API 495 pass; web 941 pass, 2 fail in `OrganizerRegistrations.test.tsx` (from `37d7e53`, which removed the Ticket code column without updating the tests). Not done: canvas boards (S2 checked-in state, S3 card), `brand.md` line 77. Used Agent, Bash.
+
+**Decision.** None.
