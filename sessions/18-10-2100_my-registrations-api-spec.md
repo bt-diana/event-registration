@@ -65,3 +65,16 @@ Started 18-10 21:00 +06.
 **What Claude did.** Spec first: the `spec-writer` agent changed `registration-web.md` (W-R18, W-R22, W-R40, S3, files table, new question 15 on hover and focus), committed as `bf61704`. Then the `code-writer` agent: `38999c0` (red, 8 of 32 tests failed for the right reason) and `77e7ca6` (the card is one link to `/registrations/me?event={id}`, title is plain text, no "View ticket", no link to the event page; styles, `brand.md`, README, ROADMAP). Hover and focus use the spec's recommendation: accent border, underlined title, 2px focus ring. Web: 862 of 866 pass; the 4 failures are in `OrganizerRegistrations.test.tsx` and come from the earlier commit `835a4a9` (columns removed, tests still expect 7), so `verify.sh` is red for that reason. API: 436 pass. Not done: browser check of hover, focus and Tab then Enter; the S3 board on the canvas. `design-alignment.md` DA11 and DA12 still describe the old links. Used Agent, Bash.
 
 **Decision.** None.
+
+## Step 7: remove "Back" from the back links
+
+**Prompt** (22:36 +06, text cleaned)
+
+> remove wording "back" from the buttons
+
+**What Claude did.** Searched `web/src` for "back": the only UI text with it is `BackLink` in `EventParts.tsx` ("← Back to events", "Back to event", "Back to registrations", used on 7 screens). Asked which wording the user wants (AskUserQuestion). Started the `spec-writer` agent to change the specs first (`design-alignment.md` DA35 and the other specs that quote "Back to ..."). Used Grep, AskUserQuestion, Bash, Agent.
+
+**Decision.**
+
+### D75: back links read "← Events", "← Event", "← Registrations"
+22:38:19 +0600. The user chose this over "To events". The arrow stays, the word "Back" goes; the accessible name becomes the destination. Reason: the user asked to remove the word "back" from the buttons.
