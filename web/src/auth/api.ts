@@ -1,4 +1,6 @@
-// Small fetch wrapper for the auth routes in api/openapi.yaml. Same origin (dev proxy in vite.config.ts).
+// Small fetch wrapper for the auth routes in api/openapi.yaml. Without VITE_API_URL
+// the calls are relative, same origin (dev proxy in vite.config.ts); with it they
+// go to that API origin with the cookie (credentials "include", api-base-url.md).
 
 export type Role = "user" | "organizer";
 export type Me = { role: Role; id: string; email: string; name: string };
@@ -18,10 +20,19 @@ export class ApiError extends Error {
   }
 }
 
-// Shared by the other API clients (events/api.ts). Network errors become ApiError(0).
+// VITE_API_URL without trailing slashes, or "" when unset or blank. Read on
+// each call (it is fixed at build time; tests stub it).
+function apiBase(): string {
+  const value: unknown = import.meta.env.VITE_API_URL;
+  return typeof value === "string" ? value.trim().replace(/\/+$/, "") : "";
+}
+
+// Shared by the other API clients (events/api.ts). Network errors (also a call
+// blocked by CORS) become ApiError(0).
 export async function request(path: string, init: RequestInit = {}): Promise<Response> {
+  const base = apiBase();
   try {
-    return await fetch(path, { ...init, credentials: "same-origin" });
+    return await fetch(base + path, { ...init, credentials: base ? "include" : "same-origin" });
   } catch {
     throw new ApiError(0);
   }

@@ -9,13 +9,17 @@ export const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DIGITS = /^\d+$/;
 
-// Read on every call, so `secure` follows NODE_ENV at the time.
+// Read on every call, so the options follow NODE_ENV and CORS_ORIGIN at the time.
+// With CORS_ORIGIN set in production the web is on another site, and a
+// cross-site fetch sends only a `SameSite=None; Secure` cookie (api-base-url.md P4).
 function cookieOptions(): CookieOptions {
+  const production = process.env.NODE_ENV === "production";
+  const crossSite = production && Boolean(process.env.CORS_ORIGIN);
   return {
     signed: true,
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: crossSite ? "none" : "lax",
+    secure: production,
     path: "/",
   };
 }

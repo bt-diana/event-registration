@@ -4,6 +4,7 @@ import type pg from "pg";
 import { authenticate } from "./auth/middleware.js";
 import { authRouter } from "./auth/routes.js";
 import { checkinRouter } from "./checkin/routes.js";
+import { cors } from "./cors.js";
 import { createPool, loadEnv } from "./db/pool.js";
 import { emailRouter } from "./email/routes.js";
 import { eventsRouter } from "./events/routes.js";
@@ -27,6 +28,8 @@ export function createApp(options: AppOptions = {}) {
   const pool = options.pool ?? createPool();
 
   const app = express();
+  // First, so a preflight ends before the body parser, auth and the routes.
+  app.use(cors);
   app.use(express.json());
   app.use(cookieParser(secret));
   app.use(authenticate);

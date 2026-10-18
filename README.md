@@ -85,7 +85,7 @@ Open http://localhost:5173 and log in with a demo account (see "Demo logins"; mi
 
 Starting the API with a real Resend key sends every `pending` outbox row of that database, so use a test database.
 
-The web app calls the API on its own origin. In development the Vite dev server proxies `/auth`, `/events`, `/public`, `/checkin` and `/me` to the API on http://localhost:3000 (`web/vite.config.ts`), so no CORS is needed and `fetch` uses `credentials: "same-origin"`. This proxy exists only in `npm run dev`; a production build must be served from the same origin as the API (for example behind one reverse proxy), or the login cookie and the calls will not work.
+Locally leave `VITE_API_URL` and `CORS_ORIGIN` unset: the web app then calls the API on its own origin. In development the Vite dev server proxies `/auth`, `/events`, `/public`, `/checkin` and `/me` to the API on http://localhost:3000 (`web/vite.config.ts`), so no CORS is needed and `fetch` uses `credentials: "same-origin"`. This proxy exists only in `npm run dev` and `npm run preview`. A production build either is served from the same origin as the API (for example behind one reverse proxy), or is built with `VITE_API_URL` and calls the API on its own origin with CORS (see "Deploy on Render").
 
 ### Open the app on a phone
 
@@ -106,7 +106,12 @@ Find the PC's Wi-Fi address with `ipconfig` (the IPv4 address of the Wi-Fi adapt
 
 ### Deploy on Render
 
-The demo runs on Render: https://event-registration-web-rmbi.onrender.com. The repository root has a `package.json` with `build` and `start` scripts that run the API in `api/`. For the API Web Service leave Root Directory empty, set Build Command to `npm run build` (installs `api/` with its dev dependencies and compiles `api/src` with `tsconfig.build.json` into `api/dist/`, tests excluded) and Start Command to `npm start` (`node dist/index.js`), and set the environment variables from `.env.example` (`DATABASE_URL`, `COOKIE_SECRET`, `EMAIL_API_KEY`, `MAIL_FROM`; `NODE_ENV=production` makes the cookie `Secure`). The API applies no migrations by itself: run `npm run db:migrate` against the production database first. The web app has no production server of its own in this repository (see the same-origin note under "Run locally"); the setup of the hosted web service is not described here.
+The demo runs on Render: https://event-registration-web-rmbi.onrender.com. The web and the API are two services on two `onrender.com` origins (`docs/specs/api-base-url.md`, D79):
+
+- **API, a Web Service.** Root Directory `api`, Build Command `npm install --include=dev && npm run build` (compiles `api/src` with `tsconfig.build.json` into `api/dist/`, tests excluded), Start Command `npm start` (`node dist/index.js`). Environment: the variables from `.env.example` (`DATABASE_URL`, `COOKIE_SECRET`, `EMAIL_API_KEY`, `MAIL_FROM`), plus `NODE_ENV=production` and `CORS_ORIGIN=https://<web>.onrender.com` (the web origin exactly: https, no path, no trailing slash). With both set the API answers CORS for that one origin (credentials allowed, no wildcard) and the login cookie is `SameSite=None; Secure`, so the browser sends it on the cross-site calls. The API applies no migrations by itself: run `npm run db:migrate` against the production database first.
+- **Web, a Static Site.** Root Directory `web`, Build Command `npm install && npm run build`, Publish Directory `dist`. Environment: `VITE_API_URL=https://<api>.onrender.com` (the API origin only, no path; a trailing slash is ignored). Vite puts the value into the bundle at build time, so set it before the build and rebuild the site after every change. With it the web calls `<VITE_API_URL>/auth/...` with `credentials: "include"`.
+
+**Known limit.** `onrender.com` is on the public suffix list, so the two `*.onrender.com` origins are different sites and the session cookie is a third-party cookie for the web. Browsers that block third-party cookies (Safari, Chrome with that setting on) do not keep the login. A custom domain with the web and the API on sibling subdomains of one domain (for example `app.example.com` and `api.example.com`) fixes it; nothing in the code needs to change for that. `SameSite=None` also drops the `Lax` defence from `auth.md`: the exact `CORS_ORIGIN` check and `HttpOnly` remain, and CSRF protection is out of scope.
 
 ### Demo logins
 
@@ -143,6 +148,8 @@ cd web && npm run e2e   # two-browser test [TODO: confirm]
 | `PORT` | API port, default 3000 |
 | `COOKIE_SECRET` | Signs the login cookie. At least 32 characters, or the API does not start |
 | `NODE_ENV` | `production` makes the cookie `Secure` |
+| `CORS_ORIGIN` | Optional. The one web origin allowed to call the API with the cookie (for example `https://<web>.onrender.com`). With `NODE_ENV=production` the cookie becomes `SameSite=None`. Leave it unset locally |
+| `VITE_API_URL` | Web, optional, read at build time. The API origin the web calls (for example `https://<api>.onrender.com`). Unset or empty: relative calls through the dev proxy. Leave it unset locally |
 | `EMAIL_API_KEY` | The Resend API key. Required: missing or blank, the API prints the variable name and exits with code 1 (D59). Never commit it |
 | `MAIL_FROM` | The sender, passed to Resend as it is (`onboarding@resend.dev` or `Name <address>`). Required, like the key |
 | `EMAIL_JOB_INTERVAL_MS` | How often the email round runs (reminders, then the sender). Default in code 3600000 (1 h, D63); `.env.example` sets 10000 (10 s) for development. A whole number of at least 1000, else the API does not start |
@@ -231,7 +238,8 @@ Partly planned. `[TODO: update after the build]`
 ```
 api/                 backend (Express, TypeScript)
   openapi.yaml       the API description (auth, event, registration, check-in and email routes)
-  src/app.ts         createApp: JSON, cookie-parser, authenticate, routes
+  src/app.ts         createApp: CORS, JSON, cookie-parser, authenticate, routes
+  src/cors.ts        CORS for the one web origin in CORS_ORIGIN (nothing when unset)
   src/auth/          password hashing, session cookie, middleware, auth routes
   src/events/        routes.ts: the organizer event routes (also reschedule and cancel),
                      the public event page and the public events list;
@@ -262,7 +270,7 @@ api/                 backend (Express, TypeScript)
 web/                 frontend (React, Vite, TypeScript)
   src/main.tsx       QueryClientProvider, BrowserRouter, styles.css
   src/App.tsx        header and routes
-  src/auth/          api.ts (fetch wrapper), session.ts (useMe and the login, sign-up and
+  src/auth/          api.ts (fetch wrapper, VITE_API_URL base), session.ts (useMe and the login, sign-up and
                      logout mutations), validate.ts (client checks, safeNext), guards.tsx
                      (RequireRole, RedirectIfLoggedIn), AuthForm, Header, and their tests
   src/events/        api.ts (event routes, reschedule and cancel, EventActionError),
