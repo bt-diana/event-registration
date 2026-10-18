@@ -1120,18 +1120,22 @@ a:hover {
   }
 
   .site-header-end[data-open="true"] {
-    clip-path: inset(0);
+    /* Open, the clip reaches 61 px up so Close menu shows in the header row. */
+    clip-path: inset(-61px 0 0 0);
     visibility: visible;
     transition:
       clip-path 200ms ease,
       visibility 0s;
   }
 
-  /* Close menu: the first row of the drawer, on the right (HR30). */
+  /* Close menu stays first in the drawer's DOM and Tab order (HR30, HR31) but is shown in the
+     header row exactly over the Menu button, which is inert while open (user request): fixed at
+     the header padding, 44 x 44 px. */
   .nav-close {
     display: inline-flex;
-    flex-shrink: 0;
-    align-self: flex-end;
+    position: fixed;
+    top: 8px;
+    right: 16px;
   }
 
   .site-nav-all {
