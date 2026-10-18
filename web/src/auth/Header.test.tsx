@@ -208,3 +208,303 @@ describe("W-A9: log out", () => {
     expect(queryClient.getQueryData(["me"])).toEqual(ANN);
   });
 });
+
+// Tests first (header-events-link.md): HB2, HB3, HB5. Then HB1, HB4, HB6, HB7, HB9.
+const WATCH = "Watch all events";
+const ME = "GET /auth/me";
+const LIST = "GET /public/events";
+const loggedOut = () => json(401, { error: "not_logged_in" });
+
+// Every request the screens below may make; /event/1 is an unknown event.
+const SCREENS = {
+  [LIST]: () => json(200, { events: [] }),
+  "GET /events": () => json(200, { events: [] }),
+  "GET /events/1": () => json(404, { error: "not_found" }),
+  "GET /public/events/1": () => json(404, { error: "not_found" }),
+};
+
+type State = "logged out" | "attendee" | "organizer";
+
+const STATES: [State, () => Response][] = [
+  ["logged out", loggedOut],
+  ["attendee", () => json(200, ANN)],
+  ["organizer", () => json(200, OLGA)],
+];
+
+function watch(): HTMLElement {
+  return header().getByRole("link", { name: WATCH });
+}
+
+function currentLocation(): string | null {
+  return screen.getByTestId("location").textContent;
+}
+
+// Waits until the header shows the answered me: the account name or the Log in link.
+async function meShown(state: State) {
+  if (state === "attendee") await header().findByText("Ann");
+  else if (state === "organizer") await header().findByText("Olga");
+  else await header().findByRole("link", { name: "Log in" });
+}
+
+describe("HB2: the link always opens /", () => {
+  it.each(STATES)("%s: href is / on / and on /event/1", async (state, me) => {
+    for (const path of ["/", "/event/1"]) {
+      mockFetch({ [ME]: me, ...SCREENS });
+      const view = renderApp(path);
+      await meShown(state);
+      expect(watch().getAttribute("href")).toBe("/");
+      view.unmount();
+    }
+  });
+});
+
+describe("HB3: shown at once, also while me is pending", () => {
+  it("is shown while me is pending, before any account link", () => {
+    mockFetch({ [ME]: () => deferred<Response>().promise, ...SCREENS });
+    renderApp("/event/1");
+    expect(watch().getAttribute("href")).toBe("/");
+    expect(header().queryByRole("link", { name: "Log in" })).toBeNull();
+    expect(header().queryByRole("button", { name: "Log out" })).toBeNull();
+  });
+
+  it.each<[string, (me: ReturnType<typeof deferred<Response>>) => void]>([
+    ["200 attendee", (me) => me.resolve(json(200, ANN))],
+    ["200 organizer", (me) => me.resolve(json(200, OLGA))],
+    ["401", (me) => me.resolve(loggedOut())],
+    ["5xx", (me) => me.resolve(json(500, { error: "internal" }))],
+    ["network error", (me) => me.reject(new TypeError("Failed to fetch"))],
+  ])("stays the same element after me answers %s", async (_case, settle) => {
+    const me = deferred<Response>();
+    mockFetch({ [ME]: () => me.promise, ...SCREENS });
+    renderApp("/event/1");
+    const before = watch();
+    await act(async () => {
+      settle(me);
+    });
+    await waitFor(() =>
+      expect(
+        header().queryByRole("link", { name: "Log in" }) ??
+          header().queryByRole("button", { name: "Log out" }),
+      ).toBeTruthy(),
+    );
+    expect(watch()).toBe(before);
+    expect(watch().getAttribute("href")).toBe("/");
+    expect(watch().getAttribute("aria-current")).toBeNull();
+    expect(watch().textContent).toBe(WATCH);
+  });
+});
+
+describe("HB5: aria-current on / only (exact match)", () => {
+  it.each(STATES)("%s on /: aria-current is page", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/");
+    await meShown(state);
+    expect(watch().getAttribute("aria-current")).toBe("page");
+  });
+
+  it("on / while me is pending: aria-current is page", () => {
+    mockFetch({ [ME]: () => deferred<Response>().promise, ...SCREENS });
+    renderApp("/");
+    expect(watch().getAttribute("aria-current")).toBe("page");
+  });
+
+  it("ignores the query string and the hash", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/?from=mail#top");
+    await meShown("logged out");
+    expect(watch().getAttribute("aria-current")).toBe("page");
+  });
+
+  it.each(["/event/1", "/organizer", "/organizer/events/new", "/registrations"])(
+    "organizer on %s: no aria-current",
+    async (path) => {
+      mockFetch({ [ME]: () => json(200, OLGA), ...SCREENS });
+      renderApp(path);
+      await meShown("organizer");
+      expect(watch().getAttribute("aria-current")).toBeNull();
+    },
+  );
+
+  it.each(["/event/1", "/login", "/signup", "/organizer/login"])(
+    "logged out on %s: no aria-current",
+    async (path) => {
+      mockFetch({ [ME]: loggedOut, ...SCREENS });
+      renderApp(path);
+      await meShown("logged out");
+      expect(watch().getAttribute("aria-current")).toBeNull();
+    },
+  );
+});
+
+describe("HB1: a plain link in the banner", () => {
+  it("is an <a> with the exact text, outside the nav landmarks, and makes no request", async () => {
+    const fetch = mockFetch({ [ME]: loggedOut });
+    renderApp("/login");
+    await meShown("logged out");
+    const link = watch();
+    expect(link.tagName).toBe("A");
+    expect(link.textContent).toBe(WATCH);
+    expect(link.closest("header")).toBe(screen.getByRole("banner"));
+    expect(link.closest("nav")).toBeNull();
+    expect(header().queryByRole("button", { name: WATCH })).toBeNull();
+    expect(fetch.mock.calls).toHaveLength(1);
+    expect(callsTo(fetch, ME)).toBe(1);
+  });
+
+  it("is outside the Main nav when logged in", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    expect(watch().closest("nav")).toBeNull();
+    expect(header().getByRole("navigation", { name: "Main" })).toBeTruthy();
+  });
+});
+
+describe("HB4: one link in every state and on every route", () => {
+  const LOGGED_OUT_ROUTES = [
+    "/",
+    "/login",
+    "/signup",
+    "/organizer/login",
+    "/organizer/signup",
+    "/event/1",
+  ];
+  const LOGGED_IN_ROUTES = ["/", "/event/1", "/registrations", "/registrations/me"];
+
+  function expectOneWatchLink() {
+    expect(header().getAllByRole("link", { name: WATCH })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: WATCH })).toHaveLength(1);
+    expect(watch().getAttribute("href")).toBe("/");
+  }
+
+  it.each(LOGGED_OUT_ROUTES)("logged out on %s", async (path) => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp(path);
+    await meShown("logged out");
+    expectOneWatchLink();
+  });
+
+  it.each(
+    LOGGED_IN_ROUTES.flatMap((path) => [
+      ["attendee", path] as const,
+      ["organizer", path] as const,
+    ]),
+  )("%s on %s", async (state, path) => {
+    const me = state === "attendee" ? ANN : OLGA;
+    mockFetch({ [ME]: () => json(200, me), ...SCREENS });
+    renderApp(path);
+    await meShown(state);
+    expectOneWatchLink();
+  });
+});
+
+describe("HB6: clicking it opens /", () => {
+  it.each(STATES)("%s from /event/1: goes to /, me is not refetched", async (state, me) => {
+    const fetch = mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    fireEvent.click(watch());
+    await waitFor(() => expect(currentLocation()).toBe("/"));
+    expect(await screen.findByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
+    expect(currentLocation()).toBe("/");
+    expect(watch().getAttribute("aria-current")).toBe("page");
+    expect(callsTo(fetch, ME)).toBe(1);
+  });
+
+  it("on / already: stays on the page and makes no request", async () => {
+    const fetch = mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/");
+    expect(await screen.findByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
+    const calls = fetch.mock.calls.length;
+    fireEvent.click(watch());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(currentLocation()).toBe("/");
+    expect(screen.getByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
+    expect(fetch.mock.calls).toHaveLength(calls);
+  });
+});
+
+describe("HB7: log out, log in and the organizer list", () => {
+  it("attendee log out: the same link before and after", async () => {
+    mockFetch({
+      [ME]: () => json(200, ANN),
+      "POST /auth/users/logout": () => json(204),
+      ...SCREENS,
+    });
+    renderApp("/event/1");
+    await meShown("attendee");
+    const before = watch();
+    fireEvent.click(header().getByRole("button", { name: "Log out" }));
+    expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
+    expect(watch()).toBe(before);
+    expect(watch().getAttribute("href")).toBe("/");
+  });
+
+  it("attendee log in: the same link before and after", async () => {
+    mockFetch({ [ME]: loggedOut, "POST /auth/users/login": () => json(200, ANN), ...SCREENS });
+    renderApp("/login");
+    await meShown("logged out");
+    const before = watch();
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "ann@mail.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret-pass" } });
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+    expect(await header().findByText("Ann")).toBeTruthy();
+    expect(watch()).toBe(before);
+    expect(watch().getAttribute("href")).toBe("/");
+  });
+
+  it("organizer from /organizer: stays on / and sees the list, one list request", async () => {
+    const fetch = mockFetch({
+      [ME]: () => json(200, OLGA),
+      "GET /events": () => json(200, { events: [] }),
+      [LIST]: () => json(200, { events: [publicListItem()] }),
+    });
+    renderApp("/organizer");
+    expect(await screen.findByRole("heading", { level: 1, name: "Your events" })).toBeTruthy();
+    fireEvent.click(watch());
+    expect(await screen.findByRole("link", { name: "Spring meetup" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
+    expect(currentLocation()).toBe("/");
+    expect(header().getByRole("link", { name: "Event Registration" }).getAttribute("href")).toBe(
+      "/organizer",
+    );
+    expect(callsTo(fetch, LIST)).toBe(1);
+    expect(callsTo(fetch, ME)).toBe(1);
+  });
+});
+
+describe("HB9: accessibility", () => {
+  // jsdom has no Tab key: the Tab order is the DOM order of the focusable elements,
+  // none of them with a tabindex of its own.
+  function tabOrder(): string[] {
+    const banner = screen.getByRole("banner");
+    return Array.from(banner.querySelectorAll<HTMLElement>("a[href], button")).map((element) => {
+      expect(element.hasAttribute("tabindex")).toBe(false);
+      return element.textContent ?? "";
+    });
+  }
+
+  it.each<[State, () => Response, string[]]>([
+    ["logged out", loggedOut, ["Event Registration", WATCH, "Log in", "Sign up", "For organizers"]],
+    ["attendee", () => json(200, ANN), ["Event Registration", WATCH, "My registrations", "Log out"]],
+    ["organizer", () => json(200, OLGA), ["Event Registration", WATCH, "Registrations", "Log out"]],
+  ])("%s: Tab order logo, Watch all events, then the account", async (state, me, order) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    expect(tabOrder()).toEqual(order);
+  });
+
+  it("the text is the accessible name and it takes the focus", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/event/1");
+    await meShown("logged out");
+    const link = watch();
+    expect(link.hasAttribute("aria-label")).toBe(false);
+    expect(link.querySelector("img, svg")).toBeNull();
+    link.focus();
+    expect(document.activeElement).toBe(link);
+  });
+});
