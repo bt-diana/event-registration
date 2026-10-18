@@ -2,7 +2,8 @@ import type pg from "pg";
 import { REGISTRATION_COLUMNS, type RegistrationRow } from "../registrations/service.js";
 
 // docs/specs/checkin.md (M5). The check-in of a ticket (B6, C3-C13) and the
-// organizer registrations list (C15-C18).
+// organizer registrations list (C15-C18). docs/specs/arrivals.md: the
+// arrivals counts (AR1-AR15).
 
 export type CheckedInRow = {
   registration_id: string;
@@ -95,4 +96,27 @@ export async function listRegistrations(pool: pg.Pool, organizerId: string, even
     [eventId, organizerId],
   );
   return { kind: "ok", rows };
+}
+
+export type ArrivalsRow = { capacity: number; registered: number; arrived: number };
+
+export type ArrivalsResult = { kind: "not_found" } | { kind: "ok"; row: ArrivalsRow };
+
+// docs/specs/arrivals.md (AR3-AR7, AR9, AR12). The ownership check and the
+// counts are one statement, so they are one snapshot and an owned event with
+// nobody still gives one row; no row is an unknown or foreign event (3.8). The
+// second FILTER is a subset of the first, so arrived <= registered. ::int makes
+// pg return numbers, not bigint strings. No lock, no transaction, no cache.
+const ARRIVALS_SQL = `SELECT e.capacity,
+       count(r.id) FILTER (WHERE r.status = 'registered')::int AS registered,
+       count(r.id) FILTER (WHERE r.status = 'registered' AND r.checked_in_at IS NOT NULL)::int AS arrived
+  FROM events e
+  LEFT JOIN registrations r ON r.event_id = e.id
+ WHERE e.id = $1 AND e.organizer_id = $2
+ GROUP BY e.id`;
+
+export async function getArrivals(pool: pg.Pool, organizerId: string, eventId: string): Promise<ArrivalsResult> {
+  const { rows } = await pool.query<ArrivalsRow>(ARRIVALS_SQL, [eventId, organizerId]);
+  if (rows.length === 0) return { kind: "not_found" };
+  return { kind: "ok", row: rows[0] };
 }

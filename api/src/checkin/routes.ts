@@ -3,7 +3,14 @@ import type pg from "pg";
 import { requireOrganizer } from "../auth/middleware.js";
 import { registrationShape } from "../registrations/routes.js";
 import { TICKET_ALPHABET, TICKET_LENGTH } from "../registrations/ticket.js";
-import { checkIn, listRegistrations, type CheckedInRow, type ListedRegistrationRow } from "./service.js";
+import {
+  checkIn,
+  getArrivals,
+  listRegistrations,
+  type ArrivalsRow,
+  type CheckedInRow,
+  type ListedRegistrationRow,
+} from "./service.js";
 
 // docs/specs/checkin.md (M5): POST /checkin, the check-in of a ticket at the
 // door (B6, C1-C14, C19), and GET /events/:id/registrations, the organizer
@@ -51,6 +58,11 @@ function listItemShape(row: ListedRegistrationRow) {
   };
 }
 
+// Exactly these keys (AR2): no event_id, title, organizer_id or person's data.
+function arrivalsShape(row: ArrivalsRow) {
+  return { capacity: row.capacity, registered: row.registered, arrived: row.arrived };
+}
+
 export function checkinRouter(pool: pg.Pool): Router {
   const router = Router();
 
@@ -83,6 +95,17 @@ export function checkinRouter(pool: pg.Pool): Router {
     const result = await listRegistrations(pool, req.organizer!.id, id);
     if (result.kind === "not_found") return fail(res, 404, "not_found");
     res.status(200).json({ registrations: result.rows.map(listItemShape) });
+  });
+
+  // docs/specs/arrivals.md. Same guard, header and 404 rules as the list
+  // (AR1, AR8, AR13); the only input is the path id, so there is no 400 (AR14).
+  router.get("/events/:id/arrivals", requireOrganizer, async (req: Request, res: Response) => {
+    res.set("Cache-Control", "no-store");
+    const id = req.params.id;
+    if (typeof id !== "string" || !UUID.test(id)) return fail(res, 404, "not_found");
+    const result = await getArrivals(pool, req.organizer!.id, id);
+    if (result.kind === "not_found") return fail(res, 404, "not_found");
+    res.status(200).json(arrivalsShape(result.row));
   });
 
   return router;
