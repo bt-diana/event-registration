@@ -29,7 +29,7 @@ Order of work for the event registration service. One row = one step = one commi
 Specs are not written all at once. The first step of each milestone writes (or extends) its feature spec in `docs/specs/`, made from `SPEC_TEMPLATE.md` with the `spec-writer` agent. A spec lists only the behaviours, UI states and routes of its own feature. `DATABASE.md` already exists. The template stays untouched.
 
 ### M1. Accounts (`api/`)
-1. Spec: `auth.md`.
+1. Spec: `auth.md` (done).
 2. Test, then code: password hashing (scrypt, random salt) and the signed cookie (7 days).
 3. Test, then code: attendee sign-up, login, logout, "who am I". Same for organizers.
 4. Auth middleware that puts `user` or `organizer` on the request. Tests: no cookie gives 401, an attendee cookie cannot use organizer routes.
