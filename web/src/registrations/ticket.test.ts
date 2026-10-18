@@ -86,6 +86,67 @@ describe("ticketLabel: checked in", () => {
   });
 });
 
+// Tests first (registration-web.md W-R42): a used ticket's badge says "Checked in" instead
+// of "Registered", in the same Open tone; waiting and cancelled keep their own badge.
+describe("W-R42: the Checked in badge", () => {
+  const AT = "2030-01-01T09:55:00.000Z";
+
+  it.each<[string, string | null, { text: string; tone: string }]>([
+    ["registered, checked in", AT, { text: "Checked in", tone: "open" }],
+    ["registered, not checked in", null, { text: "Registered", tone: "open" }],
+  ])("ticketLabel badge: %s", (_case, checkedInAt, badge) => {
+    const label = ticketLabel({
+      status: "registered",
+      waitlist_position: null,
+      checked_in_at: checkedInAt,
+    });
+    expect(label.badge).toEqual(badge);
+    // The event page panel keeps its heading and its line (W-R25).
+    expect(label.heading).toBe("You are registered");
+    expect(label.checkedIn).toBe(checkedInAt === null ? null : "Checked in");
+  });
+
+  it.each<[string, Parameters<typeof ticketLabel>[0], { text: string; tone: string }]>([
+    [
+      "waitlisted",
+      { status: "waitlisted", waitlist_position: 3, checked_in_at: AT },
+      { text: "Waiting list", tone: "full" },
+    ],
+    [
+      "cancelled",
+      { status: "cancelled", waitlist_position: null, checked_in_at: AT },
+      { text: "Cancelled", tone: "cancelled" },
+    ],
+  ])("ticketLabel badge: %s with checked_in_at set keeps its own badge", (_case, r, badge) => {
+    expect(ticketLabel(r).badge).toEqual(badge);
+  });
+
+  it.each<[string, Parameters<typeof listStatusText>[0], string]>([
+    [
+      "registered, checked in",
+      { status: "registered", waitlist_position: null, checked_in_at: AT },
+      "Checked in",
+    ],
+    [
+      "registered, not checked in",
+      { status: "registered", waitlist_position: null, checked_in_at: null },
+      "Registered",
+    ],
+    [
+      "waitlisted, checked_in_at set",
+      { status: "waitlisted", waitlist_position: 3, checked_in_at: AT },
+      "Waiting list: place 3",
+    ],
+    [
+      "cancelled, checked_in_at set",
+      { status: "cancelled", waitlist_position: null, checked_in_at: AT },
+      "Cancelled",
+    ],
+  ])("listStatusText: %s", (_case, registration, text) => {
+    expect(listStatusText(registration)).toBe(text);
+  });
+});
+
 // Tests first (registration-web.md W-R25): when the ticket page shows the QR.
 describe("W-R25: showQr", () => {
   it.each<[string, Partial<SamplePublicEvent>, Parameters<typeof registration>[0], boolean]>([
@@ -106,10 +167,18 @@ describe("W-R25: showQr", () => {
 // W-R18: the registration badge text on the attendee list.
 describe("listStatusText", () => {
   it.each<[string, Parameters<typeof listStatusText>[0], string]>([
-    ["registered", { status: "registered", waitlist_position: null }, "Registered"],
-    ["waitlisted at place 1", { status: "waitlisted", waitlist_position: 1 }, "Waiting list: place 1"],
-    ["waitlisted at place 3", { status: "waitlisted", waitlist_position: 3 }, "Waiting list: place 3"],
-    ["cancelled", { status: "cancelled", waitlist_position: null }, "Cancelled"],
+    ["registered", { status: "registered", waitlist_position: null, checked_in_at: null }, "Registered"],
+    [
+      "waitlisted at place 1",
+      { status: "waitlisted", waitlist_position: 1, checked_in_at: null },
+      "Waiting list: place 1",
+    ],
+    [
+      "waitlisted at place 3",
+      { status: "waitlisted", waitlist_position: 3, checked_in_at: null },
+      "Waiting list: place 3",
+    ],
+    ["cancelled", { status: "cancelled", waitlist_position: null, checked_in_at: null }, "Cancelled"],
   ])("%s", (_case, registration, text) => {
     expect(listStatusText(registration)).toBe(text);
   });

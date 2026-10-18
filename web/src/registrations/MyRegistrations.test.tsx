@@ -307,6 +307,50 @@ describe("W-R40: event status and cancelled rows", () => {
   });
 });
 
+// Tests first (registration-web.md W-R42): a registered row that is checked in reads
+// "Checked in" instead of "Registered"; the event badge (W-R40) still follows it; a
+// cancelled row never reads "Checked in" (mocked data, the table CHECK forbids it).
+describe("W-R42: the Checked in badge on the list", () => {
+  const AT = "2030-01-01T09:55:00.000Z";
+
+  it('a checked-in row shows "Checked in", no "Registered", and the link name holds it', async () => {
+    const used = { ...SPRING, checked_in_at: AT };
+    await attendeeList(list(used));
+    const row = rowOf("Spring Meetup");
+    expect(badges(row)).toEqual(["Checked in"]);
+    expect(within(row).queryByText("Registered")).toBeNull();
+    const name = named("Spring Meetup", formatDateTime(SPRING.event_starts_at), "Checked in");
+    expect(within(row).getByRole("link", { name })).toBe(cardLink(row));
+    expect(cardLink(row).getAttribute("href")).toBe(ticketHref(EVENT_ID));
+  });
+
+  it("not checked in: the row still reads Registered", async () => {
+    await attendeeList(list({ ...SPRING, checked_in_at: null }));
+    expect(badges(rowOf("Spring Meetup"))).toEqual(["Registered"]);
+    expect(main().queryByText("Checked in")).toBeNull();
+  });
+
+  it("a checked-in row of a cancelled event: Checked in, then Event cancelled", async () => {
+    await attendeeList(list({ ...WINTER, checked_in_at: AT }));
+    const row = rowOf("Winter Quiz");
+    expect(badges(row)).toEqual(["Checked in", "Event cancelled"]);
+    const start = formatDateTime(WINTER.event_starts_at);
+    const name = named("Winter Quiz", start, "Checked in", "Event cancelled");
+    expect(within(row).getByRole("link", { name })).toBe(cardLink(row));
+  });
+
+  it.each<[string, Partial<SampleMyRegistration>, string[]]>([
+    ["cancelled", { status: "cancelled" }, ["Cancelled"]],
+    ["waitlisted", { status: "waitlisted", waitlist_position: 3 }, ["Waiting list: place 3"]],
+  ])("a %s row with checked_in_at set keeps its own badge", async (_case, overrides, expected) => {
+    await attendeeList(
+      list(myRegistration({ event_title: "Spring Meetup", checked_in_at: AT, ...overrides })),
+    );
+    expect(badges(rowOf("Spring Meetup"))).toEqual(expected);
+    expect(main().queryByText("Checked in")).toBeNull();
+  });
+});
+
 describe("W-R41: request and 401 rules", () => {
   it("no list request while me loads; one once me is a known attendee", async () => {
     const me = deferred<Response>();

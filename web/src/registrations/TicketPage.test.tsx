@@ -260,20 +260,22 @@ describe("W-R25: the QR on the ticket page", () => {
 
   // User request 18-10: a checked-in ticket has nothing that can be used for entry, no QR
   // and no ticket code. The rule keys on checked_in_at only (any event status, also a
-  // cancelled registration).
+  // cancelled registration). W-R42: the badge of a registered one reads "Checked in" instead
+  // of "Registered" and the separate "Checked in" line is gone (it would repeat the badge);
+  // a cancelled registration keeps its own badge, so it shows no "Checked in" at all.
   it.each<[string, Partial<SamplePublicEvent>, SampleRegistration, string]>([
-    ["registered", {}, registration({ checked_in_at: "2030-01-01T09:55:00.000Z" }), "Registered"],
+    ["registered", {}, registration({ checked_in_at: "2030-01-01T09:55:00.000Z" }), "Checked in"],
     [
       "registered, cancelled event",
       { status: "cancelled", seats_left: 0 },
       registration({ checked_in_at: "2030-01-01T09:55:00.000Z" }),
-      "Registered",
+      "Checked in",
     ],
     [
       "registered, ended event",
       { status: "passed", has_started: true, seats_left: 0 },
       registration({ checked_in_at: "2030-01-01T09:55:00.000Z" }),
-      "Registered",
+      "Checked in",
     ],
     [
       "cancelled registration",
@@ -281,12 +283,18 @@ describe("W-R25: the QR on the ticket page", () => {
       registration({ status: "cancelled", checked_in_at: "2030-01-01T09:55:00.000Z" }),
       "Cancelled",
     ],
-  ])('a checked-in ticket (%s): only "Checked in", no code, no QR, no hint, no time', async (_case, event, r, badge) => {
+  ])('a checked-in ticket (%s): only the badge, no code, no QR, no hint, no time', async (_case, event, r, badge) => {
     await ticketPage(ok(publicEvent(event)), ok(r));
-    expect(main().getByText("Checked in")).toBeTruthy();
-    // What stays: the h1, the badge, the event title and start.
-    expect(main().getByRole("heading", { level: 1, name: "Your ticket" })).toBeTruthy();
-    expect(main().getByText(badge)).toBeTruthy();
+    // What stays: the h1, the badge (right under the h1), the event title and start.
+    const h1 = main().getByRole("heading", { level: 1, name: "Your ticket" });
+    const line = h1.nextElementSibling!;
+    expect(line.classList.contains("event-status")).toBe(true);
+    expect(line.textContent).toBe(badge);
+    expect(main().getAllByText(badge)).toHaveLength(1);
+    // W-R42: no "Registered" and no separate "Checked in" line.
+    expect(main().queryByText("Registered")).toBeNull();
+    expect(screen.getByRole("main").querySelector(".ticket-checked-in")).toBeNull();
+    expect(main().queryAllByText("Checked in")).toHaveLength(badge === "Checked in" ? 1 : 0);
     expect(main().getByText("Spring meetup")).toBeTruthy();
     expect(main().getByText(formatDateTime("2030-01-01T10:00:00.000Z"))).toBeTruthy();
     // No ticket code at all: no label, no text, no aria-label with it.
@@ -314,6 +322,9 @@ describe("W-R25: the QR on the ticket page", () => {
     expect(main().getByText("If the scan does not work, show the ticket code.")).toBeTruthy();
     expect(drawQr).toHaveBeenCalledTimes(1);
     expect(main().queryByText("Checked in")).toBeNull();
+    // W-R42: the badge under the h1 still says "Registered".
+    const h1 = main().getByRole("heading", { level: 1, name: "Your ticket" });
+    expect(h1.nextElementSibling!.textContent).toBe("Registered");
   });
 });
 
