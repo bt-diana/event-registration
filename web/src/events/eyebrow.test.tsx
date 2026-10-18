@@ -1,4 +1,4 @@
-// Tests first (events-web.md): W-E24, the role word only in the header, never in page content.
+// Tests first (docs/specs/role-eyebrow.md): RE1, the role word only in the header, never in page content.
 import { screen, within } from "@testing-library/react";
 import { ANN, OLGA, deferred, json, mockFetch, renderApp } from "../auth/test-helpers";
 import { EVENT_ID, organizerEvent } from "./test-helpers";
@@ -20,7 +20,7 @@ function expectNoRoleWord() {
   expect(main().queryByText("Attendee")).toBeNull();
 }
 
-describe("W-E24: no role eyebrow in page content", () => {
+describe("RE1: no role eyebrow in page content", () => {
   it.each([
     ["with events", () => json(200, { events: [organizerEvent()] }), "Your events"],
     ["empty", () => json(200, { events: [] }), "Your events"],

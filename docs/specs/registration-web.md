@@ -107,7 +107,7 @@ Logged out: the login link of W-R2 for open, started and full; for closed events
 | Read error | "Could not load your registration" + Retry |
 | Register 409 | "Registration is closed." |
 | Register network or 5xx | "Something went wrong. Try again." |
-| Ticket page | no role eyebrow (`events-web.md` W-E24), `h1` "Your ticket"; "No ticket": "You have no ticket for this event." + "Go to the event"; error "Could not load your ticket" |
+| Ticket page | no role eyebrow (`role-eyebrow.md` RE1), `h1` "Your ticket"; "No ticket": "You have no ticket for this event." + "Go to the event"; error "Could not load your ticket" |
 | Not found | "Event not found" + "This link is not valid or the event does not exist." (as events-web) |
 | Lists (blocked) | attendee: `h1` "My registrations", "You have no registrations yet.", "Go home", "Could not load your registrations"; organizer: `h1` "Registrations", "No one has registered for this event yet.", "Could not load registrations" |
 | Placeholders | "The list is not built yet." |
@@ -201,7 +201,7 @@ Each screen at desktop and phone width. The header is the existing one (logged o
 
 Other event-page states (loading, error, not found) are in `events-web.md` section 6.
 
-**S2. Ticket page `/registrations/me?event={id}`.** No role eyebrow (W-E24), `h1` "Your ticket". Event title (link), "Starts", status badge, then the ticket panel. States:
+**S2. Ticket page `/registrations/me?event={id}`.** No role eyebrow (RE1), `h1` "Your ticket". Event title (link), "Starts", status badge, then the ticket panel. States:
 
 | State | Content |
 |---|---|
@@ -214,9 +214,9 @@ Other event-page states (loading, error, not found) are in `events-web.md` secti
 | Loading | "Loading..." |
 | Error | "Could not load your ticket" + Retry |
 
-**S3. Attendee list `/registrations/me` (blocked until the API).** No role eyebrow (W-E24), `h1` "My registrations". Table columns: Event, Starts, Status, Ticket code. Rows: "Spring Meetup" / "Sat, 1 Jan 2030, 10:00 CET" / "Registered" / `K7M2QX9TPA`; "Autumn Fair" / ... / "Waiting list: place 3" / `H4Z8WR5NCD`; "Old Talk" / ... / "Cancelled" / `P3D6FJ2VBM`. States: empty "You have no registrations yet." + "Go home"; loading "Loading..."; error "Could not load your registrations" + Retry; placeholder (now) "The list is not built yet."
+**S3. Attendee list `/registrations/me` (blocked until the API).** No role eyebrow (RE1), `h1` "My registrations". Table columns: Event, Starts, Status, Ticket code. Rows: "Spring Meetup" / "Sat, 1 Jan 2030, 10:00 CET" / "Registered" / `K7M2QX9TPA`; "Autumn Fair" / ... / "Waiting list: place 3" / `H4Z8WR5NCD`; "Old Talk" / ... / "Cancelled" / `P3D6FJ2VBM`. States: empty "You have no registrations yet." + "Go home"; loading "Loading..."; error "Could not load your registrations" + Retry; placeholder (now) "The list is not built yet."
 
-**S4. Organizer registrations `/registrations` (blocked until the API).** No role eyebrow (W-E24), `h1` "Registrations". Event selector (label "Event"), then a table: Name, Email, Status, Place, Ticket code, Registered. Rows: "Olga Test" / `olga@example.com` / "Registered" / empty / `K7M2QX9TPA` / date; "Ivan Test" / `ivan@example.com` / "Waiting list" / "1" / `H4Z8WR5NCD` / date. States: no events "You have no events yet." + "Create event"; nobody registered "No one has registered for this event yet."; loading "Loading..."; error "Could not load registrations" + Retry; event not found "Event not found"; placeholder (now) "The list is not built yet."
+**S4. Organizer registrations `/registrations` (blocked until the API).** No role eyebrow (RE1), `h1` "Registrations". Event selector (label "Event"), then a table: Name, Email, Status, Place, Ticket code, Registered. Rows: "Olga Test" / `olga@example.com` / "Registered" / empty / `K7M2QX9TPA` / date; "Ivan Test" / `ivan@example.com` / "Waiting list" / "1" / `H4Z8WR5NCD` / date. States: no events "You have no events yet." + "Create event"; nobody registered "No one has registered for this event yet."; loading "Loading..."; error "Could not load registrations" + Retry; event not found "Event not found"; placeholder (now) "The list is not built yet."
 
 **S5. Redirects (no own screen).** Attendee on `/registrations` ends on S3/S2 (one redirect); organizer on `/registrations/me` ends on S4; logged out goes to the login pages with `next`; "Loading..." and "Could not check your login" as in the auth canvas.
 

@@ -55,7 +55,7 @@ Both from Google Fonts. Fallback: `system-ui, sans-serif`.
 - **Secondary button:** same size, white background, 1px `border-input`, dark text.
 - **Form error box:** above the form, padding `12px 14px`, `error-tint` background, 1px `error` border, radius 8, `role="alert"`.
 - **Links:** accent colour, 600 when they are actions ("Sign up", "I organize events"). The switch to the other role is a link under a divider.
-- **Eyebrow:** the role name ("Attendee", "Organizer") above the title in the role accent, only on the login and sign-up forms. Pages for logged-in people have no role eyebrow; the role is in the header (`events-web.md` W-E24) and the `h1` is the first line. The public event page uses "Event". "Wrong account" uses the dark error colour.
+- **Eyebrow:** the role name ("Attendee", "Organizer") above the title in the role accent, only on the login and sign-up forms. Pages for logged-in people have no role eyebrow; the role is in the header (`role-eyebrow.md` RE1) and the `h1` is the first line. The public event page uses "Event". "Wrong account" uses the dark error colour.
 
 ## Rules
 

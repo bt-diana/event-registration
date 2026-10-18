@@ -6,7 +6,7 @@ import { CreateEventForm } from "./events/CreateEventForm";
 import { EventsList } from "./events/EventsList";
 
 // Public: no guard. A placeholder; there is no public list of events yet (events-web.md).
-// No role eyebrow: the header shows the role (W-E24).
+// No role eyebrow: the header shows the role (RE1).
 function AttendeeHome() {
   return (
     <section className="card" data-role="user">

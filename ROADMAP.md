@@ -49,7 +49,7 @@ Specs are not written all at once. The first steps of each milestone write (or e
 8. Test, then code: organizer creates, lists and reads own events. Another organizer's event answers 404 (`DATABASE.md` 3.8) (done: migration `002_event_duration.sql`, `api/src/events/routes.ts`; `events.md` calls this step 6).
 9. Test, then code: public event route (no login): title, start, seats left, full or not (done: `GET /public/events/:id` with the derived status; `events.md` calls this step 7).
 10. UI spec: `events-web.md`: organizer events list, create form and event page; the public event page (read only). (done: W-E1 to W-E21)
-11. Test, then code: organizer events list, create form and event page (states: loading, error, empty list, field errors). (list and create form done: `web/src/events/`, dev proxy for `/events` and `/public`, W-E24 no role eyebrow; the organizer event page is one page with the public one, `/event/:id`, built in step 12)
+11. Test, then code: organizer events list, create form and event page (states: loading, error, empty list, field errors). (list and create form done: `web/src/events/`, dev proxy for `/events` and `/public`, RE1 no role eyebrow; the organizer event page is one page with the public one, `/event/:id`, built in step 12)
 12. Test, then code: public event page (states: loading, not found, open, full, closed, already started).
 
 ### M3. Registration
