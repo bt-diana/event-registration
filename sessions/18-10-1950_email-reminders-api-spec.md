@@ -66,3 +66,22 @@ Started 18-10 19:50 +06.
 **What Claude did.** The `spec-writer` agent reworked `docs/specs/email-reminders.md` (ER1-ER34): an `EmailTransport` with a Resend implementation over `fetch`, `readMailConfig` and start-up failure (ER29), at-least-once delivery with one row claimed per transaction, a fake HTTP server for tests, no secrets in logs. Four new open questions with recommendations. Updated step 30 and the M6 line in `ROADMAP.md` and the line in `README.md`. Used Agent, Bash.
 
 **Decision.** None.
+
+## Step 6: two retries, `error_sending`, and Resend out of scope
+
+**Prompt** (20:07 +06, text cleaned)
+
+> why could rows fail?
+> let's have only 2 retries and if it still didn't work, mark the email status as error_sending
+> let's not include Resend in the scope
+> mark the email status as error_sending
+
+**What Claude did.** Answered the first question in chat. Went back to the console stub sender (Resend, `fetch` transport, mail settings and fail-at-start removed from the scope) and added the retry limit with the status `error_sending`. Delegated the spec rework to the `spec-writer` agent. Used Bash, Agent.
+
+**Decision.**
+
+### D56: a failed email gets 2 retries, then the status `error_sending`
+20:07:37 +0600. A row is tried at most 3 times (the first try and 2 retries, one per timer tick); after the third failure its status is `error_sending` and the sender never picks it again. Reason: the user asked for it.
+
+### D57: real email through Resend is out of scope; the sender stays a console stub
+20:07:37 +0600. Replaces D53, D54 and D55. Reason: the user asked to leave Resend out of the scope.
