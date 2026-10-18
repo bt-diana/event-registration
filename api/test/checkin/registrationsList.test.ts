@@ -230,8 +230,8 @@ describe("C15: the organizer's registrations list", () => {
       const mine = asRegistration(await myRegistration(api, eventId, person.cookie));
       const { attendee_name, attendee_email, ...registration } = got[index];
       expect(registration).toEqual(mine);
-      const { rows } = await db.pool.query<{ name: string; email: string }>(
-        "SELECT name, email FROM users WHERE id = $1",
+      const { rows } = await db.pool.query<{ attendee_name: string; attendee_email: string }>(
+        "SELECT name AS attendee_name, email AS attendee_email FROM users WHERE id = $1",
         [person.id],
       );
       expect({ attendee_name, attendee_email }).toEqual(rows[0]);

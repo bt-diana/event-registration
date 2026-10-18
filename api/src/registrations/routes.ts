@@ -13,7 +13,8 @@ function fail(res: Response, status: number, error: string): void {
 }
 
 // Exactly these keys (R21): no user_id, queue_no, cancelled_at or personal data.
-function registrationShape(row: RegistrationRow) {
+// Also the first keys of the organizer list item (checkin.md C15).
+export function registrationShape(row: RegistrationRow) {
   return {
     id: row.id,
     event_id: row.event_id,

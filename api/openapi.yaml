@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Event registration API - accounts, login, events and registration
-  version: 0.3.0
+  version: 0.4.0
   description: |
     Hand-written description of the seven auth routes (milestone M1, docs/specs/auth.md):
     signup, login and logout for each role, and GET /auth/me for either role. All bodies are JSON. Errors use the body { "error": "<code>" }; the status is
@@ -28,6 +28,11 @@ info:
     registration is `waitlisted`. A seat writes one `ticket` row to the outbox table
     (stored only; nothing is sent yet). Cancelling and promotion are not built yet (M4).
 
+    The organizer registrations list (milestone M5, docs/specs/checkin.md):
+    `GET /events/{id}/registrations` lists the `registered` and `waitlisted` rows of
+    the organizer's own event with the attendee's name and email; the arrivals
+    counter is counted from it. `POST /checkin` is specified but not built yet.
+
     Login is one signed cookie named `session` (cookie-parser), valid 7 days,
     httpOnly, sameSite=lax, secure only when NODE_ENV=production. Its signed value is
     `<role>.<id>.<expiresAtMs>`; the server checks the expiry itself. Logout only
@@ -48,6 +53,8 @@ tags:
     description: Routes that need no login.
   - name: registrations
     description: The logged-in attendee's own registrations (requireUser).
+  - name: checkin
+    description: Check-in and the registrations list of the logged-in organizer's own events (requireOrganizer).
 
 paths:
   /auth/users/signup:
@@ -337,6 +344,50 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/EventClosed"
+    get:
+      tags: [checkin]
+      operationId: listEventRegistrations
+      summary: The registrations of one of the logged-in organizer's events
+      description: |
+        The `registered` and `waitlisted` rows of the event (cancelled rows are left
+        out), ordered by `created_at`, then `id` (docs/specs/checkin.md C15-C18).
+        The arrivals counter is counted from this list: the `registered` items with
+        `checked_in_at` set, out of the `registered` items; there is no separate
+        arrivals route. A fresh snapshot for polling: the rows come from one
+        statement, no lock, no paging, `Cache-Control: no-store`. A cancelled or
+        passed event still answers 200. The guard runs first, so a malformed id from
+        an anonymous caller is 401; a malformed id is answered 404 before any
+        database query. Another organizer's event answers the same 404 as an unknown
+        one. `POST /checkin` is not built yet.
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: The event's registrations, possibly none.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [registrations]
+                additionalProperties: false
+                properties:
+                  registrations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OrganizerRegistration"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/WrongRole"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /events/{id}/registrations/me:
     get:
@@ -651,6 +702,47 @@ components:
         created_at:
           type: string
           format: date-time
+    OrganizerRegistration:
+      type: object
+      required:
+        [id, event_id, status, ticket_code, waitlist_position, checked_in_at, created_at, attendee_name, attendee_email]
+      additionalProperties: false
+      description: |
+        An item of the organizer registrations list: the keys of `Registration`
+        plus the attendee's name and email, shown only to the owning organizer.
+        No user id, queue number, `cancelled_at` or password hash.
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [registered, waitlisted]
+        ticket_code:
+          type: string
+          pattern: "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$"
+          example: K7QM2XWP9D
+        waitlist_position:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Counted as in `Registration`; `null` unless `status` is `waitlisted`.
+        checked_in_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set once the ticket is checked in; always `null` for a `waitlisted` item.
+        created_at:
+          type: string
+          format: date-time
+        attendee_name:
+          type: string
+        attendee_email:
+          type: string
+          format: email
     Error:
       type: object
       required: [error]

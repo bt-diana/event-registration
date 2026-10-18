@@ -22,6 +22,7 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 - M2 UI: public events list (`events-public-list-web.md`, W-L1-W-L13): `/` lists the open events as cards (title link, start, duration, badge from `publicStatus`), with loading, error with Retry and empty states; it waits for `me` and redirects an organizer to `/organizer` with no list request. The W-L13 invalidation from the register handler came with step 18.
 - M3 API spec: `registration.md` (R1-R22): register, waiting list, last seat, my registration.
 - M5 API spec: `checkin.md` (C1-C19): check-in by ticket code, organizer registrations list for the arrivals counter.
+- M5 API, part of step 26: organizer registrations list `GET /events/:id/registrations` (`checkin.md` C1 for this route, C15-C19 list side): own event only (404 otherwise, same body), `registered` and `waitlisted` rows by `created_at` then `id`, name and email, one statement, `Cache-Control: no-store`, `api/openapi.yaml`. `POST /checkin` is not built (step 26 stays open).
 - M3 API: registration (`registration.md`, R1-R22): `POST /events/:id/registrations` (one transaction, `FOR UPDATE` on the event, `ticket` outbox row), `GET /events/:id/registrations/me`, shared `api/src/events/status.ts`, `api/openapi.yaml`.
 - M3 UI spec: `registration-web.md` (W-R1-W-R37).
 - M3 UI: register area and ticket page (`registration-web.md`, W-R1-W-R23): register button, waiting list and login link on the public event page, ticket panel, ticket page `/registrations/me?event={id}`, the `/registrations` and `/registrations/me` redirects, header links. The two lists are placeholders; the QR and the scan screen (W-R24-W-R37) are not built (new libraries need the user's OK; check-in API is step 26).
@@ -83,7 +84,7 @@ Specs are not written all at once. The first steps of each milestone write (or e
 ### M5. Check-in
 24. API spec: `checkin.md` (B6, B7) (done: C1-C19).
 25. **Red:** B6 test (5 parallel check-ins of one code: one wins, four get 409). Also unknown code, waiting, cancelled event, another organizer's ticket.
-26. **Green:** conditional UPDATE, route `POST /checkin`, organizer list `GET /events/:id/registrations` that the counter is counted from (B7; no separate arrivals route, D45).
+26. **Green:** conditional UPDATE, route `POST /checkin`, organizer list `GET /events/:id/registrations` that the counter is counted from (B7; no separate arrivals route, D45). (partly done: the organizer list `GET /events/:id/registrations` is built, tests-first commit `api/test/checkin/registrationsList.test.ts` (C1 for this route, C15-C19 list side), then `api/src/checkin/` (`checkinRouter`, `listRegistrations`), `api/openapi.yaml`. Not done: `POST /checkin`, after the red step 25)
 27. UI spec: `checkin-web.md`: check-in by code and the arrivals counter (polling).
 28. Test, then code: check-in screen (states: ok, already checked in, unknown code, waiting, cancelled event) and the counter that refreshes by polling.
 
