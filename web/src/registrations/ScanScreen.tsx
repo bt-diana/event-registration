@@ -66,6 +66,8 @@ export function ScanScreen({ submitCode }: Props) {
   const busyRef = useRef(false);
   const sendingRef = useRef(false);
   const mountedRef = useRef(true);
+  // Set when a checked-in result turned an active camera off; "Scan next" starts it again (W-R34).
+  const restartRef = useRef(false);
 
   // Stops the camera tracks; the scanner itself stops in its effect below (W-R35).
   function release() {
@@ -137,9 +139,18 @@ export function ScanScreen({ submitCode }: Props) {
     sendingRef.current = true;
     busyRef.current = true;
     setCheck({ kind: "pending", code });
+    const wasActive = camera === "active";
     try {
       const result = await submit(code);
-      if (mountedRef.current) setCheck({ kind: "result", result });
+      if (!mountedRef.current) return;
+      if (isCheckedIn(result)) {
+        // W-R34: a checked-in result turns the camera off (the scanner effect stops the
+        // scanner when the camera leaves "active"); a camera problem text is kept.
+        restartRef.current = wasActive;
+        release();
+        setCamera((current) => (current === "active" || current === "asking" ? "idle" : current));
+      }
+      setCheck({ kind: "result", result });
     } catch (error) {
       // 401/403: me is checked again and the guard decides; no text of our own (W-R13).
       onApiError(queryClient, error);
@@ -186,7 +197,7 @@ export function ScanScreen({ submitCode }: Props) {
     accept(code);
   }
 
-  function scanNext() {
+  function clearCheck() {
     busyRef.current = false;
     setCheck({ kind: "idle" });
     setNotTicket(false);
@@ -194,10 +205,19 @@ export function ScanScreen({ submitCode }: Props) {
     setFieldError(false);
   }
 
+  function scanNext() {
+    clearCheck();
+    if (restartRef.current) {
+      restartRef.current = false;
+      void startCamera();
+    }
+  }
+
   function changeEvent(id: string) {
     release();
     setCamera("idle");
-    scanNext();
+    restartRef.current = false;
+    clearCheck();
     choose(id);
   }
 
@@ -242,6 +262,8 @@ export function ScanScreen({ submitCode }: Props) {
   }
 
   const pending = check.kind === "pending";
+  // W-R34: while a checked-in result is shown there is no camera area and no manual form.
+  const checkedIn = check.kind === "result" && isCheckedIn(check.result);
 
   return (
     <Shell backTo={backTo}>
@@ -249,15 +271,17 @@ export function ScanScreen({ submitCode }: Props) {
       {/* checkin-web.md W-C3: in every camera state; a 200 check-in reads it again (W-C11). */}
       <ArrivalsCounter eventId={chosen.id} />
 
-      <div className="scan-camera">
-        <CameraArea camera={camera} videoRef={videoRef} onStart={() => void startCamera()} />
-        {/* DA19: inside the camera card, under the preview; scanning goes on. */}
-        {notTicket && (
-          <p role="alert" className="error-box">
-            This is not a ticket code.
-          </p>
-        )}
-      </div>
+      {!checkedIn && (
+        <div className="scan-camera">
+          <CameraArea camera={camera} videoRef={videoRef} onStart={() => void startCamera()} />
+          {/* DA19: inside the camera card, under the preview; scanning goes on. */}
+          {notTicket && (
+            <p role="alert" className="error-box">
+              This is not a ticket code.
+            </p>
+          )}
+        </div>
+      )}
 
       {(check.kind === "result" || check.kind === "failed") && (
         <ResultCard
@@ -270,16 +294,22 @@ export function ScanScreen({ submitCode }: Props) {
         />
       )}
 
-      <ManualForm
-        typed={typed}
-        onType={setTyped}
-        error={fieldError}
-        pending={pending}
-        inputRef={inputRef}
-        onSubmit={onManual}
-      />
+      {!checkedIn && (
+        <ManualForm
+          typed={typed}
+          onType={setTyped}
+          error={fieldError}
+          pending={pending}
+          inputRef={inputRef}
+          onSubmit={onManual}
+        />
+      )}
     </Shell>
   );
+}
+
+function isCheckedIn(result: CheckInResult): boolean {
+  return result.outcome === "checked_in" || result.outcome === "already_checked_in";
 }
 
 function Shell({ backTo, children }: { backTo: string; children: ReactNode }) {
