@@ -285,7 +285,7 @@ export function ScanScreen({ submitCode }: Props) {
 function Shell({ backTo, children }: { backTo: string; children: ReactNode }) {
   return (
     <section className="scan-page" data-role="organizer">
-      <BackLink to={backTo} name="registrations" />
+      <BackLink to={backTo} name="Registrations" />
       <h1>Check in</h1>
       {children}
     </section>

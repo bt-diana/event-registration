@@ -17,7 +17,7 @@ export function TicketPage({ eventId }: { eventId: string }) {
   const event = usePublicEvent(eventId);
   const mine = useMyRegistration(eventId, true);
   // DA41, DA42 (question 18): the event of the URL, so the error state has it too.
-  const back = <BackLink to={`/event/${encodeURIComponent(eventId)}`} name="event" />;
+  const back = <BackLink to={`/event/${encodeURIComponent(eventId)}`} name="Event" />;
 
   // Loading until both have answered; a 401/403 re-checks me and the guard decides (W-R13).
   if (
@@ -82,7 +82,7 @@ export function TicketPage({ eventId }: { eventId: string }) {
       <p className="event-status">
         <Badge {...ticketLabel(mine.data).badge} />
       </p>
-      {/* The event name is plain text (user request, D72); "Back to event" leads there. */}
+      {/* The event name is plain text (user request, D72); the "Event" back link leads there. */}
       <p className="ticket-event">{event.data.title}</p>
       <dl className="details">
         <Detail label="Starts">{formatDateTime(event.data.starts_at)}</Detail>

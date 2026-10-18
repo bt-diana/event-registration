@@ -31,7 +31,7 @@ export function PublicEventView({ id }: { id: string }) {
   return (
     <section className="card card-event" data-role="user">
       {/* design-alignment.md DA38 (question 16): back to the public list. */}
-      <BackLink to="/" name="events" />
+      <BackLink to="/" name="Events" />
       <p className="eyebrow">Event</p>
       <h1>{event.title}</h1>
       <p className="event-status">

@@ -42,7 +42,7 @@ function OrganizerEventView({ event }: { event: OrganizerEvent }) {
   const link = `/event/${event.id}`;
   return (
     <section className="card card-event" data-role="organizer">
-      <BackLink to="/organizer" name="events" />
+      <BackLink to="/organizer" name="Events" />
       <h1>{event.title}</h1>
       <p className="event-status">
         <EventStatusBadge status={event.status} />

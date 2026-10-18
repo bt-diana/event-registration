@@ -166,7 +166,7 @@ export function CreateEventForm() {
   return (
     <section className="card card-form" data-role="organizer">
       {/* design-alignment.md DA36: the back link is above the h1. */}
-      <BackLink to="/organizer" name="events" />
+      <BackLink to="/organizer" name="Events" />
       <h1 className="form-title">Create event</h1>
 
       {formError && (

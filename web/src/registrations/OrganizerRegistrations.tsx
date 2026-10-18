@@ -48,7 +48,7 @@ function LoadError({ onRetry }: { onRetry: () => void }) {
 function Message({ children }: { children: ReactNode }) {
   return (
     <section className="card card-message" data-role="organizer">
-      <BackLink to={EVENTS_LIST} name="events" />
+      <BackLink to={EVENTS_LIST} name="Events" />
       <h1>Registrations</h1>
       {children}
     </section>
@@ -90,7 +90,7 @@ export function OrganizerRegistrations() {
 
   return (
     <section className="list-page registrations-page" data-role="organizer">
-      <BackLink to={EVENTS_LIST} name="events" />
+      <BackLink to={EVENTS_LIST} name="Events" />
       <div className="list-head">
         <h1>Registrations</h1>
         {/* design-alignment.md DA13: the chosen event's page, no request of its own. */}
