@@ -32,7 +32,7 @@ Feature spec made from `SPEC_TEMPLATE.md` (sections 1-5). It adds one read route
 - The shape is `{ capacity, registered, arrived }`, decided by the user (D48, then D49): no `event_id`. `registered` is the denominator the old counter used.
 - Same ownership rule as the organizer list: the organizer id is from the cookie, never from the request; a foreign or unknown event looks the same (`DATABASE.md` 3.8).
 - `arrived` counts only `registered` tickets with `checked_in_at` set. `waitlisted` people never count (the CHECK in the table also forbids a check-in time on them).
-- The route is a snapshot for polling. A bigger event does not make it slower in the response size (the answer is four numbers); the SQL scans only that event's rows (index on `registrations.event_id`).
+- The route is a snapshot for polling. A bigger event does not make it slower in the response size (the answer is three numbers); the SQL scans only that event's rows (index on `registrations.event_id`).
 - Rows made by tests (waiting, cancelled, wrong `checked_in_at`, other organizers, cancelled and passed events) are inserted by SQL with the helpers in `api/test/db/helpers.ts`.
 
 ## 2. UI decisions
