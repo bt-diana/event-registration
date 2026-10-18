@@ -42,7 +42,7 @@ Both from Google Fonts. Fallback: `system-ui, sans-serif`.
 ## Layout and shape
 
 - Page: header on top, then the content centred, padding `64px 16px`. Only a fluid width, so it works at phone width.
-- Header: white, 1px bottom border, padding `8px 40px`, items wrap. Logged out: Log in, Sign up, For organizers (For attendees on `/organizer` pages). Logged in: name, role, Log out button.
+- Header (`specs/header-responsive.md`, D65): white, 1px bottom border, padding `8px 40px` (`8px 16px` up to 520px), not sticky. The logo links to `/`. Logged out: Log in, Sign up, For organizers (For attendees on `/organizer` pages) in one row. Logged in, three groups in this order: the nav link ("My events" / "My registrations"), the account info (name 15px 400 `text`, one line with an ellipsis, then the role label), Log out (link look). Desktop: one row, a 1px `border` divider 28px high between the nav link and the account info. Up to 520px: rows in the same order, no menu button: the logo; the nav link; the account info left and Log out right. The log-out error is its own row below. Nav link and Log out hover in the role accent.
 - Card: white, 1px border, radius 12px, padding 32px, max width 440px (520px for message pages).
 - Spacing: 20px between fields, 24px between the intro and the form, 8px between label and input groups.
 - Radius: 8px for inputs and buttons, 12px for cards.

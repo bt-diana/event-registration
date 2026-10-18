@@ -19,8 +19,14 @@ function Account({ me }: { me: Me }) {
       <nav aria-label="Main" className="site-nav">
         <Link to={link.to}>{link.text}</Link>
       </nav>
-      <span className="account-name">{me.name}</span>
-      <span className="account-role">{ROLE_NAME[me.role]}</span>
+      {/* Name and role stay together; a name cut by the layout is still readable in title
+          (header-responsive.md HR2, HR3). */}
+      <div className="account-info">
+        <span className="account-name" title={me.name}>
+          {me.name}
+        </span>
+        <span className="account-role">{ROLE_NAME[me.role]}</span>
+      </div>
       <button
         type="button"
         className="button-secondary"

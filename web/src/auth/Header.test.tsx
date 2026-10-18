@@ -728,3 +728,29 @@ describe("HR6: no menu button", () => {
     expect(logoLink().getAttribute("href")).toBe("/");
   });
 });
+
+describe("HR5: logged out: three links in order, no account info", () => {
+  it.each([
+    ["/event/1", "For organizers"],
+    ["/organizer/login", "For attendees"],
+  ])("on %s: Log in, Sign up, %s", async (path, roleSwitch) => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp(path);
+    await meShown("logged out");
+    const nav = header().getByRole("navigation", { name: "Account" });
+    expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "Log in",
+      "Sign up",
+      roleSwitch,
+    ]);
+    expect(nav.children).toHaveLength(3);
+    expect(screen.getByRole("banner").querySelector(".account-info")).toBeNull();
+  });
+
+  it("while me is pending: no account links and no account info", () => {
+    mockFetch({ [ME]: () => deferred<Response>().promise, ...SCREENS });
+    renderApp("/event/1");
+    expect(focusables()).toEqual([LOGO]);
+    expect(screen.getByRole("banner").querySelector(".account-info")).toBeNull();
+  });
+});

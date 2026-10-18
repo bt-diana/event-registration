@@ -96,39 +96,76 @@ body {
   font-size: 15px;
   font-weight: 600;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .site-nav a:hover {
-  color: var(--accent-attendee);
+  color: var(--accent);
   text-decoration: underline;
 }
 
-/* The right part of the header: the account links or Log in nav (header-events-link.md). */
+/* The right part of the header: the logged-in account block or the logged-out Account nav
+   (header-responsive.md). */
 .site-header-end {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
+  min-width: 0;
 }
 
+/* Logged in: the nav link, the account info (name and role), Log out, then the
+   log-out error on its own row (header-responsive.md HR1, HR4). min-width: 0 down
+   the chain lets a long name shrink to an ellipsis instead of widening the page (HR8). */
 .site-account {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 16px;
+  min-width: 0;
 }
 
+.site-account .site-nav {
+  flex-shrink: 0;
+}
+
+.account-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Desktop divider between the nav and the account info: decorative, no element (HR9). */
+.site-nav + .account-info {
+  min-height: 28px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+
+/* Who I am, not a link: weight 400, one line, cut with an ellipsis; title has the full name (HR3, HR10). */
 .account-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .account-role {
+  flex-shrink: 0;
   color: var(--accent);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.site-account .field-error {
+  flex-basis: 100%;
 }
 
 /* Page and card */
@@ -923,9 +960,40 @@ a:hover {
     margin-top: 4px;
   }
 
-  /* Phone: the right group drops below the logo; the account wraps inside it. */
+  /* Phone (header-responsive.md HR7): rows in the DOM order, no CSS order. (1) the logo;
+     (2) the nav link(s); (3) the account info on the left, Log out on the right; (4) the
+     log-out error. */
+  .site-header {
+    padding: 8px 16px;
+  }
+
   .site-header-end {
     flex-basis: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .site-account {
+    gap: 0 16px;
+  }
+
+  .site-account .site-nav {
+    flex-basis: 100%;
+  }
+
+  .site-account .account-info {
+    flex: 1 1 0;
+  }
+
+  .site-nav + .account-info {
+    min-height: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .site-account button.button-secondary {
+    margin-left: auto;
   }
 }
 
