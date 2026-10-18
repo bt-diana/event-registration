@@ -487,7 +487,6 @@ describe("ER81: check-in on an event cancelled through the route", () => {
 });
 
 describe("ER82, ER83: routes of M4, not built yet", () => {
-  it.todo("ER82: capacity change on a cancelled event answers 409 event_cancelled, on a passed one event_passed");
   it.todo("ER83: cancelling one's own registration on a cancelled event is a 200 no-op, nobody is promoted");
 });
 
