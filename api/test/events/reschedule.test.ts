@@ -653,9 +653,26 @@ describe("ER84: reads after a reschedule", () => {
     expect(listAfter.body).toEqual(listBefore.body);
   });
 
-  // The per-registration emails route of ER48-ER60 is not built yet (ROADMAP
-  // M6 line); its part of ER84 waits for it.
-  it.todo("GET /events/:id/registrations/:registrationId/emails shows the reschedule row (ER48 route not built)");
+  it("GET /events/:id/registrations/:registrationId/emails shows the reschedule row (ER48)", async () => {
+    const { eventId, registered, waiting, cancelled, checkedIn } = await mixedEvent();
+    asEvent(await reschedule(api, eventId, { starts_at: B.toISOString() }, owner.cookie));
+
+    const emailsOf = async (p: Person) => {
+      const reply = await call(api, "GET", `/events/${eventId}/registrations/${p.registrationId}/emails`, {
+        cookie: owner.cookie,
+      });
+      expect(reply.status, reply.text).toBe(200);
+      return (reply.body as { emails: { kind: string; status: string; to_email: string; subject: string }[] }).emails;
+    };
+    for (const p of [registered[0], registered[1], waiting]) {
+      expect(await emailsOf(p)).toEqual([
+        expect.objectContaining({ kind: "reschedule", status: "pending", to_email: p.email, subject: "Rescheduled: Spring Meetup" }),
+      ]);
+    }
+    for (const p of [checkedIn, cancelled]) {
+      expect((await emailsOf(p)).map((e) => e.kind)).not.toContain("reschedule");
+    }
+  });
 });
 
 describe("ER86: shapes", () => {

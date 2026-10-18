@@ -528,8 +528,27 @@ describe("ER85: reads after a cancel", () => {
     expect(arrivals.body).toEqual({ capacity: 10, registered: 1, arrived: 1 });
   });
 
-  // The per-registration emails route of ER48-ER60 is not built yet.
-  it.todo("GET /events/:id/registrations/:registrationId/emails shows the event_cancelled row (ER48 route not built)");
+  it("GET /events/:id/registrations/:registrationId/emails shows the event_cancelled row (ER48, ER55)", async () => {
+    const { eventId, registered, waiting, cancelled, checkedIn } = await mixedEvent();
+    asEvent(await cancelEvent(api, eventId, owner.cookie));
+
+    const emailsOf = async (p: Person) => {
+      const reply = await call(api, "GET", `/events/${eventId}/registrations/${p.registrationId}/emails`, {
+        cookie: owner.cookie,
+      });
+      expect(reply.status, reply.text).toBe(200);
+      return (reply.body as { emails: { kind: string; status: string; to_email: string; subject: string }[] }).emails;
+    };
+    // The cancelled event still answers 200, also for the now cancelled registrations.
+    for (const p of [registered[0], registered[1], waiting]) {
+      expect(await emailsOf(p)).toEqual([
+        expect.objectContaining({ kind: "event_cancelled", status: "pending", to_email: p.email, subject: "Cancelled: Spring Meetup" }),
+      ]);
+    }
+    for (const p of [checkedIn, cancelled]) {
+      expect((await emailsOf(p)).map((e) => e.kind)).not.toContain("event_cancelled");
+    }
+  });
 });
 
 describe("ER86: shapes", () => {
