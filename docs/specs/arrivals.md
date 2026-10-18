@@ -1,4 +1,4 @@
-# Spec: Arrivals route (registered and arrived counts, organizer, API)
+# Spec: Arrivals route (capacity, registered and arrived counts, organizer, API)
 
 Feature spec made from `SPEC_TEMPLATE.md` (sections 1-5). It adds one read route. No new table and no migration: it reads `events.capacity`, `registrations.status` and `registrations.checked_in_at` (`DATABASE.md` section 1, rules 3.3, 3.8 and 3.10), which this file does not change. Login, guards and the error format come from `auth.md` (A13-A15); ownership and 404 rules from `events.md` and `checkin.md` (C17); check-in from `checkin.md` (C3-C13). Behaviours B6 and B7 of the template. Decision D47 (session `18-10-1931_arrivals-endpoint-spec`) reverses D45 and asks for this route. Ids are AR1, AR2, ...
 
@@ -11,12 +11,12 @@ Feature spec made from `SPEC_TEMPLATE.md` (sections 1-5). It adds one read route
 | # | Behaviour | Test first? |
 |---|---|---|
 | AR1 | Guards on `GET /events/:id/arrivals`: no valid login answers 401 `not_logged_in`; an attendee cookie answers 403 `wrong_role` (`requireOrganizer`). The guard runs first, so even a malformed id is 401 for an anonymous caller. No query runs. | yes |
-| AR2 | For an event of the logged-in organizer the answer is 200 with exactly two keys: `registered` and `arrived`. All numbers are JSON numbers (the SQL `count` is bigint and is cast). It contains no `event_id`, no `capacity`, and never the event title, `organizer_id`, any registration, ticket code, name, email or another event's data. The test checks the exact key list. | |
+| AR2 | For an event of the logged-in organizer the answer is 200 with exactly three keys: `capacity`, `registered` and `arrived`. All numbers are JSON numbers (the SQL `count` is bigint and is cast). It contains no `event_id` and never the event title, `organizer_id`, any registration, ticket code, name, email or another event's data. The test checks the exact key list. | |
 | AR3 | `registered` is the number of `registrations` of that event with `status = 'registered'` (taken seats; same number as `registered` in the organizer event shape, `events.md` E10). `waitlisted` and `cancelled` rows are never counted in it. | yes |
 | AR4 | `arrived` is the number of `registered` rows of that event with `checked_in_at` not null. A `waitlisted` or `cancelled` row is never counted, even if a (wrong) `checked_in_at` is set by SQL in the test. | yes |
 | AR5 | `arrived` is never above `registered`. A test with many mixed rows (registered with and without `checked_in_at`, waitlisted, cancelled) checks `arrived <= registered` and the exact values. | yes |
-| AR6 | (Dropped by the user: the answer has no `capacity`.) | |
-| AR7 | An event with nobody gives `{ registered: 0, arrived: 0 }` (200, not 404). | |
+| AR6 | `capacity` is the stored `events.capacity`. It is not reduced by taken seats and not clamped to `registered`: if `registered` is above `capacity` (a lowered capacity, M4), both numbers are returned as stored. | |
+| AR7 | An event with nobody gives `registered: 0, arrived: 0` and its real `capacity` (200, not 404). | |
 | AR8 | An event that is unknown, not a uuid, or owned by another organizer answers 404 `{ "error": "not_found" }`, the same body for all three. A malformed id never reaches the database. The test checks that unknown and foreign answers are equal and that nothing about the foreign event leaks. | yes |
 | AR9 | A cancelled or passed event of the organizer still answers 200 with the real numbers (same as `checkin.md` C17 and `events.md` E10, E20). | |
 | AR10 | Consistency with check-in: the counts use the same rules as `POST /checkin` (a check-in only changes a `registered` row of an `active` event, C3, C13). After a `POST /checkin` answered 200, the next `GET .../arrivals` shows `arrived` one higher and `registered` unchanged. After a refused check-in (any 409, 404, 400, C4-C9) the numbers are unchanged. Checking in the same ticket again never raises `arrived`. | yes |
@@ -29,7 +29,7 @@ Feature spec made from `SPEC_TEMPLATE.md` (sections 1-5). It adds one read route
 **Not in this spec.** The web change that reads this route (follow-up to `checkin-web.md`, see below), live updates by server-sent events (M8), a list of who arrived or who is missing, the waiting-list size, a public or attendee version of the numbers, paging, a per-day history, changing capacity (B10, M4), export.
 
 **Assumptions.** Change any of these first in this file.
-- The shape is `{ registered, arrived }`, decided by the user (D48): no `capacity`, no `event_id`. `registered` is the denominator the old counter used.
+- The shape is `{ capacity, registered, arrived }`, decided by the user (D48, then D49): no `event_id`. `registered` is the denominator the old counter used.
 - Same ownership rule as the organizer list: the organizer id is from the cookie, never from the request; a foreign or unknown event looks the same (`DATABASE.md` 3.8).
 - `arrived` counts only `registered` tickets with `checked_in_at` set. `waitlisted` people never count (the CHECK in the table also forbids a check-in time on them).
 - The route is a snapshot for polling. A bigger event does not make it slower in the response size (the answer is four numbers); the SQL scans only that event's rows (index on `registrations.event_id`).
@@ -45,7 +45,8 @@ No screen in this spec (API only). The change of the counter on the scan screen 
 - **Router:** the route is added in the existing `checkinRouter(pool)` (`api/src/checkin/routes.ts`), next to `GET /events/:id/registrations`, with `requireOrganizer`. The path `/events/:id/arrivals` collides with no other route. It is declared before the app's 404 handler like the others.
 - **One query, no lock (AR3-AR5, AR7, AR12).** The ownership check and the counts are the same statement, so a missing row is the 404 and an owned event with no registrations still returns one row:
   ```sql
-  SELECT count(r.id) FILTER (WHERE r.status = 'registered')::int AS registered,
+  SELECT e.capacity,
+         count(r.id) FILTER (WHERE r.status = 'registered')::int AS registered,
          count(r.id) FILTER (WHERE r.status = 'registered' AND r.checked_in_at IS NOT NULL)::int AS arrived
     FROM events e
     LEFT JOIN registrations r ON r.event_id = e.id
@@ -56,12 +57,12 @@ No screen in this spec (API only). The change of the counter on the scan screen 
 - **Consistency with check-in (AR10, AR11).** Check-in is one conditional UPDATE that sets `checked_in_at` only on a `registered` row (`checkin.md` section 3). The route reads the committed state under READ COMMITTED. Once the check-in answered 200 its row is committed, so a read that starts later sees it. Five parallel check-ins of one ticket change one row, so the count rises by exactly one. Nothing in the route can count a row the check-in would refuse.
 - **Header:** `Cache-Control: no-store` is set before the id check, so every answer after the guard has it (AR13), as in the list route.
 - **Route code:** `getArrivals(pool, organizerId, eventId)` in `api/src/checkin/service.ts` returns `{ kind: "not_found" } | { kind: "ok", row }`; the route maps it to the shape. uuid regex reused from the list route.
-- **Shape:** `{ registered, arrived }`, two JSON numbers.
+- **Shape:** `{ capacity, registered, arrived }`, three JSON numbers.
 - **API:**
 
 | Route | Guard | Body | Success | Errors |
 |---|---|---|---|---|
-| `GET /events/:id/arrivals` | `requireOrganizer` | none | 200 `{ registered, arrived }` | 401 `not_logged_in`, 403 `wrong_role`, 404 `not_found` (unknown, malformed or foreign event) |
+| `GET /events/:id/arrivals` | `requireOrganizer` | none | 200 `{ capacity, registered, arrived }` | 401 `not_logged_in`, 403 `wrong_role`, 404 `not_found` (unknown, malformed or foreign event) |
 
 ## 4. Files to touch
 
@@ -103,9 +104,9 @@ Tests use the existing style (`createApp().listen(0)` and `fetch`, helpers in `a
 
 ## 6. Open questions (each with a recommended answer)
 
-1. **Response shape. Decided by the user (D48): `{ registered, arrived }`.** Earlier options were: `{ event_id, capacity, arrived }` only, or add `registered`. **Recommended: `{ event_id, capacity, registered, arrived }`.** `registered` is free in the same query, keeps the old "x of y registered" text possible, and stays equal to `registered` in the organizer event shape (E10). Waitlisted people are in neither number.
-2. **Counter text (the capacity is no longer in the answer, so only the first option below is possible).** Today: "Arrived: x / y registered" (`checkin-web.md` W-C2). With the capacity: "Arrived: x / capacity", or show both ("Arrived: 12 / 20 registered (capacity 25)"). **Recommended: keep "Arrived: {arrived} / {registered} registered" and add the capacity as a small second line only if you want it** (the user asked for the capacity, so decide in `checkin-web.md`). Using capacity as the only denominator reads "12 / 25" even when only 20 are registered and "Everyone has arrived." could then never show. Not decided here.
+1. **Response shape. Decided by the user (D49): `{ capacity, registered, arrived }`** (D48 had dropped the capacity). Earlier options were: `{ event_id, capacity, arrived }` only, or add `registered`. **Recommended: `{ event_id, capacity, registered, arrived }`.** `registered` is free in the same query, keeps the old "x of y registered" text possible, and stays equal to `registered` in the organizer event shape (E10). Waitlisted people are in neither number.
+2. **Counter text.** Today: "Arrived: x / y registered" (`checkin-web.md` W-C2). With the capacity: "Arrived: x / capacity", or show both ("Arrived: 12 / 20 registered (capacity 25)"). **Recommended: keep "Arrived: {arrived} / {registered} registered" and add the capacity as a small second line only if you want it** (the user asked for the capacity, so decide in `checkin-web.md`). Using capacity as the only denominator reads "12 / 25" even when only 20 are registered and "Everyone has arrived." could then never show. Not decided here.
 3. **Should the list route keep working for the counter?** **Recommended: yes, keep it unchanged** (the table needs it) and do not remove the "Arrival" column.
 4. **Event page `/event/:id`.** It already shows `registered` and `seats_left` (E10). **Recommended: do not add the arrivals counter there** (as `checkin-web.md` question 1).
-5. **`registered` above `capacity`. Void now (no capacity in the answer).** Possible after a capacity change in M4. **Recommended: return both as stored, no clamping (AR6)**; the screen decides how to show it.
+5. **`registered` above `capacity`.** Possible after a capacity change in M4. **Recommended: return both as stored, no clamping (AR6)**; the screen decides how to show it.
 6. **404 header.** `no-store` on the 404 as well (AR13). **Recommended: yes**, so a cached 404 never hides a later event; cheap and the same as the list.

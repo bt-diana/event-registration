@@ -28,3 +28,16 @@ Started 18-10 19:31 +06.
 
 ### D48: arrivals answer is `{ registered, arrived }`
 19:33:58 +0600. Two numbers only; the capacity is not returned. Reason: the user asked for exactly this object.
+
+## Step 3: put the capacity back
+
+**Prompt** (19:45 +06, text cleaned)
+
+> actually, let's also return the capacity
+
+**What Claude did.** Changed `docs/specs/arrivals.md` back: the answer is `{ capacity, registered, arrived }` (no `event_id`). AR2, AR6, AR7, the SQL, the shape line, the route table and open questions 1, 2 and 5 follow. Updated the `ROADMAP.md` line. Used Bash.
+
+**Decision.**
+
+### D49: arrivals answer is `{ capacity, registered, arrived }`
+19:34:27 +0600. Replaces the shape of D48: the capacity is returned again. Reason: the user asked for it.
