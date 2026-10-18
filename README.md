@@ -35,14 +35,13 @@ The backend and the frontend are separate apps. They talk over HTTP, and the liv
 ### Prerequisites
 
 - Node.js 20 or newer
-- Docker (for PostgreSQL)
-- Free ports: 3000 (API), 5173 (web) and 5434 (database)
+- PostgreSQL 18, installed and running
+- Free ports: 3000 (API), 5173 (web) and 5433 (database)
 
 ### Run locally
 
 ```bash
-# 1. Start PostgreSQL
-docker compose up -d
+# 1. Create the database once: createdb -p 5433 -U postgres events
 
 # 2. Backend
 cd api
@@ -77,7 +76,6 @@ Planned. `[TODO: update after the build]`
 ```
 api/                 backend (Express, TypeScript)
 web/                 frontend (React, Vite, TypeScript)
-docker-compose.yml   PostgreSQL
 sessions/            the work log: one markdown file per session
 .claude/             agent rules (CLAUDE.md), agents and skills
 docs/

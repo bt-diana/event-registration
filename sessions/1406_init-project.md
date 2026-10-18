@@ -69,3 +69,19 @@ The task needs a linter and the spec names none. ESLint with typescript-eslint i
 **Time:** 14:23:37 +0600
 
 Postgres 18 is installed here and is the latest version, so the container uses it instead of 16. Port 5434 is free; 5432 and 5433 belong to the Windows services.
+
+## Step 6: no Docker, Windows Postgres 18
+
+**Prompt** (interrupted the Docker setup)
+
+> Use the Windows Postgres 18 with no docker
+
+**What Claude did.** I had read the previous prompt as "Postgres 18 in a container". Removed `docker-compose.yml` and changed `SPEC.md`, `README.md` and `.claude/CLAUDE.md` to use the Windows service on port 5433. Used Bash.
+
+**Decision.**
+
+### D19: Windows PostgreSQL 18, no Docker
+
+**Time:** 14:23:55 +0600
+
+Postgres 18 is already installed and running here, so Docker only adds a second database to keep running. This replaces D18 (container on port 5434) and the spec's "PostgreSQL 16 with `docker compose`".
