@@ -105,3 +105,17 @@ Started 18-10 20:44 +06.
 **What Claude did.** Delegated to the `code-writer` agent: tests `ab197e5` (38 failed first), code `259e9f0` (logo `to="/"` with `aria-current`, button and its CSS removed, Log out keeps the link look; one stale assertion in `PublicEventsList.test.tsx` fixed). Web tests (633 passed), typecheck and lint pass. Not done: HB10 (phone layout by hand), canvas boards, `docs/brand.md`. Used Agent, Bash.
 
 **Decision.** None.
+
+## Step 9: "All events" on desktop too
+
+**Prompt** (21:55 +06, text cleaned)
+
+> we have that button back for the mobile
+> return it for the desktop as well
+
+**What Claude did.** Found that another process had added the "All events" link to the phone menu (D68, `header-responsive.md` HR27). Read it as: show that link on desktop too. The `spec-writer` agent changed `header-responsive.md` (HR1, HR19, HR27, HR28, sections 2-7) and `header-events-link.md` (HB1, HB4, HB9, assumptions). Open: the built phone drawer slides down from the top and the spec says a right-side drawer (not caused by this change, not touched); the desktop boards are not drawn. Used Bash, Agent.
+
+**Decision.**
+
+### D73: the "All events" link is shown on desktop too
+21:55:44 +0600. Above 640 px it is the first item of the right group of the header row, with the nav link look; the logo still links to `/`. It is absent while `me` loads, as the rest of the menu. Reason: the user asked to bring the button back on desktop.
