@@ -113,12 +113,13 @@ describe("W-E22: organizer look on every screen", () => {
     document.head.querySelectorAll('link[rel="icon"]').forEach((link) => link.remove());
   });
 
-  it.each(["/", "/event/1"])("organizer on %s: logo goes to /organizer with the organizer icon", async (path) => {
+  // D64 replaces D62: the organizer logo opens / like for everyone.
+  it.each(["/", "/event/1"])("organizer on %s: logo goes to / with the organizer icon", async (path) => {
     mockFetch({ "GET /auth/me": () => json(200, OLGA), ...EVENT_ROUTES });
     renderApp(path);
     expect(await header().findByText("Olga")).toBeTruthy();
     expect(header().getByText("Organizer")).toBeTruthy();
-    expect(logo().getAttribute("href")).toBe("/organizer");
+    expect(logo().getAttribute("href")).toBe("/");
     expect(logoIcon()).toBe("/icon-organizer.svg");
     expect(tabIcon()).toBe("/icon-organizer.svg");
   });
@@ -209,8 +210,10 @@ describe("W-A9: log out", () => {
   });
 });
 
-// Tests first (header-events-link.md): HB2, HB3, HB5. Then HB1, HB4, HB6, HB7, HB9.
-const WATCH = "Watch all events";
+// Tests first (header-events-link.md, D64): HB2, HB3, HB4, HB5. Then HB1, HB6, HB7, HB8, HB9.
+const LOGO = "Event Registration";
+// D64 removed the button: this text must not be anywhere in the app (HB4).
+const REMOVED = "Watch all events";
 const ME = "GET /auth/me";
 const LIST = "GET /public/events";
 const loggedOut = () => json(401, { error: "not_logged_in" });
@@ -231,8 +234,8 @@ const STATES: [State, () => Response][] = [
   ["organizer", () => json(200, OLGA)],
 ];
 
-function watch(): HTMLElement {
-  return header().getByRole("link", { name: WATCH });
+function logoLink(): HTMLElement {
+  return header().getByRole("link", { name: LOGO });
 }
 
 function currentLocation(): string | null {
@@ -246,23 +249,33 @@ async function meShown(state: State) {
   else await header().findByRole("link", { name: "Log in" });
 }
 
-describe("HB2: the link always opens /", () => {
+describe("HB2: the logo always opens /", () => {
   it.each(STATES)("%s: href is / on / and on /event/1", async (state, me) => {
     for (const path of ["/", "/event/1"]) {
       mockFetch({ [ME]: me, ...SCREENS });
       const view = renderApp(path);
       await meShown(state);
-      expect(watch().getAttribute("href")).toBe("/");
+      expect(logoLink().getAttribute("href")).toBe("/");
       view.unmount();
     }
   });
+
+  it.each(["/organizer", "/organizer/events/new", "/registrations"])(
+    "organizer on %s: href is /, not /organizer",
+    async (path) => {
+      mockFetch({ [ME]: () => json(200, OLGA), ...SCREENS });
+      renderApp(path);
+      await meShown("organizer");
+      expect(logoLink().getAttribute("href")).toBe("/");
+    },
+  );
 });
 
 describe("HB3: shown at once, also while me is pending", () => {
-  it("is shown while me is pending, before any account link", () => {
+  it("is shown with href / while me is pending, before any account link", () => {
     mockFetch({ [ME]: () => deferred<Response>().promise, ...SCREENS });
     renderApp("/event/1");
-    expect(watch().getAttribute("href")).toBe("/");
+    expect(logoLink().getAttribute("href")).toBe("/");
     expect(header().queryByRole("link", { name: "Log in" })).toBeNull();
     expect(header().queryByRole("button", { name: "Log out" })).toBeNull();
   });
@@ -273,11 +286,11 @@ describe("HB3: shown at once, also while me is pending", () => {
     ["401", (me) => me.resolve(loggedOut())],
     ["5xx", (me) => me.resolve(json(500, { error: "internal" }))],
     ["network error", (me) => me.reject(new TypeError("Failed to fetch"))],
-  ])("stays the same element after me answers %s", async (_case, settle) => {
+  ])("stays the same element with href / after me answers %s", async (_case, settle) => {
     const me = deferred<Response>();
     mockFetch({ [ME]: () => me.promise, ...SCREENS });
     renderApp("/event/1");
-    const before = watch();
+    const before = logoLink();
     await act(async () => {
       settle(me);
     });
@@ -287,80 +300,13 @@ describe("HB3: shown at once, also while me is pending", () => {
           header().queryByRole("button", { name: "Log out" }),
       ).toBeTruthy(),
     );
-    expect(watch()).toBe(before);
-    expect(watch().getAttribute("href")).toBe("/");
-    expect(watch().getAttribute("aria-current")).toBeNull();
-    expect(watch().textContent).toBe(WATCH);
+    expect(logoLink()).toBe(before);
+    expect(logoLink().getAttribute("href")).toBe("/");
+    expect(logoLink().getAttribute("aria-current")).toBeNull();
   });
 });
 
-describe("HB5: aria-current on / only (exact match)", () => {
-  it.each(STATES)("%s on /: aria-current is page", async (state, me) => {
-    mockFetch({ [ME]: me, ...SCREENS });
-    renderApp("/");
-    await meShown(state);
-    expect(watch().getAttribute("aria-current")).toBe("page");
-  });
-
-  it("on / while me is pending: aria-current is page", () => {
-    mockFetch({ [ME]: () => deferred<Response>().promise, ...SCREENS });
-    renderApp("/");
-    expect(watch().getAttribute("aria-current")).toBe("page");
-  });
-
-  it("ignores the query string and the hash", async () => {
-    mockFetch({ [ME]: loggedOut, ...SCREENS });
-    renderApp("/?from=mail#top");
-    await meShown("logged out");
-    expect(watch().getAttribute("aria-current")).toBe("page");
-  });
-
-  it.each(["/event/1", "/organizer", "/organizer/events/new", "/registrations"])(
-    "organizer on %s: no aria-current",
-    async (path) => {
-      mockFetch({ [ME]: () => json(200, OLGA), ...SCREENS });
-      renderApp(path);
-      await meShown("organizer");
-      expect(watch().getAttribute("aria-current")).toBeNull();
-    },
-  );
-
-  it.each(["/event/1", "/login", "/signup", "/organizer/login"])(
-    "logged out on %s: no aria-current",
-    async (path) => {
-      mockFetch({ [ME]: loggedOut, ...SCREENS });
-      renderApp(path);
-      await meShown("logged out");
-      expect(watch().getAttribute("aria-current")).toBeNull();
-    },
-  );
-});
-
-describe("HB1: a plain link in the banner", () => {
-  it("is an <a> with the exact text, outside the nav landmarks, and makes no request", async () => {
-    const fetch = mockFetch({ [ME]: loggedOut });
-    renderApp("/login");
-    await meShown("logged out");
-    const link = watch();
-    expect(link.tagName).toBe("A");
-    expect(link.textContent).toBe(WATCH);
-    expect(link.closest("header")).toBe(screen.getByRole("banner"));
-    expect(link.closest("nav")).toBeNull();
-    expect(header().queryByRole("button", { name: WATCH })).toBeNull();
-    expect(fetch.mock.calls).toHaveLength(1);
-    expect(callsTo(fetch, ME)).toBe(1);
-  });
-
-  it("is outside the Main nav when logged in", async () => {
-    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
-    renderApp("/event/1");
-    await meShown("attendee");
-    expect(watch().closest("nav")).toBeNull();
-    expect(header().getByRole("navigation", { name: "Main" })).toBeTruthy();
-  });
-});
-
-describe("HB4: one link in every state and on every route", () => {
+describe("HB4: no Watch all events anywhere", () => {
   const LOGGED_OUT_ROUTES = [
     "/",
     "/login",
@@ -371,17 +317,25 @@ describe("HB4: one link in every state and on every route", () => {
   ];
   const LOGGED_IN_ROUTES = ["/", "/event/1", "/registrations", "/registrations/me"];
 
-  function expectOneWatchLink() {
-    expect(header().getAllByRole("link", { name: WATCH })).toHaveLength(1);
-    expect(screen.getAllByRole("link", { name: WATCH })).toHaveLength(1);
-    expect(watch().getAttribute("href")).toBe("/");
+  function expectNoRemovedText() {
+    expect(screen.queryByRole("link", { name: REMOVED })).toBeNull();
+    expect(screen.queryByRole("button", { name: REMOVED })).toBeNull();
+    expect(screen.queryByText(REMOVED)).toBeNull();
+    expect(document.querySelector(`[aria-label="${REMOVED}"], [title="${REMOVED}"]`)).toBeNull();
+    expect(document.body.innerHTML).not.toContain(REMOVED);
   }
+
+  it("while me is pending", () => {
+    mockFetch({ [ME]: () => deferred<Response>().promise, ...SCREENS });
+    renderApp("/");
+    expectNoRemovedText();
+  });
 
   it.each(LOGGED_OUT_ROUTES)("logged out on %s", async (path) => {
     mockFetch({ [ME]: loggedOut, ...SCREENS });
     renderApp(path);
     await meShown("logged out");
-    expectOneWatchLink();
+    expectNoRemovedText();
   });
 
   it.each(
@@ -394,20 +348,87 @@ describe("HB4: one link in every state and on every route", () => {
     mockFetch({ [ME]: () => json(200, me), ...SCREENS });
     renderApp(path);
     await meShown(state);
-    expectOneWatchLink();
+    expectNoRemovedText();
+  });
+
+  it.each(["/organizer", "/organizer/events/new"])("organizer on %s", async (path) => {
+    mockFetch({ [ME]: () => json(200, OLGA), ...SCREENS });
+    renderApp(path);
+    await meShown("organizer");
+    expectNoRemovedText();
   });
 });
 
-describe("HB6: clicking it opens /", () => {
-  it.each(STATES)("%s from /event/1: goes to /, me is not refetched", async (state, me) => {
+describe("HB5: logo aria-current on / only (exact match)", () => {
+  it.each(STATES)("%s on /: aria-current is page", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/");
+    await meShown(state);
+    expect(logoLink().getAttribute("aria-current")).toBe("page");
+  });
+
+  it("on / while me is pending: aria-current is page", () => {
+    mockFetch({ [ME]: () => deferred<Response>().promise, ...SCREENS });
+    renderApp("/");
+    expect(logoLink().getAttribute("aria-current")).toBe("page");
+  });
+
+  it("ignores the query string and the hash", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/?from=mail#top");
+    await meShown("logged out");
+    expect(logoLink().getAttribute("aria-current")).toBe("page");
+  });
+
+  it.each(["/event/1", "/organizer", "/organizer/events/new", "/registrations"])(
+    "organizer on %s: no aria-current",
+    async (path) => {
+      mockFetch({ [ME]: () => json(200, OLGA), ...SCREENS });
+      renderApp(path);
+      await meShown("organizer");
+      expect(logoLink().getAttribute("aria-current")).toBeNull();
+    },
+  );
+
+  it.each(["/event/1", "/login", "/signup", "/organizer/login"])(
+    "logged out on %s: no aria-current",
+    async (path) => {
+      mockFetch({ [ME]: loggedOut, ...SCREENS });
+      renderApp(path);
+      await meShown("logged out");
+      expect(logoLink().getAttribute("aria-current")).toBeNull();
+    },
+  );
+});
+
+describe("HB1: one logo link in the banner", () => {
+  it("is one <a> named by its text, the icon has empty alt, and it makes no request", async () => {
+    const fetch = mockFetch({ [ME]: loggedOut });
+    renderApp("/login");
+    await meShown("logged out");
+    expect(header().getAllByRole("link", { name: LOGO })).toHaveLength(1);
+    const link = logoLink();
+    expect(link.tagName).toBe("A");
+    expect(link.textContent).toBe(LOGO);
+    expect(link.hasAttribute("aria-label")).toBe(false);
+    expect(link.querySelector("img")?.getAttribute("alt")).toBe("");
+    expect(link.closest("header")).toBe(screen.getByRole("banner"));
+    expect(header().queryByRole("button", { name: LOGO })).toBeNull();
+    expect(fetch.mock.calls).toHaveLength(1);
+    expect(callsTo(fetch, ME)).toBe(1);
+  });
+});
+
+describe("HB6: clicking the logo opens /", () => {
+  it.each(STATES)("%s from /event/1: goes to / and stays, me is not refetched", async (state, me) => {
     const fetch = mockFetch({ [ME]: me, ...SCREENS });
     renderApp("/event/1");
     await meShown(state);
-    fireEvent.click(watch());
+    fireEvent.click(logoLink());
     await waitFor(() => expect(currentLocation()).toBe("/"));
     expect(await screen.findByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
     expect(currentLocation()).toBe("/");
-    expect(watch().getAttribute("aria-current")).toBe("page");
+    expect(logoLink().getAttribute("aria-current")).toBe("page");
     expect(callsTo(fetch, ME)).toBe(1);
   });
 
@@ -416,7 +437,7 @@ describe("HB6: clicking it opens /", () => {
     renderApp("/");
     expect(await screen.findByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
     const calls = fetch.mock.calls.length;
-    fireEvent.click(watch());
+    fireEvent.click(logoLink());
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
@@ -427,7 +448,7 @@ describe("HB6: clicking it opens /", () => {
 });
 
 describe("HB7: log out, log in and the organizer list", () => {
-  it("attendee log out: the same link before and after", async () => {
+  it("attendee log out: the same logo before and after", async () => {
     mockFetch({
       [ME]: () => json(200, ANN),
       "POST /auth/users/logout": () => json(204),
@@ -435,44 +456,74 @@ describe("HB7: log out, log in and the organizer list", () => {
     });
     renderApp("/event/1");
     await meShown("attendee");
-    const before = watch();
+    const before = logoLink();
     fireEvent.click(header().getByRole("button", { name: "Log out" }));
     expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
-    expect(watch()).toBe(before);
-    expect(watch().getAttribute("href")).toBe("/");
+    expect(logoLink()).toBe(before);
+    expect(logoLink().getAttribute("href")).toBe("/");
   });
 
-  it("attendee log in: the same link before and after", async () => {
+  it("attendee log in: the same logo before and after", async () => {
     mockFetch({ [ME]: loggedOut, "POST /auth/users/login": () => json(200, ANN), ...SCREENS });
     renderApp("/login");
     await meShown("logged out");
-    const before = watch();
+    const before = logoLink();
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "ann@mail.com" } });
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret-pass" } });
     fireEvent.click(screen.getByRole("button", { name: "Log in" }));
     expect(await header().findByText("Ann")).toBeTruthy();
-    expect(watch()).toBe(before);
-    expect(watch().getAttribute("href")).toBe("/");
+    expect(logoLink()).toBe(before);
+    expect(logoLink().getAttribute("href")).toBe("/");
   });
 
-  it("organizer from /organizer: stays on / and sees the list, one list request", async () => {
+  it("organizer from /organizer: stays on /, Loading... then the list, one list request", async () => {
+    const list = deferred<Response>();
     const fetch = mockFetch({
       [ME]: () => json(200, OLGA),
       "GET /events": () => json(200, { events: [] }),
-      [LIST]: () => json(200, { events: [publicListItem()] }),
+      [LIST]: () => list.promise,
     });
     renderApp("/organizer");
     expect(await screen.findByRole("heading", { level: 1, name: "Your events" })).toBeTruthy();
-    fireEvent.click(watch());
+    fireEvent.click(logoLink());
+    await waitFor(() => expect(currentLocation()).toBe("/"));
+    expect(within(screen.getByRole("main")).getByRole("status").textContent).toBe("Loading...");
+    await act(async () => {
+      list.resolve(json(200, { events: [publicListItem()] }));
+    });
     expect(await screen.findByRole("link", { name: "Spring meetup" })).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
     expect(currentLocation()).toBe("/");
-    expect(header().getByRole("link", { name: "Event Registration" }).getAttribute("href")).toBe(
-      "/organizer",
-    );
+    expect(logoLink().getAttribute("href")).toBe("/");
+    expect(logoLink().getAttribute("aria-current")).toBe("page");
     expect(callsTo(fetch, LIST)).toBe(1);
     expect(callsTo(fetch, ME)).toBe(1);
+
+    // "My events" is still in the Main nav and opens /organizer.
+    const myEvents = within(header().getByRole("navigation", { name: "Main" })).getByRole("link", {
+      name: "My events",
+    });
+    expect(myEvents.getAttribute("href")).toBe("/organizer");
+    fireEvent.click(myEvents);
+    await waitFor(() => expect(currentLocation()).toBe("/organizer"));
+    expect(await screen.findByRole("heading", { level: 1, name: "Your events" })).toBeTruthy();
   });
+});
+
+// The icons, the account block, the account links, Log in / Sign up / role switch and Log out
+// are checked by W-E22, W-R14, W-A18 and W-A9 above; this adds the organizer screens.
+describe("HB8: look kept, only the logo href changed", () => {
+  it.each(["/organizer", "/organizer/events/new"])(
+    "organizer on %s: organizer icon, Organizer, href /",
+    async (path) => {
+      mockFetch({ [ME]: () => json(200, OLGA), ...SCREENS });
+      renderApp(path);
+      await meShown("organizer");
+      expect(logoLink().querySelector("img")?.getAttribute("src")).toBe("/icon-organizer.svg");
+      expect(header().getByText("Organizer")).toBeTruthy();
+      expect(logoLink().getAttribute("href")).toBe("/");
+    },
+  );
 });
 
 describe("HB9: accessibility", () => {
@@ -486,24 +537,18 @@ describe("HB9: accessibility", () => {
     });
   }
 
-  it("logged out: Tab order logo, Watch all events, then the account links", async () => {
+  it("logged out: Tab order logo, then the account links", async () => {
     mockFetch({ [ME]: loggedOut, ...SCREENS });
     renderApp("/event/1");
     await meShown("logged out");
-    expect(tabOrder()).toEqual([
-      "Event Registration",
-      WATCH,
-      "Log in",
-      "Sign up",
-      "For organizers",
-    ]);
+    expect(tabOrder()).toEqual([LOGO, "Log in", "Sign up", "For organizers"]);
   });
 
-  // The account link texts belong to W-R14; only their place after the button is checked here.
+  // The account link texts belong to W-R14; only their place after the logo is checked here.
   it.each<[State, () => Response]>([
     ["attendee", () => json(200, ANN)],
     ["organizer", () => json(200, OLGA)],
-  ])("%s: Tab order logo, Watch all events, the account link, then Log out", async (state, me) => {
+  ])("%s: Tab order logo, the account link, then Log out", async (state, me) => {
     mockFetch({ [ME]: me, ...SCREENS });
     renderApp("/event/1");
     await meShown(state);
@@ -511,17 +556,18 @@ describe("HB9: accessibility", () => {
       .getAllByRole("link")
       .map((link) => link.textContent ?? "");
     expect(accountLinks.length).toBeGreaterThan(0);
-    expect(tabOrder()).toEqual(["Event Registration", WATCH, ...accountLinks, "Log out"]);
+    expect(tabOrder()).toEqual([LOGO, ...accountLinks, "Log out"]);
   });
 
-  it("the text is the accessible name and it takes the focus", async () => {
+  // Enter on a focused <a href> follows it natively; jsdom does not, so the click stands in.
+  it("the logo takes the focus and opens / when activated", async () => {
     mockFetch({ [ME]: loggedOut, ...SCREENS });
     renderApp("/event/1");
     await meShown("logged out");
-    const link = watch();
-    expect(link.hasAttribute("aria-label")).toBe(false);
-    expect(link.querySelector("img, svg")).toBeNull();
+    const link = logoLink();
     link.focus();
     expect(document.activeElement).toBe(link);
+    fireEvent.click(link);
+    await waitFor(() => expect(currentLocation()).toBe("/"));
   });
 });
