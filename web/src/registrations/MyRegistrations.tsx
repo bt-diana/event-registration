@@ -2,7 +2,8 @@
 // Without it, or with an empty `event`: the list of all my registrations from
 // GET /me/registrations (registration-web.md W-R18, W-R19, W-R39-W-R41, board S3). Rows
 // in the API order (no sorting, filtering or deduplication), keyed by the registration
-// id, no ticket code. No role eyebrow (RE1), no back link (DA45: a top-level screen).
+// id, no ticket code; each card is one link to its ticket page. No role eyebrow (RE1), no
+// back link (DA45: a top-level screen).
 import type { ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { formatDateTime } from "../events/format";
@@ -87,27 +88,33 @@ function RegistrationsList() {
   );
 }
 
-// Title (link) and badges on the first line, the start under them, then "View ticket"
-// (S3). Two rows of one event have the same links and differ by their badges.
+// The whole card is one link to the ticket page (W-R18, W-R22, S3). Its name comes from its
+// content: the title (plain text), the start, then the badges (plain spans), so it reads
+// "Spring Meetup Sat, 1 Jan 2030, 10:00 CET Registered". Nothing interactive inside, no
+// link to the event page. The spaces between the parts are for that name only (whitespace
+// between grid and flex items is not drawn). Two rows of one event have the same target
+// and differ by their start and badges.
 function Row({ registration }: { registration: MyRegistration }) {
   const event = encodeURIComponent(registration.event_id);
   const eventBadge = eventStatusBadge(registration.event_status);
   return (
-    <li className="registration-card">
-      <Link to={`/event/${event}`} className="registration-card-title">
-        {registration.event_title}
-      </Link>
-      <p className="event-card-meta">
-        <time dateTime={registration.event_starts_at}>
-          {formatDateTime(registration.event_starts_at)}
-        </time>
-      </p>
-      <span className="registration-card-badges">
-        <Badge text={listStatusText(registration)} tone={ticketLabel(registration).badge.tone} />
-        {eventBadge && <Badge text={eventBadge} tone={EVENT_TONE[registration.event_status]} />}
-      </span>
-      <Link to={`/registrations/me?event=${event}`} className="text-link registration-card-ticket">
-        View ticket
+    <li>
+      <Link to={`/registrations/me?event=${event}`} className="registration-card">
+        <span className="registration-card-title">{registration.event_title}</span>{" "}
+        <span className="event-card-meta">
+          <time dateTime={registration.event_starts_at}>
+            {formatDateTime(registration.event_starts_at)}
+          </time>
+        </span>{" "}
+        <span className="registration-card-badges">
+          <Badge text={listStatusText(registration)} tone={ticketLabel(registration).badge.tone} />
+          {eventBadge && (
+            <>
+              {" "}
+              <Badge text={eventBadge} tone={EVENT_TONE[registration.event_status]} />
+            </>
+          )}
+        </span>
       </Link>
     </li>
   );
