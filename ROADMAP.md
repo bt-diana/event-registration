@@ -15,6 +15,7 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 - M2 API spec: `events.md`.
 - M2 API: events (`events.md`, E1-E20): migration `002_event_duration.sql`, `POST /events`, `GET /events`, `GET /events/:id` for the owner, `GET /public/events/:id`, `api/openapi.yaml`.
 - M2 UI spec: `events-web.md` (W-E1-W-E21): organizer events list, create form, event page, public event page.
+- M3 API spec: `registration.md` (R1-R21): register, waiting list, last seat, my registration.
 
 ## Milestones
 
@@ -51,7 +52,7 @@ Specs are not written all at once. The first steps of each milestone write (or e
 12. Test, then code: public event page (states: loading, not found, open, full, closed, already started).
 
 ### M3. Registration
-13. API spec: `registration.md` (B1, B2, B4).
+13. API spec: `registration.md` (B1, B2, B4) (done: R1-R21).
 14. **Red:** B4 concurrency test (capacity 1, 20 parallel attendees: 1 registered, 19 waitlisted; repeat). Add B1 (same account twice = same ticket, one seat) and B2 (full goes to the list).
 15. **Green:** the register service in one transaction with `FOR UPDATE` on the event, a `ticket` outbox row, route `POST /events/:id/registrations`.
 16. "My registration" route (ticket code, status, place on the list).

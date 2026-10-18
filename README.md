@@ -220,7 +220,7 @@ Why I chose this process is in decision D1 in [sessions/17-10-1532_research.md](
 - [ROADMAP.md](ROADMAP.md): the order of work, milestones and steps
 - [docs/specs/SPEC_TEMPLATE.md](docs/specs/SPEC_TEMPLATE.md): the template for feature specs (one spec per feature)
 - [docs/brand.md](docs/brand.md): colours, type, spacing and components for the web UI. It comes from the [design artifact](https://claude.ai/artifact/Ca1zKGzeKDGuXHhn7J5L76) (login and sign-up screens, made from `docs/specs/auth-web.md`); change `brand.md` first when a value changes
-- [docs/DATABASE.md](docs/DATABASE.md), [docs/specs/auth.md](docs/specs/auth.md), [docs/specs/auth-web.md](docs/specs/auth-web.md), [docs/specs/events.md](docs/specs/events.md): the database schema, the accounts and login API, the login screens, the events API
+- [docs/DATABASE.md](docs/DATABASE.md), [docs/specs/auth.md](docs/specs/auth.md), [docs/specs/auth-web.md](docs/specs/auth-web.md), [docs/specs/events.md](docs/specs/events.md), [docs/specs/registration.md](docs/specs/registration.md): the database schema, the accounts and login API, the login screens, the events API, the registration API (spec only, not built yet)
 - [api/openapi.yaml](api/openapi.yaml): the API description (OpenAPI 3.0.3)
 - [docs/planning/build_plan.md](docs/planning/build_plan.md): the first build plan, out of date (Fastify, Docker); `ROADMAP.md` replaces it
 - [docs/research/sdd/summary.md](docs/research/sdd/summary.md): the research summary (the full report and sources are in the same folder)

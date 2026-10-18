@@ -19,3 +19,11 @@ Started 18-10 17:30 +06.
 **What Claude did.** The `spec-writer` agent wrote `docs/specs/events-web.md` (W-E1 to W-E21, routes `/organizer`, `/organizer/events/new`, `/organizer/events/:id`, `/event/:id`, files to touch, canvas boards). Claude read it through and marked ROADMAP step 10 done. Used Agent, Read, Bash.
 
 **Decision.** None.
+
+## Step 3: event screens on the design canvas
+
+**Prompt** (17:30 +06, same as step 1)
+
+**What Claude did.** Added eight boards to the canvas (https://claude.ai/artifact/Ca1zKGzeKDGuXHhn7J5L76): organizer events list, create form with client errors, organizer event page, public event page (Open), and two state boards (public: Full, Already started, Cancelled, Ended, 404, loading, error; organizer: empty, loading, errors, pending, 404). Added the badge and table styles to `docs/brand.md`. No phone boards yet. Used Write, Bash and Artifact (publish).
+
+**Decision.** None.

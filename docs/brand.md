@@ -64,8 +64,21 @@ Both from Google Fonts. Fallback: `system-ui, sans-serif`.
 - Text contrast at least 4.5:1. Check every new colour pair before adding it.
 - Copy is short and plain; error texts are in `specs/auth-web.md`.
 
+## Event screens (added from `specs/events-web.md`)
+
+Status badge: pill, radius 999px, padding `2px 10px`, 14px 600. The status is always text, never colour alone.
+
+| Badge | Text | Background |
+|---|---|---|
+| Active, Open | `#074D43` | `#DDF0EA` |
+| Full | `#6B4200` | `#FFF1D6` |
+| Cancelled | `#8C1D18` | `#FDECEA` |
+| Ended, Already started | `#3A4A47` | `#E4E8E7` |
+
+Table (events list): white card with 1px border and radius 12, header cells 14px 600 `text-muted`, rows 16px with a 1px `border` line, scrolls sideways under 640px. Event details are a `dl` grid (label 14px 600 `text-muted`, value 16px). Wide cards: 640px (event pages), 960px (list). The organizer pages use `accent-organizer`, the public page `accent-attendee`.
+
 ## Not decided yet
 
 - Dark theme (out of scope in `auth-web.md`).
-- Success and warning colours, table and list styles, and the ticket and check-in screens. Add them here when `web.md` is written.
+- The ticket and check-in screens.
 - The design canvas is still missing organizer sign-up, the loading and error states board, and the phone view.
