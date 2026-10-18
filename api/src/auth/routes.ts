@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import type pg from "pg";
-import { clearSession, readSession, setSession, type Role } from "./cookie.js";
+import { clearSession, setSession, type Role } from "./cookie.js";
+import { requireOrganizer, requireUser } from "./middleware.js";
 import { DUMMY_HASH, hashPassword, verifyPassword } from "./password.js";
 
 // The only place a table name comes from. Never from the request.
@@ -111,13 +112,12 @@ export function authRouter(pool: pg.Pool): Router {
       res.status(204).end();
     });
 
-    router.get(`${base}/me`, async (req: Request, res: Response) => {
-      const session = readSession(req);
-      if (!session) return fail(res, 401, "not_logged_in");
-      if (session.role !== role) return fail(res, 403, "wrong_role");
+    const guard = role === "user" ? requireUser : requireOrganizer;
+    router.get(`${base}/me`, guard, async (req: Request, res: Response) => {
+      const id = role === "user" ? req.user!.id : req.organizer!.id;
       const { rows } = await pool.query<Account>(
         `SELECT id, email, name FROM ${table} WHERE id = $1`,
-        [session.id],
+        [id],
       );
       if (!rows[0]) return fail(res, 401, "not_logged_in");
       res.status(200).json(rows[0]);

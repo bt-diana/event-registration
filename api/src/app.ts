@@ -1,6 +1,7 @@
 import cookieParser from "cookie-parser";
 import express, { type NextFunction, type Request, type Response } from "express";
 import type pg from "pg";
+import { authenticate } from "./auth/middleware.js";
 import { authRouter } from "./auth/routes.js";
 import { createPool, loadEnv } from "./db/pool.js";
 
@@ -24,6 +25,7 @@ export function createApp(options: AppOptions = {}) {
   const app = express();
   app.use(express.json());
   app.use(cookieParser(secret));
+  app.use(authenticate);
   app.get("/health", (_req, res) => {
     res.json({ ok: true });
   });
