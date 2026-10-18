@@ -94,6 +94,14 @@ describe("W-R11: the ticket page", () => {
     expect(main().getByText("K7M2QX9TPA")).toBeTruthy();
   });
 
+  it("W-R38: the registration badge is the Status row of the details list", async () => {
+    await ticketPage(ok(publicEvent()), ok(registration()));
+    const status = main().getByText("Status");
+    expect(status.tagName).toBe("DT");
+    expect(status.closest("dl")!.contains(main().getByText("Registered"))).toBe(true);
+    expect(main().getByText("Registered").closest(".ticket-flat")).toBeNull();
+  });
+
   it("W-R38: the code and the QR are in the main card, not in an inner panel", async () => {
     await ticketPage(ok(publicEvent()), ok(registration()));
     const card = main().getByRole("heading", { level: 1 }).closest("section")!;
