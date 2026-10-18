@@ -58,3 +58,24 @@ Started 18-10 21:10 +06.
 **What Claude did.** Compared RegOrg and RegScanStates with the code (Read). `styles.css`: `.registration-error` renamed to `.error-box` with the DA14 values (tint, 2 px `--error` border, radius 8, padding `10px 12px`, `--error-text-on-tint`), so the registration area uses the same box; `.scan-not-ticket` and the red border of a refused result card removed. `OrganizerRegistrations.tsx` ("Could not load registrations") and `ScanScreen.tsx` ("Could not load events"): error box and a secondary Retry. `ScanScreen.tsx`: the camera problems in the error box; "This is not a ticket code." inside the camera card under the preview; refused and failed results: the `h2` is the error box (same words, focus and `role` as built), Scan next primary, Try again secondary. No test changed. Web tests (700), typecheck and lint pass (Bash). The `docs/specs/design-alignment.md` edit in the working tree is the user's and was not committed.
 
 **Decision.** None.
+
+## Step 6: build the spec, step 5 (camera box, DA17)
+
+**Prompt** (same as step 2)
+
+**What Claude did.** Compared RegScan and RegScanStates with `CameraArea` (Read). `ScanScreen.tsx`: idle shows a dark box with "Camera is off" and "Start camera" under it; asking shows its status text inside the box; active puts the video, a white square frame (`aria-hidden`) and the status bar "Point the camera at the ticket QR code." (`role="status"`) in the box. The camera problems keep only the error box (as on RegScanStates). The video attributes are unchanged. `styles.css`: `.scan-box` (`--text`, radius 8, 4:3, max 480 px), `.scan-frame` (58%, 3 px white, radius 12), `.scan-box-bar` (`rgba(16,28,26,.85)`, white 14 px); `.scan-camera-text` removed. Web tests (700), typecheck and lint pass (Bash).
+
+**Decision.** None.
+
+## Step 7: phone page padding 16 px
+
+**Prompt** (21:33 +06, relayed by the main agent, text cleaned)
+
+> On phone (the max-width 520px block) the page padding is 16px on all sides (not 24px 16px; the scan screen too). The card padding stays 20px as in DA24.
+
+**What Claude did.** Noted for the mobile pass (spec step 8); the DA22 row of `design-alignment.md` was already changed by the user. The main agent asked for the ID D67, but D67 is already used in `18-10-2108_header-responsive-spec.md`, so the next free ID is used.
+
+**Decision.**
+
+### D71: phone page padding is 16 px on all sides
+21:33:22 +0600. Up to 520 px `.page` (and the scan screen) has 16 px padding on all four sides; the card padding stays 20 px (DA24). Reason: the user's choice.

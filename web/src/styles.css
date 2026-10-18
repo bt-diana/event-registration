@@ -1090,20 +1090,57 @@ a:hover {
   min-width: 200px;
 }
 
-.scan-video {
-  display: block;
+/* The dark camera box (design-alignment.md DA17): idle, asking and active. */
+.scan-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   max-width: 480px;
   aspect-ratio: 4 / 3;
-  object-fit: cover;
+  overflow: hidden;
   background: var(--text);
   border-radius: 8px;
 }
 
-.scan-camera-text {
+.scan-box-text {
   margin: 0;
-  color: var(--text-muted);
-  font-size: 15px;
+  padding: 12px;
+  color: #ffffff;
+  font-size: 14px;
+  text-align: center;
+}
+
+.scan-video {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The white square frame over the preview, 58% of the width. */
+.scan-frame {
+  position: relative;
+  width: 58%;
+  aspect-ratio: 1;
+  border: 3px solid #ffffff;
+  border-radius: 12px;
+}
+
+/* The status bar at the bottom: --text at 85%, white 14px text. */
+.scan-box-bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  margin: 0;
+  padding: 8px 12px;
+  background: rgba(16, 28, 26, 0.85);
+  color: #ffffff;
+  font-size: 14px;
 }
 
 .scan-camera .error-box {

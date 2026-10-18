@@ -298,22 +298,30 @@ function CameraArea({
   videoRef: Ref<HTMLVideoElement>;
   onStart: () => void;
 }) {
+  // design-alignment.md DA17: idle, asking and active show one dark camera box.
   switch (camera) {
     case "idle":
       return (
-        <button type="button" className="button-primary scan-start" onClick={onStart}>
-          Start camera
-        </button>
+        <>
+          <div className="scan-box">
+            <p className="scan-box-text">Camera is off</p>
+          </div>
+          <button type="button" className="button-primary scan-start" onClick={onStart}>
+            Start camera
+          </button>
+        </>
       );
     case "asking":
       return (
-        <p role="status" className="scan-camera-text">
-          Waiting for camera permission...
-        </p>
+        <div className="scan-box">
+          <p role="status" className="scan-box-text">
+            Waiting for camera permission...
+          </p>
+        </div>
       );
     case "active":
       return (
-        <>
+        <div className="scan-box">
           <video
             ref={videoRef}
             className="scan-video"
@@ -321,8 +329,11 @@ function CameraArea({
             playsInline
             muted
           />
-          <p className="scan-camera-text">Point the camera at the ticket QR code.</p>
-        </>
+          <div className="scan-frame" aria-hidden="true" />
+          <p role="status" className="scan-box-bar">
+            Point the camera at the ticket QR code.
+          </p>
+        </div>
       );
     // The four camera problems are alerts in the error box (design-alignment.md DA18).
     case "other":
