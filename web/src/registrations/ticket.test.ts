@@ -2,8 +2,9 @@
 // (W-R18, W-R40), as pure functions.
 import { publicEvent, type SamplePublicEvent } from "../events/test-helpers";
 import type { RegistrationStatus } from "./api";
-import { registration } from "./test-helpers";
+import { registration, type SampleRegistration } from "./test-helpers";
 import {
+  canCancel,
   eventStatusBadge,
   listStatusText,
   registerAction,
@@ -192,5 +193,38 @@ describe("eventStatusBadge", () => {
     ["passed", "Ended"],
   ])("%s: %s", (status, text) => {
     expect(eventStatusBadge(status)).toBe(text);
+  });
+});
+
+// cancel-registration-web.md W-CR1 (test first): the cancel section only for an active
+// (registered or waiting) ticket that is not checked in, on an active event that has not
+// started. Four registrations x four event states.
+describe("W-CR1: canCancel", () => {
+  const CHECKED_IN = "2030-01-01T09:55:00.000Z";
+  const tickets: [string, Partial<SampleRegistration>, boolean][] = [
+    ["registered", { status: "registered" }, true],
+    ["waitlisted", { status: "waitlisted", waitlist_position: 2 }, true],
+    ["cancelled", { status: "cancelled" }, false],
+    ["registered and checked in", { status: "registered", checked_in_at: CHECKED_IN }, false],
+  ];
+  const events: [string, Partial<SamplePublicEvent>, boolean][] = [
+    ["active", OPEN, true],
+    ["already started", STARTED, false],
+    ["cancelled", CANCELLED, false],
+    ["ended", PASSED, false],
+  ];
+  const rows = tickets.flatMap(([ticketCase, ticket, ticketOk]) =>
+    events.map(
+      ([eventCase, event, eventOk]) =>
+        [`${ticketCase}, ${eventCase} event`, ticket, event, ticketOk && eventOk] as const,
+    ),
+  );
+
+  it.each(rows)("%s", (_case, ticket, event, shown) => {
+    expect(canCancel(registration(ticket), publicEvent(event))).toBe(shown);
+  });
+
+  it("a full active event still allows it (the waiting list moves up)", () => {
+    expect(canCancel(registration(), publicEvent(FULL))).toBe(true);
   });
 });

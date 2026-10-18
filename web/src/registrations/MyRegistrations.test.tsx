@@ -518,3 +518,16 @@ describe("W-R22: accessibility", () => {
     }
   });
 });
+
+// cancel-registration-web.md W-CR9 (regression): after a cancel the list row reads
+// "Cancelled" on its next read and keeps its link to the ticket page (W-R40). The list
+// itself has no cancel control.
+describe("W-CR9: the list after a cancel", () => {
+  it("the row from GET /me/registrations shows Cancelled, keeps its link, has no button", async () => {
+    await attendeeList(list(myRegistration({ ...SPRING, status: "cancelled" })));
+    const row = rowOf("Spring Meetup");
+    expect(badges(row)).toEqual(["Cancelled"]);
+    expect(cardLink(row).getAttribute("href")).toBe(ticketHref(EVENT_ID));
+    expect(main().queryByRole("button", { name: /cancel/i })).toBeNull();
+  });
+});

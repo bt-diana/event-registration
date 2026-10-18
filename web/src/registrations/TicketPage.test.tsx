@@ -1,4 +1,5 @@
 // Tests first (registration-web.md): W-R13. Then W-R11, W-R12 (the ticket page).
+// cancel-registration-web.md W-CR1, W-CR5: the cancel section on this page.
 // The QR cases (W-R25-W-R27) mock qr.ts: jsdom cannot draw on a canvas (W-R37).
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -87,7 +88,11 @@ describe("W-R11: the ticket page", () => {
     expect(main().getByText(r.ticket_code)).toBeTruthy();
     expect(main().getByText(badge)).toBeTruthy();
     if (line) expect(main().getByText(line)).toBeTruthy();
-    expect(main().queryAllByRole("button")).toEqual([]);
+    // cancel-registration-web.md W-CR1 (supersedes "no button", W-R11): one "Cancel
+    // registration" button for a registered or waiting ticket, none for a cancelled one.
+    expect(main().queryAllByRole("button").map((b) => b.textContent)).toEqual(
+      r.status === "cancelled" ? [] : ["Cancel registration"],
+    );
     expect(main().queryByRole("link", { name: "View ticket" })).toBeNull();
     expect(callsTo(fetch, PUBLIC)).toBe(1);
     expect(callsTo(fetch, MY_REGISTRATION)).toBe(1);
@@ -484,5 +489,82 @@ describe("W-EM31: a moved start on the ticket page", () => {
     );
     expect(main().getByText(formatDateTime("2030-02-01T17:30:00.000Z"))).toBeTruthy();
     expect(screen.getByRole("main").textContent).not.toMatch(/rescheduled/i);
+  });
+});
+
+// cancel-registration-web.md W-CR1: the section only for an active ticket on an active event
+// that has not started. Otherwise no button, no disabled button and no hint; no extra read.
+describe("W-CR1: when the ticket page has the Cancel registration section", () => {
+  const CHECKED_IN = "2030-01-01T09:55:00.000Z";
+
+  it.each<[string, Partial<SamplePublicEvent>, SampleRegistration]>([
+    ["registered, open event", {}, registration()],
+    ["registered, full event", { full: true, seats_left: 0 }, registration()],
+    [
+      "waitlisted, full event",
+      { full: true, seats_left: 0 },
+      registration({ status: "waitlisted", waitlist_position: 1 }),
+    ],
+  ])("%s: the button", async (_case, event, r) => {
+    const fetch = await ticketPage(ok(publicEvent(event)), ok(r));
+    expect(main().getByRole("button", { name: "Cancel registration" })).toBeTruthy();
+    expect(fetch.mock.calls).toHaveLength(3);
+  });
+
+  it.each<[string, Partial<SamplePublicEvent>, SampleRegistration]>([
+    ["a cancelled ticket", {}, registration({ status: "cancelled" })],
+    ["a checked-in ticket", {}, registration({ checked_in_at: CHECKED_IN })],
+    ["a cancelled event", { status: "cancelled", seats_left: 0 }, registration()],
+    ["an ended event", { status: "passed", has_started: true, seats_left: 0 }, registration()],
+    ["a started event", { has_started: true }, registration()],
+    [
+      "a started event, waiting ticket",
+      { has_started: true, full: true, seats_left: 0 },
+      registration({ status: "waitlisted", waitlist_position: 1 }),
+    ],
+  ])("%s: no button at all, no hint", async (_case, event, r) => {
+    const fetch = await ticketPage(ok(publicEvent(event)), ok(r));
+    expect(main().queryAllByRole("button")).toEqual([]);
+    expect(main().queryByRole("group")).toBeNull();
+    expect(screen.getByRole("main").textContent).not.toMatch(/cancel registration|can no longer be cancelled/i);
+    expect(fetch.mock.calls).toHaveLength(3);
+  });
+
+  it("loading and no-ticket states have no section", async () => {
+    const mine = deferred<Response>();
+    mockFetch({
+      [ME]: () => json(200, ANN),
+      [PUBLIC]: () => json(200, publicEvent()),
+      [MY_REGISTRATION]: () => mine.promise,
+    });
+    renderApp(TICKET_PATH);
+    await main().findByRole("heading", { level: 1, name: "Your ticket" });
+    expect(main().queryByRole("button", { name: "Cancel registration" })).toBeNull();
+    mine.resolve(json(404, { error: "not_found" }));
+    expect(await main().findByText("You have no ticket for this event.")).toBeTruthy();
+    expect(main().queryByRole("button", { name: "Cancel registration" })).toBeNull();
+  });
+});
+
+describe("W-CR5: the ticket page after a cancel", () => {
+  it("a mocked 200: badge Cancelled, no QR, the message", async () => {
+    const fetch = mockFetch({
+      [ME]: () => json(200, ANN),
+      [PUBLIC]: () => json(200, publicEvent()),
+      [MY_REGISTRATION]: () => json(200, registration()),
+      [`POST /events/${EVENT_ID}/registrations/me/cancel`]: () =>
+        json(200, registration({ status: "cancelled" })),
+    });
+    renderApp(TICKET_PATH);
+    fireEvent.click(await main().findByRole("button", { name: "Cancel registration" }));
+    fireEvent.click(main().getByRole("button", { name: "Yes, cancel registration" }));
+    expect((await main().findByRole("status")).textContent).toBe(
+      "Registration cancelled. Your seat is free for someone else.",
+    );
+    expect(main().getByText("Cancelled", { selector: ".badge" })).toBeTruthy();
+    expect(main().getByText("This ticket is no longer valid.")).toBeTruthy();
+    expect(main().queryByRole("img")).toBeNull();
+    expect(main().queryAllByRole("button")).toEqual([]);
+    expect(callsTo(fetch, MY_REGISTRATION)).toBe(1);
   });
 });

@@ -615,3 +615,31 @@ describe("W-R23: the registration is cached per account", () => {
     expect(queryClient.getQueryData(["registration", BEN.id, EVENT_ID])).toBeNull();
   });
 });
+
+// cancel-registration-web.md W-CR9 (regression): the event page panel shows the cancelled
+// answer stored by the ticket page; registering again stays on the event page. No cancel
+// control on the event page.
+describe("W-CR9: the event page after a cancel on the ticket page", () => {
+  it("the cached cancelled answer: Registration cancelled and Register again", async () => {
+    const reread = deferred<Response>();
+    let n = 0;
+    mockFetch({
+      [ME]: () => json(200, ANN),
+      [PUBLIC]: () => json(200, publicEvent()),
+      [MY_REGISTRATION]: () => (n++ === 0 ? json(200, registration()) : reread.promise),
+      [`POST /events/${EVENT_ID}/registrations/me/cancel`]: () =>
+        json(200, registration({ status: "cancelled" })),
+    });
+    renderApp(`/registrations/me?event=${EVENT_ID}`);
+    fireEvent.click(await main().findByRole("button", { name: "Cancel registration" }));
+    fireEvent.click(main().getByRole("button", { name: "Yes, cancel registration" }));
+    fireEvent.click(await main().findByRole("link", { name: "Go to the event" }));
+    await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
+    // The re-read has not answered: what shows is the stored answer.
+    expect(
+      await main().findByRole("heading", { level: 2, name: "Registration cancelled" }),
+    ).toBeTruthy();
+    expect(registerControls().map((b) => b.textContent)).toEqual(["Register again"]);
+    expect(main().queryByRole("button", { name: "Cancel registration" })).toBeNull();
+  });
+});
