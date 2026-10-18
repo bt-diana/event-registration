@@ -62,6 +62,23 @@ Open http://localhost:5173.
 
 The web app calls the API on its own origin. In development the Vite dev server proxies `/auth`, `/events`, `/public` and `/checkin` to the API on http://localhost:3000 (`web/vite.config.ts`), so no CORS is needed and `fetch` uses `credentials: "same-origin"`. This proxy exists only in `npm run dev`; a production build must be served from the same origin as the API (for example behind one reverse proxy), or the login cookie and the calls will not work.
 
+### Open the app on a phone
+
+The phone and the PC must be on the same Wi-Fi. Start the API as above, then start the web app so it listens on the network:
+
+```bash
+cd web
+npm run dev:host        # dev server with live reload, http://<PC address>:5173
+# or, for the built app:
+npm run build
+npm run preview:host    # http://<PC address>:4173
+```
+
+Find the PC's Wi-Fi address with `ipconfig` (the IPv4 address of the Wi-Fi adapter, for example `192.168.0.107`) and open `http://<that address>:5173` on the phone. Only the web app needs `--host`: the phone reaches the API through the Vite proxy on the PC.
+
+- **The page does not load (Windows Firewall).** Windows blocks incoming connections to Node.js by default. When the prompt "Windows Defender Firewall has blocked some features of Node.js" appears, tick **Private networks** and click **Allow access**. If you missed the prompt, open PowerShell **as administrator** and run `New-NetFirewallRule -DisplayName "Vite dev 5173" -Direction Inbound -Protocol TCP -LocalPort 5173,4173 -Action Allow -Profile Private` (remove it later with `Remove-NetFirewallRule -DisplayName "Vite dev 5173"`). The Wi-Fi network must also be set to **Private** (Settings, Network & internet, Wi-Fi, your network). Check that the phone is not on mobile data or a guest network.
+- **The camera does not start.** Browsers allow the camera only on https or `localhost`, so over `http://<PC address>` the scan screen shows "The camera needs a secure connection (https or localhost). Enter the code below." Typing the code and showing the ticket QR still work. For a camera test on Android Chrome, open `chrome://flags/#unsafe-treat-insecure-origin-as-secure`, add the address, enable it and restart Chrome (testing only). iPhone Safari has no such switch: use an https tunnel or a local certificate (not set up here).
+
 ### Try it with two clients
 
 Open the registrations page (`/registrations`) in one browser tab and the check-in screen in another. Register a person and check the ticket in: the arrivals counter on the check-in screen goes up at once. The first tab shows the new number and the "Arrived" cell after you return to the registrations page (or reload it): nothing is live, there is no polling (D50, D51).

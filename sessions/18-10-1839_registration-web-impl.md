@@ -131,3 +131,15 @@ Started 18-10 18:39 +06.
 **What Claude did.** Built `web/src/registrations/arrivals.ts` (`getArrivals`, `useEventArrivals` with the key `["event-arrivals", me.id, eventId]`, enabled for a known organizer, `staleTime: 0`, `refetchOnMount: "always"`, `refetchOnReconnect: false`) and `ArrivalsCounter.tsx` ("Arrived: x / y registered", "Capacity: n", "Everyone has arrived.", "Loading arrivals...", "Could not load arrivals" + Retry, "Could not refresh", "Event not found", nothing on 401/403, no live region). `useEventRegistrations` got the same three options; `useCheckIn` cancels and then invalidates only `["event-arrivals"]` after a `checked_in` answer (the cancel is needed: on a first load `invalidateQueries` alone reuses the running request, so an answer read before the check-in could win). The scan screen shows the counter under the selector; the registrations page shows it under the selector (hidden when the list itself answers 404, so the page says "Event not found" once), keeps the cached rows on a failed return read with "Could not refresh", and has the "Arrival" column. Styles in `styles.css`, the counter look in `docs/brand.md`. Fixed the polling, SSE and M8 lines in `checkin.md` and `checkin-web.md` to match D50/D51, recorded the "go" answers in `checkin-web.md` section 7, and noted there the extra `refetchOnReconnect: false` (W-C6 forbids a reconnect refetch, which the library default would do with `staleTime: 0`). No proxy change (`/events` covers the route). Checked that the reconnect test and the "older request cannot win" test fail without those two lines. Updated `README.md` and `ROADMAP.md` (step 28 done). `bash scripts/verify.sh` passes (api 356, web 575 and 4 todo). Not done: the manual check against the real API and the design canvas board. Used Read, Write, Edit, Bash.
 
 **Decision.** None.
+
+## Step 13: run the app on a phone
+
+**Prompt** (20:44 +06, text cleaned)
+
+> let's mark how we can run the app on mobile
+> add 2 new scripts with --host
+> mention the firewall issue and how to fix it
+
+**What Claude did.** Asked which two scripts; the answer was `dev:host` and `preview:host` in `web/package.json`. Added them, moved the proxy to a shared constant in `web/vite.config.ts` so `vite preview` (port 4173) has it too, and added the section "Open the app on a phone" to `README.md`: same Wi-Fi, `ipconfig` address, the Windows Firewall prompt (Private networks) and the admin PowerShell rule for ports 5173 and 4173, the Private network profile, and the camera limit (https or localhost only, Android Chrome flag). Typecheck, lint and a build passed. Used AskUserQuestion, Bash.
+
+**Decision.** None.
