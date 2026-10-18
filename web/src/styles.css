@@ -1147,28 +1147,43 @@ a:hover {
     gap: 0;
   }
 
+  /* Logged in: the block fills the rest of the drawer; the nav link stays on top and the
+     account row (name and role left, Log out right) sits at the very bottom, with the log-out
+     error under it (user request). Same DOM order, no CSS order. */
   .site-account {
-    gap: 0 16px;
+    display: grid;
+    flex: 1 0 auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto 1fr auto auto;
+    gap: 0;
   }
 
-  /* The horizontal line between the nav link and the account row replaces the divider. */
   .site-account .site-nav {
-    flex-basis: 100%;
-    border-bottom: 1px solid var(--border);
+    grid-column: 1 / -1;
+    grid-row: 1;
   }
 
-  .site-account .account-info {
-    flex: 1 1 0;
-    min-height: 44px;
-  }
-
+  /* The horizontal line above the account row replaces the desktop divider. */
+  .site-account .account-info,
   .site-nav + .account-info {
+    grid-column: 1;
+    grid-row: 3;
+    min-height: 44px;
     padding-left: 0;
+    border-top: 1px solid var(--border);
     border-left: 0;
   }
 
   .site-account button.button-secondary {
-    margin-left: auto;
+    grid-column: 2;
+    grid-row: 3;
+    padding-left: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .site-account .field-error {
+    grid-column: 1 / -1;
+    grid-row: 4;
   }
 }
 
