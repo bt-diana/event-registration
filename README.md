@@ -254,9 +254,6 @@ Not done yet: a real email delivery through Resend by hand, and the two-browser 
 - Emails: ticket, seat from the waiting list, reschedule, event cancelled and one reminder 24 hours before the start. They are sent as html and plain text through Resend from a timer, with 3 tries. The organizer sees the status of each email.
 - Demo data (migration 005) and a deploy on Render.
 
-**Not built**
-- Live updates: nothing refreshes by itself.
-
 **Known limits**
 - Resend delivers to any address only when `MAIL_FROM` is on the verified domain. With `onboarding@resend.dev` (no domain) only the account owner's address works and other addresses end as `error_sending`.
 - On `onrender.com` the login cookie is a third-party cookie, so Safari and Chrome with third-party cookies blocked do not keep the login (see "Deploy on Render").
