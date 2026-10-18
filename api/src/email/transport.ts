@@ -9,3 +9,22 @@ export type EmailTransport = (message: {
   text: string;
   idempotencyKey?: string;
 }) => Promise<void>;
+
+// Stub for the tests-first commit.
+export type ResendClient = {
+  emails: {
+    send(
+      payload: { from: string; to: string[]; subject: string; text: string },
+      options?: { idempotencyKey?: string; signal?: AbortSignal },
+    ): Promise<{
+      data: { id: string } | null;
+      error: { name: string; message: string; statusCode?: number | null } | null;
+    }>;
+  };
+};
+
+export type ResendTransportOptions = { apiKey: string; from: string; client?: ResendClient; timeoutMs?: number };
+
+export const createResendTransport: (options: ResendTransportOptions) => EmailTransport = () => {
+  throw new Error("not implemented");
+};
