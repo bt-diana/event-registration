@@ -1,5 +1,5 @@
 import { screen, within } from "@testing-library/react";
-import { OLGA, json, mockFetch, renderApp } from "./auth/test-helpers";
+import { ANN, OLGA, json, mockFetch, renderApp } from "./auth/test-helpers";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -93,5 +93,48 @@ describe("App", () => {
     expect(screen.getByLabelText("Email")).toBeTruthy();
     expect(screen.getByLabelText("Name")).toBeTruthy();
     expect(screen.getByLabelText("Password")).toBeTruthy();
+  });
+});
+
+describe("design-alignment.md DA47: no back link on top-level and auth screens", () => {
+  function backLinks() {
+    return within(screen.getByRole("main")).queryAllByRole("link", { name: /^Back to/ });
+  }
+
+  it.each(["/", "/login", "/signup", "/organizer/login", "/organizer/signup"])(
+    "%s, logged out",
+    async (path) => {
+      mockFetch({
+        "GET /auth/me": () => json(401, { error: "not_logged_in" }),
+        "GET /public/events": () => json(200, { events: [] }),
+      });
+      renderApp(path);
+      await screen.findByRole("heading", { level: 1 });
+      expect(backLinks()).toHaveLength(0);
+    },
+  );
+
+  it("/organizer for an organizer", async () => {
+    mockFetch({
+      "GET /auth/me": () => json(200, OLGA),
+      "GET /events": () => json(200, { events: [] }),
+    });
+    renderApp("/organizer");
+    await screen.findByRole("heading", { level: 1, name: "Your events" });
+    expect(backLinks()).toHaveLength(0);
+  });
+
+  it("the wrong-account card", async () => {
+    mockFetch({ "GET /auth/me": () => json(200, ANN) });
+    renderApp("/organizer");
+    await screen.findByRole("heading", { level: 1, name: "Switch account" });
+    expect(backLinks()).toHaveLength(0);
+  });
+
+  it("Could not check your login", async () => {
+    mockFetch({ "GET /auth/me": () => json(500, { error: "internal" }) });
+    renderApp("/organizer");
+    await screen.findByRole("heading", { level: 1, name: "Could not check your login" });
+    expect(backLinks()).toHaveLength(0);
   });
 });

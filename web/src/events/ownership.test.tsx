@@ -78,7 +78,8 @@ describe("W-E10 and W-E11: one link, the view follows the viewer", () => {
     expect(screen.getByText("Open")).toBeTruthy();
     expect(screen.getByText("25 of 25 seats left")).toBeTruthy();
     expect(screen.queryByText("Registered")).toBeNull();
-    expect(screen.queryByRole("link", { name: "Back to events" })).toBeNull();
+    // The public view's back link goes to the public list, never to /organizer (DA38).
+    expect(screen.getByRole("link", { name: "Back to events" }).getAttribute("href")).toBe("/");
     expect(screen.queryByText("Event not found")).toBeNull();
     expect(screen.queryByText(/someone else|another organizer|not yours/i)).toBeNull();
     expect(callsTo(fetch, OWN)).toBe(1);
@@ -111,7 +112,8 @@ describe("W-E10 and W-E11: one link, the view follows the viewer", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Spring meetup" })).toBeTruthy();
     expect(screen.getByText("Event")).toBeTruthy();
     expect(screen.getByText("Open")).toBeTruthy();
-    expect(screen.queryByRole("link", { name: "Back to events" })).toBeNull();
+    // The public view's back link goes to the public list, never to /organizer (DA38).
+    expect(screen.getByRole("link", { name: "Back to events" }).getAttribute("href")).toBe("/");
     expect(callsTo(fetch, OWN)).toBe(0);
     expect(callsTo(fetch, PUBLIC)).toBe(1);
   });

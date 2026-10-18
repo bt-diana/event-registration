@@ -567,3 +567,47 @@ describe("checkin-web.md W-C10: a failed return request of the list", () => {
     expect(main().getByText("Olga Test")).toBeTruthy();
   });
 });
+
+describe("design-alignment.md DA44: Back to events on the registrations page", () => {
+  function expectBackToEvents() {
+    const links = main().getAllByRole("link", { name: /^Back to/ });
+    expect(links).toHaveLength(1);
+    const link = main().getByRole("link", { name: "Back to events" });
+    expect(link.getAttribute("href")).toBe("/organizer");
+    const heading = main().getByRole("heading", { level: 1, name: "Registrations" });
+    expect(link.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  }
+
+  it("loaded: to /organizer, above the h1", async () => {
+    screenAt("/registrations", { [EVENTS]: ok(EVENT_LIST), [FIRST]: rows(OLGA_ROW) });
+    await main().findByText("Olga Test");
+    expectBackToEvents();
+  });
+
+  it("no events", async () => {
+    screenAt("/registrations", { [EVENTS]: ok({ events: [] }) });
+    await main().findByText("You have no events yet.");
+    expectBackToEvents();
+  });
+
+  it("loading", async () => {
+    screenAt("/registrations", { [EVENTS]: () => deferred<Response>().promise });
+    await main().findByRole("heading", { level: 1, name: "Registrations" });
+    expectBackToEvents();
+  });
+
+  it("the events fail", async () => {
+    screenAt("/registrations", { [EVENTS]: () => json(500, { error: "internal" }) });
+    await main().findByText("Could not load registrations");
+    expectBackToEvents();
+  });
+
+  it("the list answers 404", async () => {
+    screenAt("/registrations", {
+      [EVENTS]: ok(EVENT_LIST),
+      [FIRST]: () => json(404, { error: "not_found" }),
+    });
+    await main().findByText("Event not found");
+    expectBackToEvents();
+  });
+});

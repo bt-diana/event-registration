@@ -3,7 +3,7 @@
 // The QR of the ticket code is shown here only (W-R25).
 // No role eyebrow (RE1).
 import { Link } from "react-router";
-import { EventNotFound, Detail } from "../events/EventParts";
+import { BackLink, EventNotFound, Detail } from "../events/EventParts";
 import { formatDateTime } from "../events/format";
 import { PUBLIC_LABEL, publicStatus } from "../events/publicStatus";
 import { isAuthError, statusOf, usePublicEvent } from "../events/queries";
@@ -16,6 +16,8 @@ import { TicketPanel } from "./TicketPanel";
 export function TicketPage({ eventId }: { eventId: string }) {
   const event = usePublicEvent(eventId);
   const mine = useMyRegistration(eventId, true);
+  // DA41, DA42 (question 18): the event of the URL, so the error state has it too.
+  const back = <BackLink to={`/event/${encodeURIComponent(eventId)}`} name="event" />;
 
   // Loading until both have answered; a 401/403 re-checks me and the guard decides (W-R13).
   if (
@@ -39,6 +41,7 @@ export function TicketPage({ eventId }: { eventId: string }) {
   if (event.isError || mine.isError) {
     return (
       <section className="card card-message" data-role="user">
+        {back}
         <h1>Your ticket</h1>
         <p role="alert" className="list-error">
           Could not load your ticket
@@ -74,6 +77,7 @@ export function TicketPage({ eventId }: { eventId: string }) {
 
   return (
     <section className="card card-event ticket-page" data-role="user">
+      {back}
       <h1>Your ticket</h1>
       <p className="ticket-event">
         <Link to={eventLink} className="action-link">

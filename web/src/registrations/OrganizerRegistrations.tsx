@@ -6,6 +6,7 @@
 // return to the page and never by themselves (W-C6, W-C7, W-C8). No role eyebrow (RE1).
 import type { ReactNode } from "react";
 import { Link } from "react-router";
+import { BackLink } from "../events/EventParts";
 import { formatDateTime } from "../events/format";
 import { isAuthError, statusOf, useEvents } from "../events/queries";
 import { Badge } from "../events/StatusBadge";
@@ -16,6 +17,8 @@ import { useEventRegistrations } from "./queries";
 import { ticketLabel } from "./ticket";
 
 const NEW_EVENT = "/organizer/events/new";
+// DA44 (question 17): the back link goes to the organizer's events list in every state.
+const EVENTS_LIST = "/organizer";
 
 type List = ReturnType<typeof useEventRegistrations>;
 
@@ -45,6 +48,7 @@ function LoadError({ onRetry }: { onRetry: () => void }) {
 function Message({ children }: { children: ReactNode }) {
   return (
     <section className="card card-message" data-role="organizer">
+      <BackLink to={EVENTS_LIST} name="events" />
       <h1>Registrations</h1>
       {children}
     </section>
@@ -86,6 +90,7 @@ export function OrganizerRegistrations() {
 
   return (
     <section className="list-page registrations-page" data-role="organizer">
+      <BackLink to={EVENTS_LIST} name="events" />
       <div className="list-head">
         <h1>Registrations</h1>
         {/* design-alignment.md DA13: the chosen event's page, no request of its own. */}

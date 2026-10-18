@@ -134,12 +134,15 @@ describe("W-E16: dates and seats", () => {
 
 describe("W-E20 and W-E21: public view structure", () => {
   // Updated for registration-web.md W-R2: the only link is the login link of the area.
-  it("has the Event eyebrow, one h1, the status as text and only the login link", async () => {
+  // design-alignment.md DA38 (question 16): the back link to the public list is the one
+  // extra link now.
+  it("has the Event eyebrow, one h1, the status as text, the back link and the login link", async () => {
     await show(publicEvent());
     expect(main().getByText("Event")).toBeTruthy();
     expect(main().getAllByRole("heading", { level: 1 }).length).toBe(1);
     expect(main().getByText("Open").textContent).toBe("Open");
     expect(main().queryAllByRole("link").map((link) => link.textContent)).toEqual([
+      "← Back to events",
       "Log in to register",
     ]);
   });
@@ -213,5 +216,36 @@ describe("design-alignment.md DA39: the load error has a back link (test first)"
     expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(main().getAllByRole("link", { name: /^Back to/ })).toHaveLength(1);
     expect(main().getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+});
+
+describe("design-alignment.md DA38, DA40: back links of the public view", () => {
+  it.each<[string, Partial<SamplePublicEvent>]>([
+    ["open", {}],
+    ["cancelled", { status: "cancelled", seats_left: 0 }],
+  ])("%s event: Back to events goes to /, above the eyebrow", async (_label, overrides) => {
+    await show(publicEvent(overrides));
+    const links = main().getAllByRole("link", { name: /^Back to/ });
+    expect(links).toHaveLength(1);
+    expect(links[0].textContent).toContain("Back to events");
+    expect(links[0].getAttribute("href")).toBe("/");
+    const eyebrow = main().getByText("Event");
+    expect(links[0].compareDocumentPosition(eyebrow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("the registration control is unchanged", async () => {
+    await show(publicEvent());
+    expect(main().getByRole("link", { name: "Log in to register" })).toBeTruthy();
+  });
+
+  it("Event not found keeps Go home and has no back link", async () => {
+    mockFetch({
+      "GET /auth/me": () => json(401, { error: "not_logged_in" }),
+      [PUBLIC]: () => json(404, { error: "not_found" }),
+    });
+    renderApp(`/event/${EVENT_ID}`);
+    await screen.findByRole("heading", { level: 1, name: "Event not found" });
+    expect(main().getByRole("link", { name: "Go home" }).getAttribute("href")).toBe("/");
+    expect(main().queryAllByRole("link", { name: /^Back to/ })).toHaveLength(0);
   });
 });

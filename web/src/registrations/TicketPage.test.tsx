@@ -276,3 +276,60 @@ describe("W-R27: no network for the QR", () => {
     expect(fetch.mock.calls.length).toBe(before);
   });
 });
+
+describe("design-alignment.md DA40-DA43: the ticket page back link", () => {
+  function backLinks() {
+    return main().queryAllByRole("link", { name: /^Back to/ });
+  }
+
+  it.each<[string, SampleRegistration]>([
+    ["registered", registration()],
+    ["waitlisted", registration({ status: "waitlisted", waitlist_position: 3 })],
+    ["cancelled", registration({ status: "cancelled" })],
+    ["checked in", registration({ checked_in_at: "2030-01-01T09:55:00.000Z" })],
+  ])("%s: Back to event goes to the event, above the h1", async (_case, mine) => {
+    await ticketPage(ok(publicEvent()), ok(mine));
+    expect(backLinks()).toHaveLength(1);
+    const link = main().getByRole("link", { name: "Back to event" });
+    expect(link.getAttribute("href")).toBe(`/event/${EVENT_ID}`);
+    const heading = main().getByRole("heading", { level: 1, name: "Your ticket" });
+    expect(link.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The title link under the h1 stays (W-R11).
+    expect(main().getByRole("link", { name: "Spring meetup" })).toBeTruthy();
+  });
+
+  it("the load error has the same link; Retry stays", async () => {
+    await ticketPage(() => json(500, { error: "internal" }), ok(registration()));
+    expect(main().getByRole("alert").textContent).toBe("Could not load your ticket");
+    expect(backLinks()).toHaveLength(1);
+    expect(main().getByRole("link", { name: "Back to event" }).getAttribute("href")).toBe(
+      `/event/${EVENT_ID}`,
+    );
+    expect(main().getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+
+  it("no ticket: only Go to the event, no back link", async () => {
+    await ticketPage(ok(publicEvent()), NOT_FOUND);
+    expect(main().getByRole("link", { name: "Go to the event" })).toBeTruthy();
+    expect(backLinks()).toHaveLength(0);
+  });
+
+  it("event not found: only Go home, no back link", async () => {
+    await ticketPage(NOT_FOUND, NOT_FOUND);
+    expect(main().getByRole("link", { name: "Go home" })).toBeTruthy();
+    expect(backLinks()).toHaveLength(0);
+  });
+
+  it("loading: no back link", async () => {
+    const mine = deferred<Response>();
+    mockFetch({
+      [ME]: () => json(200, ANN),
+      [PUBLIC]: () => json(200, publicEvent()),
+      [MY_REGISTRATION]: () => mine.promise,
+    });
+    renderApp(TICKET_PATH);
+    await main().findByRole("heading", { level: 1, name: "Your ticket" });
+    expect(main().getByRole("status").textContent).toBe("Loading...");
+    expect(backLinks()).toHaveLength(0);
+  });
+});
