@@ -4,7 +4,7 @@
 # Blueprint file path: api/render.yaml). The web is a separate Static Site (see
 # the README), it is not part of this file.
 databases:
-  - name: event-registration-db
+  - name: events-registrations-postresql
     databaseName: events
     plan: free
 
@@ -22,7 +22,7 @@ services:
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: event-registration-db
+          name: events-registrations-postresql
           property: connectionString
       - key: COOKIE_SECRET
         generateValue: true
