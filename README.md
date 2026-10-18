@@ -90,7 +90,7 @@ The API reads the repository `.env` when `DATABASE_URL` or `COOKIE_SECRET` is no
 
 ## API
 
-Described in [api/openapi.yaml](api/openapi.yaml) (OpenAPI 3.0.3, hand-written). The behaviours are in [docs/specs/auth.md](docs/specs/auth.md), [docs/specs/events.md](docs/specs/events.md), [docs/specs/event-description.md](docs/specs/event-description.md), [docs/specs/events-public-list.md](docs/specs/events-public-list.md) and [docs/specs/registration.md](docs/specs/registration.md) and [docs/specs/checkin.md](docs/specs/checkin.md) (M5: check-in and the registrations list). All bodies are JSON; errors are `{ "error": "<code>" }`.
+Described in [api/openapi.yaml](api/openapi.yaml) (OpenAPI 3.0.3, hand-written). The behaviours are in [docs/specs/auth.md](docs/specs/auth.md), [docs/specs/events.md](docs/specs/events.md), [docs/specs/event-description.md](docs/specs/event-description.md), [docs/specs/events-public-list.md](docs/specs/events-public-list.md) and [docs/specs/registration.md](docs/specs/registration.md) and [docs/specs/checkin.md](docs/specs/checkin.md) (M5: check-in and the registrations list) and [docs/specs/arrivals.md](docs/specs/arrivals.md) (M5: arrivals route, specified, not built). All bodies are JSON; errors are `{ "error": "<code>" }`.
 
 | Route | Answer |
 |---|---|
