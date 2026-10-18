@@ -63,11 +63,9 @@ body {
   text-decoration: none;
 }
 
-.logo-square {
-  width: 24px;
-  height: 24px;
-  border-radius: 5px;
-  background: var(--accent-attendee); /* always teal, also on organizer pages */
+.logo-icon {
+  width: 32px;
+  height: 32px;
 }
 
 .logo-text {

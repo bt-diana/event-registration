@@ -51,3 +51,21 @@ The user approved `react-router` (v7) as a new library for `web/`. Not installed
 **What Claude did.** Gave the `code-writer` agent the task. It installed `react-router` (approved in D33), added six routes, `AuthForm` (only the Show/Hide toggle works), a logged-out `Header`, `styles.css` with the brand tokens, fonts in `index.html`, and 7 render tests. Typecheck, lint and tests pass in `web/`. No fetch, session, validation or guards yet. Updated README, ROADMAP and `code-writer.md`. Used Agent, Bash.
 
 **Decision.** None.
+## Step 6: link the design artifact in the README
+
+**Prompt** (text cleaned)
+
+> mention the brand.md and the design artifact in readme
+
+**What Claude did.** `brand.md` was already listed; added the design artifact link to that line (`1a9cea2`). Used Bash.
+
+**Decision.** None.
+## Step 4: app icon
+
+**Prompt** (text cleaned)
+
+> apply web\icon.svg to the tab icon and in the app itself: green for attendees and purple for the organizers
+
+**What Claude did.** Moved `web/icon.svg` to `web/public/icon-attendee.svg` and made `icon-organizer.svg` with the indigo accent `#3A3AA0`. The header logo and the tab icon use the organizer icon on `/organizer` routes and the attendee icon elsewhere. Updated `docs/brand.md`. Typecheck, lint and tests pass. Used Bash.
+
+**Decision.** None.

@@ -22,7 +22,7 @@ Plain and calm, a tool for forms and lists. One card on a light gray-green groun
 | error-text-on-tint | `#8C1D18` | Text inside the form error box |
 | error-tint | `#FDECEA` | Form error box background |
 
-- The logo square in the header is always the attendee accent, also on organizer pages.
+- The logo is `web/public/icon-*.svg` (calendar with a check). It is teal (`icon-attendee.svg`) on attendee pages and indigo (`icon-organizer.svg`) on `/organizer` pages. The same file is the tab icon and changes with the page.
 - White text goes only on an accent button. Error is never shown by colour alone: it also has text, a 2px border and `aria-invalid`.
 
 ## Typography
@@ -45,7 +45,7 @@ Both from Google Fonts. Fallback: `system-ui, sans-serif`.
 - Header: white, 1px bottom border, padding `8px 40px`, items wrap. Logged out: Log in, Sign up, For organizers. Logged in: name, role, Log out button.
 - Card: white, 1px border, radius 12px, padding 32px, max width 440px (520px for message pages).
 - Spacing: 20px between fields, 24px between the intro and the form, 8px between label and input groups.
-- Radius: 8px for inputs and buttons, 12px for cards, 5px for the logo square.
+- Radius: 8px for inputs and buttons, 12px for cards.
 
 ## Components
 
