@@ -60,3 +60,13 @@ The agent made six recommendations in the spec for the user to confirm: check-in
 **What Claude did.** The `GET` was already under the path `/events/{id}/registrations` but tagged `checkin`, so Swagger-style viewers showed it in its own group. Changed its tag to `registrations`, removed the `checkin` tag and widened the `registrations` tag description. API tests and lint still pass. Used Bash.
 
 **Decision.** None.
+
+## Step 6: implement `POST /checkin`
+
+**Prompt** (19:35 +06, text cleaned)
+
+> implement all other endpoints for checkin
+
+**What Claude did.** Only `POST /checkin` was left (the list route existed, the arrivals route was dropped, D45). Delegated to the `code-writer` agent: 21 tests first in `api/test/checkin/checkin.test.ts` (all red for the right reason, commit 00caa3c), then `api/src/checkin/service.ts` and `routes.ts` (d4ff8f2), then `openapi.yaml` 0.5.0, `README.md` and `ROADMAP.md` (5361afb). Steps 25 and 26 are done; M5 API is finished. Checked afterwards: 332 API tests, typecheck and lint pass. Notes: if the classification read still shows a free ticket after the one retry the service throws (500), the spec does not say more; a body that is not JSON gets 400 from the app-wide parser before the guard; the C12 ordering with cancel is not tested until M4. Used Agent, Bash.
+
+**Decision.** None.
