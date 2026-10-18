@@ -16,16 +16,16 @@ describe("migrate", () => {
     tempDir = undefined;
   });
 
-  it("applies 001_init.sql once, records it, and creates the five tables", async () => {
+  it("applies 001_init.sql and 002_event_duration.sql once, records them, and creates the five tables", async () => {
     db = await createTestDb({ migrate: false });
 
-    expect(await migrate(db.pool)).toEqual(["001_init.sql"]);
+    expect(await migrate(db.pool)).toEqual(["001_init.sql", "002_event_duration.sql"]);
     expect(await migrate(db.pool)).toEqual([]);
 
     const applied = await db.pool.query<{ filename: string }>(
       "SELECT filename FROM schema_migrations ORDER BY filename",
     );
-    expect(applied.rows.map((r) => r.filename)).toEqual(["001_init.sql"]);
+    expect(applied.rows.map((r) => r.filename)).toEqual(["001_init.sql", "002_event_duration.sql"]);
 
     const tables = await db.pool.query<{ table_name: string }>(
       `SELECT table_name FROM information_schema.tables WHERE table_schema = $1 ORDER BY table_name`,

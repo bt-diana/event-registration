@@ -79,17 +79,30 @@ export async function insertUser(pool: pg.Pool, email = uniqueEmail("user")): Pr
 export async function insertEvent(
   pool: pg.Pool,
   organizerId: string,
-  options: { capacity?: number; startsAt?: Date; status?: string } = {},
+  options: {
+    capacity?: number;
+    startsAt?: Date;
+    status?: string;
+    title?: string;
+    // Left out of the insert when undefined, so the column DEFAULT applies.
+    durationMinutes?: number;
+  } = {},
 ): Promise<string> {
+  const values = [
+    organizerId,
+    options.title ?? "Test event",
+    options.startsAt ?? new Date(Date.now() + 12 * 60 * 60 * 1000),
+    options.capacity ?? 10,
+    options.status ?? "active",
+  ];
+  const withDuration = options.durationMinutes !== undefined;
   const { rows } = await pool.query<{ id: string }>(
-    `INSERT INTO events (organizer_id, title, starts_at, capacity, status)
-     VALUES ($1, 'Test event', $2, $3, $4) RETURNING id`,
-    [
-      organizerId,
-      options.startsAt ?? new Date(Date.now() + 12 * 60 * 60 * 1000),
-      options.capacity ?? 10,
-      options.status ?? "active",
-    ],
+    withDuration
+      ? `INSERT INTO events (organizer_id, title, starts_at, capacity, status, duration_minutes)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+      : `INSERT INTO events (organizer_id, title, starts_at, capacity, status)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+    withDuration ? [...values, options.durationMinutes] : values,
   );
   return rows[0].id;
 }

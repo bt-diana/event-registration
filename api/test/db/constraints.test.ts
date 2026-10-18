@@ -124,6 +124,60 @@ describe("database constraints", () => {
       ).rejects.toMatchObject({ code: CHECK_VIOLATION });
     });
 
+    it("has the events columns, with duration_minutes from 002_event_duration.sql", async () => {
+      const { rows } = await db.pool.query<{ column_name: string; data_type: string; is_nullable: string }>(
+        `SELECT column_name, data_type, is_nullable FROM information_schema.columns
+         WHERE table_schema = $1 AND table_name = 'events' ORDER BY column_name`,
+        [db.schema],
+      );
+      expect(rows.map((r) => r.column_name)).toEqual([
+        "cancelled_at",
+        "capacity",
+        "created_at",
+        "duration_minutes",
+        "id",
+        "organizer_id",
+        "schedule_version",
+        "starts_at",
+        "status",
+        "title",
+      ]);
+      expect(rows.find((r) => r.column_name === "duration_minutes")).toEqual({
+        column_name: "duration_minutes",
+        data_type: "integer",
+        is_nullable: "NO",
+      });
+    });
+
+    it("requires duration_minutes between 1 and 1440 and defaults it to 60", async () => {
+      const organizerId = await insertOrganizer(db.pool);
+      for (const durationMinutes of [0, -1, 1441]) {
+        await expect(
+          insertEvent(db.pool, organizerId, { durationMinutes }),
+          String(durationMinutes),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }
+      await expect(
+        db.pool.query(
+          `INSERT INTO events (organizer_id, title, starts_at, capacity, duration_minutes)
+           VALUES ($1, 'T', now(), 1, NULL)`,
+          [organizerId],
+        ),
+      ).rejects.toMatchObject({ code: "23502" });
+
+      const ids = [
+        await insertEvent(db.pool, organizerId, { durationMinutes: 1 }),
+        await insertEvent(db.pool, organizerId, { durationMinutes: 1440 }),
+        await insertEvent(db.pool, organizerId),
+      ];
+      const { rows } = await db.pool.query<{ id: string; duration_minutes: number }>(
+        "SELECT id, duration_minutes FROM events WHERE id = ANY($1::uuid[])",
+        [ids],
+      );
+      const byId = new Map(rows.map((r) => [r.id, r.duration_minutes]));
+      expect(ids.map((id) => byId.get(id))).toEqual([1, 1440, 60]);
+    });
+
     it("defaults a new event to active with schedule_version 1", async () => {
       const eventId = await insertEvent(db.pool, await insertOrganizer(db.pool));
       const { rows } = await db.pool.query<{ status: string; schedule_version: number }>(
