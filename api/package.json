@@ -13,11 +13,13 @@
     "db:migrate": "tsx src/db/run-migrations.ts"
   },
   "dependencies": {
+    "cookie-parser": "^1.4.7",
     "express": "^5.3.0",
     "pg": "^8.23.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
