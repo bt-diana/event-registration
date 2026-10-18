@@ -57,3 +57,16 @@ Started 18-10 21:08 +06.
 
 ### D68: the menu has a separate "All events" link to `/`
 21:27:34 +0600. Partly replaces D64 (no separate events button): the logo still opens `/`, and the menu now also has an "All events" link. Reason: the user asked for it.
+
+## Step 5: the menu is a modal that slides in from the left
+
+**Prompt** (21:4x +06, text cleaned)
+
+> make it as a modal that slides from the left
+
+**What Claude did.** Sent the change to the `spec-writer` agent that was already updating `header-responsive.md` for D67 and D68: the mobile menu becomes a modal drawer from the left (backdrop, focus handling, slide animation). Used SendMessage.
+
+**Decision.**
+
+### D69: the mobile menu is a modal drawer that slides in from the left
+21:28:11 +0600. Replaces the in-flow panel of D66 (and the "no overlay, no drawer, no animation" out-of-scope lines). Reason: the user asked for it.
