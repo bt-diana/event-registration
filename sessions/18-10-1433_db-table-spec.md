@@ -53,3 +53,58 @@ Without an event status, nothing stops registrations, reminders and the waiting 
 **Time:** 14:47:24 +0600
 
 `users` holds attendees (no login); registrations point to a user. `organizers` is a separate table with a login, and each event has an `organizer_id`. This replaces the shared key from an environment variable. No password library or session method is chosen yet (question 13).
+
+## Step 5: answers to the open questions
+
+**Prompt** (about 14:52 +06, text cleaned)
+
+> No attendee login or password: please, add those
+>
+> 1 - 5. OK
+> 6. NO
+> 7. explain the issue in detail
+> 8. let's not allow making capacity less than the already registered number of people (warning message)
+> 9. switch to uuid
+> 10. Yes, cancel registrations
+> 11. no
+> 12. I think this question is closed by the previous ones
+> 13. cookie, use the standard cookie-parser middleware
+> 14. sign-up screen
+> 15. Attendee name should be stored only in the user table; reference the user in the registration via id
+> 16. OK
+> 17. OK
+> 18. OK
+
+**What Claude did.** Explained question 7 itself (the unique key on the outbox blocks a reminder or reschedule email when an event goes A, B, A, B), and kept it open. The `spec-writer` agent (Sonnet 5.5, medium) applied the rest to `DATABASE.md` and `SPEC.md`: `users` got `name` and `password_hash` (attendees sign up and log in); a signed cookie with `cookie-parser` and `crypto.scrypt` for hashing (no sessions table); sign-up screens for attendees and organizers; uuid ids with `uuidv7()` plus a `queue_no` identity column for the waiting-list order; event cancel now cancels registrations too (people already checked in are left alone); capacity change as new B10 (lower than registered is rejected with a 409 warning). B1 and B9 were reworded. The old open questions became 12 decisions and 4 open questions. Claude checked the diff and committed. `uuidv7()` could not be tested here (psql needs a password), so it is unverified until the migration runs. Used Agent, Bash, Edit.
+
+**Decision.**
+
+### D22: attendees sign up and log in; sessions are a signed cookie with `cookie-parser`
+
+**Time:** 14:59:12 +0600
+
+Attendees get accounts with a password, and organizers and attendees both have a sign-up screen. Login sets a signed cookie (`cookie-parser`, the only new library, approved here). Passwords use Node's built-in `crypto.scrypt`, so no hashing library is added. This changes B1.
+
+### D23: uuid ids, with `queue_no` for the waiting-list order
+
+**Time:** 14:59:12 +0600
+
+All ids are `uuid` (`uuidv7()`). The waiting list is ordered by an identity column `queue_no`, because uuidv7 is not strictly ordered between concurrent connections.
+
+### D24: cancelling an event cancels its registrations; no reopening
+
+**Time:** 14:59:12 +0600
+
+All registered and waiting people are cancelled and emailed. A cancelled event cannot be reopened. This replaces the earlier default from D20 that registrations stay unchanged.
+
+### D25: capacity can be changed, but not below the registered count
+
+**Time:** 14:59:12 +0600
+
+Lowering capacity below the number of registered people is rejected with a warning (409). This adds B10.
+
+### D26: defaults accepted
+
+**Time:** 14:59:12 +0600
+
+Accepted as written: tickets and registrations in one table, waiting people get a code but no ticket email, 10-character ticket codes, cancelling a checked-in ticket gives 409, the 24-hour reminder window is worker logic, no reminders for the waiting list, the name stored only in `users.name`, user rows kept, no owner change or organizer delete, and 404 for another organizer's event.
