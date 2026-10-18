@@ -4,6 +4,8 @@ Event registration service (Task 9). Backend in `api/` (Express, TypeScript, Vit
 
 Read `docs/specs/SPEC_TEMPLATE.md` before you start. All specs are in `docs/specs/`. Decisions are in the session files in `sessions/`.
 
+The design mock-ups are in one design canvas: https://claude.ai/artifact/Ca1zKGzeKDGuXHhn7J5L76 (linked from `README.md` and `docs/brand.md`). Add new screens as new boards to that canvas. Do not make a new design artifact. Colours, type and spacing: `docs/brand.md`.
+
 ## Commands
 
 - API tests: `cd api && npm test`

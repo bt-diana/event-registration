@@ -57,7 +57,7 @@ Specs are not written all at once. The first steps of each milestone write (or e
 14. **Red:** B4 concurrency test (capacity 1, 20 parallel attendees: 1 registered, 19 waitlisted; repeat). Add B1 (same account twice = same ticket, one seat) and B2 (full goes to the list). (done: `api/test/registrations/`, with the other R1-R22 tests in the same red commit)
 15. **Green:** the register service in one transaction with `FOR UPDATE` on the event, a `ticket` outbox row, route `POST /events/:id/registrations`. (done: `api/src/registrations/`)
 16. "My registration" route (ticket code, status, place on the list). (done: `GET /events/:id/registrations/me`)
-17. UI spec: `registration-web.md`: the register button on the public event page, the ticket page.
+17. UI spec: `registration-web.md`: the register button on the public event page, the ticket page. (done: spec W-R1-W-R23, mock-up boards `Reg*` in the design canvas)
 18. Test, then code: registration form (states: loading, error, full so the list, already registered, not logged in) and the ticket page (code, status, place on the list).
 
 ### M4. Cancel and capacity
