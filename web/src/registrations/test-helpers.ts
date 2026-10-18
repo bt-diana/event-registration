@@ -36,3 +36,25 @@ export const BEN: Me = {
 
 export const MY_REGISTRATION = `GET /events/${EVENT_ID}/registrations/me`;
 export const REGISTER = `POST /events/${EVENT_ID}/registrations`;
+
+// An item of GET /events/{id}/registrations (OrganizerRegistration in api/openapi.yaml).
+export type SampleOrganizerRegistration = Omit<SampleRegistration, "status"> & {
+  status: "registered" | "waitlisted";
+  attendee_name: string;
+  attendee_email: string;
+};
+
+export function organizerRegistration(
+  overrides: Partial<SampleOrganizerRegistration> = {},
+): SampleOrganizerRegistration {
+  return {
+    ...registration(),
+    status: "registered",
+    attendee_name: "Olga Test",
+    attendee_email: "olga@example.com",
+    ...overrides,
+  };
+}
+
+export const SECOND_EVENT_ID = "5a4b3c2d-1e0f-4a9b-8c7d-6e5f4a3b2c1d";
+export const eventRegistrations = (eventId: string) => `GET /events/${eventId}/registrations`;

@@ -180,6 +180,8 @@ describe("W-R13: 401 or 403 on the ticket page goes to the guard", () => {
       [ME]: sequence(() => json(200, ANN), () => json(200, OLGA)),
       [PUBLIC]: () => json(200, publicEvent()),
       [MY_REGISTRATION]: () => json(403, { error: "wrong_role" }),
+      // The organizer screen reads the organizer's events (W-R20).
+      "GET /events": () => json(200, { events: [] }),
     });
     renderApp(TICKET_PATH);
     await waitFor(() => expect(location()).toBe("/registrations"));

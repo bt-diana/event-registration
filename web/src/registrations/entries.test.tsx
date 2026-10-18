@@ -1,5 +1,6 @@
 // Tests first (registration-web.md): W-R15, W-R16, W-R17, the two list routes and their
-// redirects. Then the placeholders of the blocked lists (W-R18, W-R20).
+// redirects. Then the placeholder of the blocked attendee list (W-R18). The organizer
+// screen loads the organizer's events (W-R20), so its cases answer GET /events.
 import { useEffect } from "react";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { useLocation } from "react-router";
@@ -12,6 +13,8 @@ afterEach(() => {
 });
 
 const ME = "GET /auth/me";
+const EVENTS = "GET /events";
+const noEvents = () => json(200, { events: [] });
 const loggedOut = () => json(401, { error: "not_logged_in" });
 
 function main() {
@@ -51,12 +54,15 @@ describe("W-R15: /registrations/me is the attendee screen", () => {
   });
 
   it("an organizer is redirected to /registrations, no wrong-account message", async () => {
-    const fetch = mockFetch({ [ME]: () => json(200, OLGA) });
+    const fetch = mockFetch({ [ME]: () => json(200, OLGA), [EVENTS]: noEvents });
     renderApp("/registrations/me");
     await waitFor(() => expect(location()).toBe("/registrations"));
     expect(await main().findByRole("heading", { level: 1, name: "Registrations" })).toBeTruthy();
     expect(screen.queryByText(/This page is for/)).toBeNull();
-    expect(fetch.mock.calls).toHaveLength(1);
+    // Only me, then the organizer screen's own events read.
+    expect(callsTo(fetch, ME)).toBe(1);
+    await waitFor(() => expect(callsTo(fetch, EVENTS)).toBe(1));
+    expect(fetch.mock.calls).toHaveLength(2);
   });
 
   it('shows only "Loading..." while me loads: no redirect, no other request', async () => {
@@ -74,11 +80,11 @@ describe("W-R15: /registrations/me is the attendee screen", () => {
 
 describe("W-R16: /registrations is the organizer screen", () => {
   it("an organizer sees it", async () => {
-    const fetch = mockFetch({ [ME]: () => json(200, OLGA) });
+    const fetch = mockFetch({ [ME]: () => json(200, OLGA), [EVENTS]: noEvents });
     renderApp("/registrations");
     expect(await main().findByRole("heading", { level: 1, name: "Registrations" })).toBeTruthy();
     expect(location()).toBe("/registrations");
-    expect(fetch.mock.calls).toHaveLength(1);
+    expect(callsTo(fetch, ME)).toBe(1);
   });
 
   it.each(["/registrations", "/registrations?event=abc"])(
@@ -102,11 +108,12 @@ describe("W-R16: /registrations is the organizer screen", () => {
 
   it('shows only "Loading..." while me loads, no redirect', async () => {
     const me = deferred<Response>();
-    mockFetch({ [ME]: () => me.promise });
+    const fetch = mockFetch({ [ME]: () => me.promise, [EVENTS]: noEvents });
     renderApp("/registrations");
     expect(main().getByRole("status").textContent).toBe("Loading...");
     expect(main().queryByRole("heading")).toBeNull();
     expect(location()).toBe("/registrations");
+    expect(callsTo(fetch, EVENTS)).toBe(0);
     await act(async () => me.resolve(json(200, OLGA)));
     expect(await main().findByRole("heading", { level: 1, name: "Registrations" })).toBeTruthy();
   });
@@ -129,6 +136,7 @@ describe("W-R16: /registrations is the organizer screen", () => {
         }
         return json(200, OLGA);
       },
+      [EVENTS]: noEvents,
     });
     renderApp("/registrations");
     expect(await screen.findByText("Could not check your login")).toBeTruthy();
@@ -139,11 +147,10 @@ describe("W-R16: /registrations is the organizer screen", () => {
   });
 });
 
-describe("W-R18 and W-R20: placeholders until the list routes exist", () => {
+describe("W-R18: placeholder until the attendee list route exists", () => {
   it.each<[string, Me, string]>([
     ["/registrations/me", ANN, "My registrations"],
     ["/registrations/me?event=", ANN, "My registrations"],
-    ["/registrations", OLGA, "Registrations"],
   ])("%s: the card with its h1, the placeholder text and no request", async (path, me, h1) => {
     const fetch = mockFetch({ [ME]: () => json(200, me) });
     renderApp(path);
@@ -157,12 +164,14 @@ describe("W-R18 and W-R20: placeholders until the list routes exist", () => {
   it.todo("W-R18: empty list shows You have no registrations yet. and Go home (question 1)");
   it.todo("W-R18: loading and error with Retry, Could not load your registrations (question 1)");
   it.todo("W-R19: registering invalidates the attendee list (question 1)");
-  // Blocked until GET /events/{id}/registrations is built (checkin.md C15-C18, step 26;
-  // registration-web.md question 2).
-  it.todo(
-    "W-R20: event selector and the table of the chosen event from GET /events/{id}/registrations (question 2)",
-  );
-  it.todo("W-R21: no events, nobody registered, loading, error, event not found (question 2)");
+  // W-R20 and W-R21 (the organizer list) are in OrganizerRegistrations.test.tsx.
+});
+
+it("W-R20: the organizer screen is not the placeholder any more", async () => {
+  mockFetch({ [ME]: () => json(200, OLGA), [EVENTS]: noEvents });
+  renderApp("/registrations");
+  expect(await main().findByText("You have no events yet.")).toBeTruthy();
+  expect(main().queryByText("The list is not built yet.")).toBeNull();
 });
 
 describe("W-R17: no redirect loop", () => {
@@ -174,7 +183,7 @@ describe("W-R17: no redirect loop", () => {
     ["/registrations?event=abc", ANN, ["/registrations?event=abc", "/registrations/me"]],
   ])("%s as %o ends on the right screen after at most one redirect", async (path, me, trail) => {
     const seen: string[] = [];
-    const fetch = mockFetch({ [ME]: () => json(200, me) });
+    const fetch = mockFetch({ [ME]: () => json(200, me), [EVENTS]: noEvents });
     renderWith(
       <>
         <App />
@@ -187,7 +196,8 @@ describe("W-R17: no redirect loop", () => {
     // Give a loop the chance to show itself.
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(seen).toEqual(trail);
-    expect(fetch.mock.calls).toHaveLength(1);
+    // The redirect itself makes no request but me; the organizer screen reads its events.
     expect(callsTo(fetch, ME)).toBe(1);
+    expect(fetch.mock.calls).toHaveLength(me.role === "organizer" ? 2 : 1);
   });
 });
