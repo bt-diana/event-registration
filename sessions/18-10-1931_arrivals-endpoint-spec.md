@@ -41,3 +41,14 @@ Started 18-10 19:31 +06.
 
 ### D49: arrivals answer is `{ capacity, registered, arrived }`
 19:34:27 +0600. Replaces the shape of D48: the capacity is returned again. Reason: the user asked for it.
+
+## Step 4: apply the follow-up edits to `checkin.md`
+
+**Prompt** (19:55 +06, text cleaned)
+
+> ok, apply the edits
+> do we need to fix something in the code for checkin?
+
+**What Claude did.** Edited `docs/specs/checkin.md`: the intro, C16, the assumption about the arrivals route, the section 2 counter line, "Polling now, SSE later", the done line and open question 5 now point to `arrivals.md` and D47. `checkin-web.md` is not edited yet. Checked the code question below. Used Bash.
+
+**Decision.** None.
