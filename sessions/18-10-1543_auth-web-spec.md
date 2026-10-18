@@ -73,3 +73,18 @@ The user approved `react-router` (v7) as a new library for `web/`. Not installed
 **Decision.** None.
 
 **Note on the icon commit (`3a98f6f`).** It was made with `git add -A`, so it also took in changes I did not make: an edit to `docs/brand.md` made on disk by another session (the logo text and the radius line, which belong to this icon change and are correct), and a version of `sessions/18-10-1535_auth-spec.md` that lacked its "Step 6: link the design artifact in the README" block, so the commit deleted that block. The block was restored from `9907f40` in the next commit. Lesson: stage files by name.
+
+## Step 6: connect the auth pages to the backend
+
+**Prompt** (16:3x +06, text cleaned)
+
+> connect auth pages to backend: api/openapi.yaml
+
+A follow-up asked for one header fix in the same step: on `/organizer` pages the logged-out link "For organizers" reads "For attendees" and goes to `/login`.
+
+**What Claude did.** Gave the `code-writer` agent the task. Tests first: it committed the W-A1, W-A2, W-A6 and W-A8 tests alone (`b51c7b5`, they failed because the modules did not exist). Then it wrote `web/src/auth/api.ts` (fetch wrapper, `credentials: "same-origin"`, fixed role-to-path map), `session.ts` (`useMe` with key `["me"]`, `staleTime: Infinity`, no retry, no refetch on focus; login, sign-up and logout mutations that set the cache by hand), `validate.ts` (email, name, password, `safeNext`), `guards.tsx` (`RequireRole`, `RedirectIfLoggedIn` with the decision table), wired `AuthForm` (client checks, 400/401/409/5xx/network texts, pending labels, focus, aria; the mutation variable is a function, so the password is not stored as data in the mutation cache) and the logged-in `Header` (name, role, Log out). The header role link now follows the page role, and W-A18 in `auth-web.md` says so (`83a7161`). Changed the Vite dev proxy from `/api` to `/auth` (`0eb8ce8`). 110 web tests, typecheck and lint pass. Checked the contract with `curl` through the dev proxy against the running API (sign-up 201, repeat 409, `me` 200, logout 204, `me` 401, wrong password 401, bad body 400). The browser walk-through (reload, redirect back after login) was not done. Updated README, ROADMAP (step 28 done) and `auth-web.md` section 6. Used Read, Write, Edit, Bash.
+
+### D34: dev proxy for `/auth`
+**Time:** 16:38:38 +0600
+
+In development the Vite dev server proxies `/auth` to the API on port 3000, so the app and the API share one origin and `fetch` uses `credentials: "same-origin"` without CORS. Production must serve both from one origin too. Reason: the proposed answer to open question 1 of `auth-web.md`; the API routes have no `/api` prefix.

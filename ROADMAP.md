@@ -9,6 +9,7 @@ Order of work for the event registration service. One row = one step = one commi
 - Repo, `api/` and `web/` set up, eslint, env example, database setup.
 - Database schema, migrator and schema tests (`DATABASE.md`).
 - M1 accounts and login (`auth.md`, A1-A18, A11 removed): hashing, signed cookie, seven auth routes, middleware and guards, `api/openapi.yaml`.
+- M9 step 28 web login and session (`auth-web.md`, W-A1-W-A20): sign-up, login and logout pages for both roles, `me` session, guards, dev proxy.
 
 ## Milestones
 
@@ -73,7 +74,7 @@ Specs are not written all at once. The first step of each milestone writes (or e
 
 ### M9. Web (`web/`)
 27. Spec: `auth-web.md` (done: login and sign-up screens, session, guards) and `web.md` (the other screens, states, which API route each one uses).
-28. Test, then code: `react-router` (approved), app shell, API client, TanStack Query `me`, guards, sign-up and login pages for both roles (`auth-web.md`, W-A1 to W-A20). (UI part done: `react-router` installed, routes, header, shared `AuthForm`, brand styles, render tests. Functionality still to do: API client, `me`, guards, validation, submit, errors, focus, logout.)
+28. Test, then code: `react-router` (approved), app shell, API client, TanStack Query `me`, guards, sign-up and login pages for both roles (`auth-web.md`, W-A1 to W-A20). (done: `react-router`, routes, header, shared `AuthForm`, brand styles, API client, `me`, guards, validation, submit, errors, focus, logout, tests for W-A1 to W-A20; Vite dev proxy for `/auth` (D34).)
 29. Public event page and registration form (states: loading, error, full, already registered).
 30. Ticket page: code, status, place on the list, cancel button.
 31. Organizer: events list, create, reschedule, capacity, cancel event.

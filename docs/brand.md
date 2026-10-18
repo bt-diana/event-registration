@@ -42,7 +42,7 @@ Both from Google Fonts. Fallback: `system-ui, sans-serif`.
 ## Layout and shape
 
 - Page: header on top, then the content centred, padding `64px 16px`. Only a fluid width, so it works at phone width.
-- Header: white, 1px bottom border, padding `8px 40px`, items wrap. Logged out: Log in, Sign up, For organizers. Logged in: name, role, Log out button.
+- Header: white, 1px bottom border, padding `8px 40px`, items wrap. Logged out: Log in, Sign up, For organizers (For attendees on `/organizer` pages). Logged in: name, role, Log out button.
 - Card: white, 1px border, radius 12px, padding 32px, max width 440px (520px for message pages).
 - Spacing: 20px between fields, 24px between the intro and the form, 8px between label and input groups.
 - Radius: 8px for inputs and buttons, 12px for cards.

@@ -4,7 +4,7 @@ A small service for event registration. An organizer creates an event with a lim
 
 This is my solution for Task 9. I built it together with an AI agent.
 
-> **Draft.** Only the database schema, accounts and login (milestone M1, API) and the static look of the web login and sign-up screens (no functionality yet) are built so far. `[TODO]` marks what I fill in during and after the build. The "Project status" section must only say what really works.
+> **Draft.** Only the database schema, accounts and login (milestone M1, API) and the web login, sign-up and session screens (M9 step 28) are built so far. `[TODO]` marks what I fill in during and after the build. The "Project status" section must only say what really works.
 
 ## Features
 
@@ -60,6 +60,8 @@ npm run dev
 
 Open http://localhost:5173.
 
+The web app calls the API on its own origin. In development the Vite dev server proxies `/auth` to the API on http://localhost:3000 (`web/vite.config.ts`), so no CORS is needed and `fetch` uses `credentials: "same-origin"`. This proxy exists only in `npm run dev`; a production build must be served from the same origin as the API (for example behind one reverse proxy), or the login cookie and the calls will not work.
+
 ### Try it with two clients
 
 Open the organizer screen in one browser tab and the check-in screen in another. Register a person, check in the ticket, and watch the arrivals counter change in the first tab without a reload.
@@ -103,16 +105,16 @@ Later routes use the middleware in `api/src/auth/middleware.ts`: `authenticate` 
 
 ## Web routes
 
-From [docs/specs/auth-web.md](docs/specs/auth-web.md) section 2, styled by [docs/brand.md](docs/brand.md). **UI only for now:** the pages are static markup. The forms send nothing, there is no session, no guard and no validation yet.
+From [docs/specs/auth-web.md](docs/specs/auth-web.md) section 2, styled by [docs/brand.md](docs/brand.md).
 
-| Route | Shows |
-|---|---|
-| `/` | Attendee home (placeholder) |
-| `/login`, `/signup` | Attendee login and sign-up form |
-| `/organizer/login`, `/organizer/signup` | Organizer login and sign-up form |
-| `/organizer` | Organizer home (placeholder, not guarded yet) |
+| Route | Who sees it | Shows |
+|---|---|---|
+| `/` | Everyone (public) | Attendee home (placeholder) |
+| `/login`, `/signup` | Logged out, or an organizer | Attendee login and sign-up form (`POST /auth/users/login`, `/signup`) |
+| `/organizer/login`, `/organizer/signup` | Logged out, or an attendee | Organizer login and sign-up form (`POST /auth/organizers/login`, `/signup`) |
+| `/organizer` | Organizers (guarded) | Organizer home (placeholder). Logged out: redirect to `/organizer/login?next=/organizer`. Attendee: a wrong-account message |
 
-Every page has the logged-out header (Log in, Sign up, For organizers).
+At start the app calls `GET /auth/me` once (TanStack Query key `["me"]`); 401 means logged out. Login and sign-up put the answer into that cache, so no second call is made, and then go to a safe `?next=` path or the role's home. A person already logged in with the page's role is sent on from the login and sign-up pages. The header shows "Log in", "Sign up" and "For organizers" (or "For attendees" on `/organizer` pages) when logged out, and the name, the role and "Log out" when logged in.
 
 ## Project structure
 
@@ -128,7 +130,9 @@ api/                 backend (Express, TypeScript)
 web/                 frontend (React, Vite, TypeScript)
   src/main.tsx       QueryClientProvider, BrowserRouter, styles.css
   src/App.tsx        header and routes
-  src/auth/          AuthForm (shared login and sign-up form), Header
+  src/auth/          api.ts (fetch wrapper), session.ts (useMe and the login, sign-up and
+                     logout mutations), validate.ts (client checks, safeNext), guards.tsx
+                     (RequireRole, RedirectIfLoggedIn), AuthForm, Header, and their tests
   src/styles.css     brand tokens and styles from docs/brand.md
 ROADMAP.md           the order of work, milestones and steps
 sessions/            the work log: one markdown file per session
@@ -173,9 +177,10 @@ All of these are automatic tests. `[TODO: fill the Status column with real resul
 `[TODO: fill in honestly after the build. Do not copy the plan here.]`
 
 - **Works:** the database schema and migrator. Accounts and login (API only, M1): sign-up, login and logout for attendees and organizers, `GET /auth/me` for either role, the signed 7-day cookie (expiry checked on the server), and the `authenticate`, `requireUser` and `requireOrganizer` middleware. Behaviours A1-A18 of `docs/specs/auth.md` (except the removed A11) have tests in `api/test/auth/` and `api/test/app.test.ts`.
-- **Partly works:** the web login and sign-up pages for both roles, the logged-out header and the links between pages are built as UI only (M9 step 28, visual part). Only the password Show/Hide button works. The forms send nothing; the session (`GET /auth/me`), guards, validation, error messages, pending states and logout (W-A1 to W-A17, W-A20) are not built yet.
+- **Works (web, M9 step 28):** sign-up, login and logout in the browser for both roles, the session from one `GET /auth/me`, the `RequireRole` and `RedirectIfLoggedIn` guards (loading, error with Retry, redirect with `next`, wrong-account message), client checks, the API error texts (400, 401, 409, 5xx and network), pending buttons, focus and aria. Behaviours W-A1 to W-A20 of `docs/specs/auth-web.md` have component tests in `web/src/` (`fetch` mocked). Not covered by a test: the W-A20 part "the cookie is `httpOnly` and the app never reads it" (an API fact, tested in `api/`; the web code has no cookie access). The contract was checked by hand through the dev proxy with `curl` (sign-up 201, a second sign-up 409, `me` 200 with the cookie, logout 204, `me` 401 after it, wrong password 401, bad body 400); the full browser walk-through (reload, redirect back after login) is still to be done by hand.
+- **The UI guards are not security.** They only decide what the screen shows. The API is the real guard (`requireUser`, `requireOrganizer`): a person who edits the page in the browser still gets 401 or 403 from the API.
 - **Does not work, or not done, and why:** events, registration, waiting list, check-in, emails, live updates and the rest of the web app are not built yet (milestones M2-M9 in `ROADMAP.md`).
-- **Known limits of the login:** logout only clears the cookie in the browser. A copy of the cookie stays valid until its 7 days end, because there is no sessions table (a test shows this). `sameSite=lax` is the only CSRF defence, which is not full protection (for example a hostile subdomain). No rate limiting, password reset or email verification.
+- **Known limits of the login:** logout only clears the cookie in the browser (the web app then shows the logged-out header; it cannot do more). A copy of the cookie stays valid until its 7 days end, because there is no sessions table (a test shows this). `sameSite=lax` is the only CSRF defence, which is not full protection (for example a hostile subdomain). No rate limiting, password reset or email verification.
 - **Known limits (expected, confirm after the build):** live updates use an in-process event stream, so only one server instance is supported. The reminder worker checks on a timer and uses the server clock. Email is a stub.
 - **Assumption:** the task does not say what happens to reminders after a reschedule. I assume one reminder per person per start time.
 
