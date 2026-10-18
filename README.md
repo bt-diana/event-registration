@@ -4,7 +4,7 @@ A small service for event registration. An organizer creates an event with a lim
 
 This is my solution for Task 9. I built it together with an AI agent.
 
-> **Draft.** Only the database schema, accounts and login (milestone M1) and the web login, sign-up and session screens (M1 step 6) are built so far. `[TODO]` marks what I fill in during and after the build. The "Project status" section must only say what really works.
+> **Draft.** Only the database schema, accounts and login (milestone M1), the web login, sign-up and session screens (M1 step 6) and the events API (milestone M2, API only: organizer events and the public event page) are built so far. `[TODO]` marks what I fill in during and after the build. The "Project status" section must only say what really works.
 
 ## Features
 
@@ -49,7 +49,7 @@ The backend and the frontend are separate apps. They talk over HTTP, and the liv
 # 2. Backend
 cd api
 npm install
-npm run db:migrate
+npm run db:migrate   # applies the pending .sql files in api/src/db/migrations/ (001, 002)
 npm run dev
 
 # 3. Frontend (in a new terminal)
@@ -90,7 +90,7 @@ The API reads the repository `.env` when `DATABASE_URL` or `COOKIE_SECRET` is no
 
 ## API
 
-Described in [api/openapi.yaml](api/openapi.yaml) (OpenAPI 3.0.3, hand-written). The behaviours are in [docs/specs/auth.md](docs/specs/auth.md). All bodies are JSON; errors are `{ "error": "<code>" }`.
+Described in [api/openapi.yaml](api/openapi.yaml) (OpenAPI 3.0.3, hand-written). The behaviours are in [docs/specs/auth.md](docs/specs/auth.md) and [docs/specs/events.md](docs/specs/events.md). All bodies are JSON; errors are `{ "error": "<code>" }`.
 
 | Route | Answer |
 |---|---|
@@ -99,7 +99,18 @@ Described in [api/openapi.yaml](api/openapi.yaml) (OpenAPI 3.0.3, hand-written).
 | `POST /auth/users/logout`, `POST /auth/organizers/logout` | 204, cookie cleared |
 | `GET /auth/me` | 200 `{ role, id, email, name }` for either role (the only "me" route); 401 not logged in |
 
-Seven routes in total. There is no role-specific `GET /auth/users/me` or `GET /auth/organizers/me`; those paths answer 404.
+Seven auth routes. There is no role-specific `GET /auth/users/me` or `GET /auth/organizers/me`; those paths answer 404.
+
+Events (M2, [docs/specs/events.md](docs/specs/events.md)):
+
+| Route | Answer |
+|---|---|
+| `POST /events` (organizer) | Body `{ title, starts_at, duration_minutes, capacity }`. 201 organizer event; 400 bad input; 401 not logged in; 403 attendee |
+| `GET /events` (organizer) | 200 `{ events: [...] }`, only the caller's events, by `starts_at` then `id`, no pagination; 401; 403 |
+| `GET /events/:id` (organizer) | 200 organizer event; 404 for an unknown id, an id that is not a uuid, or another organizer's event (same body); 401; 403 |
+| `GET /public/events/:id` (no login) | 200 `{ id, title, starts_at, ends_at, duration_minutes, capacity, status, has_started, seats_left, full }`; 404 unknown or malformed id |
+
+The organizer event is `{ id, title, starts_at, ends_at, duration_minutes, capacity, registered, seats_left, status, schedule_version, cancelled_at, created_at }`. `status` is derived when the event is read: `cancelled`, else `passed` once `starts_at + duration_minutes` is reached, else `active` (nothing is stored). On the public page a cancelled or passed event has `seats_left` 0 and `full` false.
 
 Later routes use the middleware in `api/src/auth/middleware.ts`: `authenticate` puts `req.user` or `req.organizer` on the request, and `requireUser` / `requireOrganizer` answer 401 (no login) or 403 (other role).
 
@@ -122,11 +133,12 @@ Partly planned. `[TODO: update after the build]`
 
 ```
 api/                 backend (Express, TypeScript)
-  openapi.yaml       the API description (auth routes so far)
+  openapi.yaml       the API description (auth and event routes)
   src/app.ts         createApp: JSON, cookie-parser, authenticate, routes
   src/auth/          password hashing, session cookie, middleware, auth routes
-  src/db/            pool, migrator, migrations (SQL)
-  test/              Vitest tests (auth/, db/)
+  src/events/        routes.ts: the organizer event routes and the public event page
+  src/db/            pool, migrator, migrations (SQL: 001_init, 002_event_duration)
+  test/              Vitest tests (auth/, db/, events/)
 web/                 frontend (React, Vite, TypeScript)
   src/main.tsx       QueryClientProvider, BrowserRouter, styles.css
   src/App.tsx        header and routes
@@ -179,7 +191,8 @@ All of these are automatic tests. `[TODO: fill the Status column with real resul
 - **Works:** the database schema and migrator. Accounts and login (API only, M1): sign-up, login and logout for attendees and organizers, `GET /auth/me` for either role, the signed 7-day cookie (expiry checked on the server), and the `authenticate`, `requireUser` and `requireOrganizer` middleware. Behaviours A1-A18 of `docs/specs/auth.md` (except the removed A11) have tests in `api/test/auth/` and `api/test/app.test.ts`.
 - **Works (web, M9 step 28):** sign-up, login and logout in the browser for both roles, the session from one `GET /auth/me`, the `RequireRole` and `RedirectIfLoggedIn` guards (loading, error with Retry, redirect with `next`, wrong-account message), client checks, the API error texts (400, 401, 409, 5xx and network), pending buttons, focus and aria. Behaviours W-A1 to W-A20 of `docs/specs/auth-web.md` have component tests in `web/src/` (`fetch` mocked). Not covered by a test: the W-A20 part "the cookie is `httpOnly` and the app never reads it" (an API fact, tested in `api/`; the web code has no cookie access). The contract was checked by hand through the dev proxy with `curl` (sign-up 201, a second sign-up 409, `me` 200 with the cookie, logout 204, `me` 401 after it, wrong password 401, bad body 400); the full browser walk-through (reload, redirect back after login) is still to be done by hand.
 - **The UI guards are not security.** They only decide what the screen shows. The API is the real guard (`requireUser`, `requireOrganizer`): a person who edits the page in the browser still gets 401 or 403 from the API.
-- **Does not work, or not done, and why:** events, registration, waiting list, check-in, emails, live updates and the rest of the web app are not built yet (milestones M2-M8 in `ROADMAP.md`).
+- **Works (API, M2):** an organizer creates events (`POST /events`, with title, start, duration and capacity) and lists and reads only their own (`GET /events`, `GET /events/:id`; another organizer's event answers 404 like a missing one). Anyone reads the public event page (`GET /public/events/:id`, no login) with the start and end, capacity, seats left, `full`, `has_started` and the status `active`, `cancelled` or `passed` (derived from the start and the duration with the server clock, not stored). Migration `002_event_duration.sql` adds `events.duration_minutes`. Behaviours E1-E20 of `docs/specs/events.md` have tests in `api/test/events/` and `api/test/db/`. Nobody can register yet (M3), so `registered` is always 0 and seats left is always the full capacity, except for rows that the tests insert with SQL. Events cannot be edited, cancelled or rescheduled through the API yet (M4, M7), and there are no event screens in the web app yet (M2 UI).
+- **Does not work, or not done, and why:** registration, waiting list, check-in, emails, live updates, the event screens and the rest of the web app are not built yet (the M2 UI and milestones M3-M8 in `ROADMAP.md`).
 - **Known limits of the login:** logout only clears the cookie in the browser (the web app then shows the logged-out header; it cannot do more). A copy of the cookie stays valid until its 7 days end, because there is no sessions table (a test shows this). `sameSite=lax` is the only CSRF defence, which is not full protection (for example a hostile subdomain). No rate limiting, password reset or email verification.
 - **Known limits (expected, confirm after the build):** live updates use an in-process event stream, so only one server instance is supported. The reminder worker checks on a timer and uses the server clock. Email is a stub.
 - **Assumption:** the task does not say what happens to reminders after a reschedule. I assume one reminder per person per start time.
@@ -207,7 +220,7 @@ Why I chose this process is in decision D1 in [sessions/17-10-1532_research.md](
 - [ROADMAP.md](ROADMAP.md): the order of work, milestones and steps
 - [docs/specs/SPEC_TEMPLATE.md](docs/specs/SPEC_TEMPLATE.md): the template for feature specs (one spec per feature)
 - [docs/brand.md](docs/brand.md): colours, type, spacing and components for the web UI. It comes from the [design artifact](https://claude.ai/artifact/Ca1zKGzeKDGuXHhn7J5L76) (login and sign-up screens, made from `docs/specs/auth-web.md`); change `brand.md` first when a value changes
-- [docs/specs/DATABASE.md](docs/specs/DATABASE.md), [docs/specs/auth.md](docs/specs/auth.md), [docs/specs/auth-web.md](docs/specs/auth-web.md): the database schema, the accounts and login API, the login screens
+- [docs/specs/DATABASE.md](docs/specs/DATABASE.md), [docs/specs/auth.md](docs/specs/auth.md), [docs/specs/auth-web.md](docs/specs/auth-web.md), [docs/specs/events.md](docs/specs/events.md): the database schema, the accounts and login API, the login screens, the events API
 - [api/openapi.yaml](api/openapi.yaml): the API description (OpenAPI 3.0.3)
 - [docs/planning/build_plan.md](docs/planning/build_plan.md): the first build plan, out of date (Fastify, Docker); `ROADMAP.md` replaces it
 - [docs/research/sdd/summary.md](docs/research/sdd/summary.md): the research summary (the full report and sources are in the same folder)

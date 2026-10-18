@@ -4,6 +4,7 @@ import type pg from "pg";
 import { authenticate } from "./auth/middleware.js";
 import { authRouter } from "./auth/routes.js";
 import { createPool, loadEnv } from "./db/pool.js";
+import { eventsRouter } from "./events/routes.js";
 
 export type AppOptions = {
   // Defaults to a pool on DATABASE_URL.
@@ -30,6 +31,7 @@ export function createApp(options: AppOptions = {}) {
     res.json({ ok: true });
   });
   app.use(authRouter(pool));
+  app.use(eventsRouter(pool));
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });
   });

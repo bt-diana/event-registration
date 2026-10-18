@@ -1,11 +1,18 @@
 openapi: 3.0.3
 info:
-  title: Event registration API - accounts and login
-  version: 0.1.0
+  title: Event registration API - accounts, login and events
+  version: 0.2.0
   description: |
     Hand-written description of the seven auth routes (milestone M1, docs/specs/auth.md):
     signup, login and logout for each role, and GET /auth/me for either role. All bodies are JSON. Errors use the body { "error": "<code>" }; the status is
     fixed by the spec, the codes may be refined.
+
+    The four event routes (milestone M2, docs/specs/events.md): an organizer creates,
+    lists and reads their own events; anyone reads the public event page. The event
+    `status` is derived at read time with the server clock: `cancelled` if the event
+    was cancelled, else `passed` once `starts_at + duration_minutes` is reached, else
+    `active`. Seat counts are a snapshot (no lock). Until registration exists (M3),
+    `registered` is 0 and `seats_left` equals `capacity`.
 
     Login is one signed cookie named `session` (cookie-parser), valid 7 days,
     httpOnly, sameSite=lax, secure only when NODE_ENV=production. Its signed value is
@@ -21,6 +28,10 @@ tags:
     description: Routes under /auth/organizers (role `organizer`).
   - name: session
     description: Routes for either role.
+  - name: events
+    description: The logged-in organizer's own events (requireOrganizer).
+  - name: public
+    description: Routes that need no login.
 
 paths:
   /auth/users/signup:
@@ -121,6 +132,114 @@ paths:
         "401":
           $ref: "#/components/responses/NotLoggedIn"
 
+  /events:
+    post:
+      tags: [events]
+      operationId: createEvent
+      summary: Create an event owned by the logged-in organizer
+      description: |
+        The owner is the organizer in the cookie, never a body field. Extra fields
+        (`organizer_id`, `status`, ...) are ignored. A new event has stored status
+        `active` and `schedule_version` 1. The guard runs before the body check, so an
+        attendee with a bad body gets 403 and no login gets 401 (a body that is not
+        JSON at all is refused with 400 by the JSON parser before any route runs).
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewEvent"
+      responses:
+        "201":
+          description: The created event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerEvent"
+        "400":
+          $ref: "#/components/responses/InvalidEvent"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/WrongRole"
+    get:
+      tags: [events]
+      operationId: listEvents
+      summary: All events of the logged-in organizer
+      description: |
+        Only the caller's events, past and cancelled too, ordered by `starts_at`, then
+        `id`. No pagination. An organizer with no events gets `{ "events": [] }`.
+      security:
+        - session: []
+      responses:
+        "200":
+          description: The caller's events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events]
+                additionalProperties: false
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OrganizerEvent"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/WrongRole"
+
+  /events/{id}:
+    get:
+      tags: [events]
+      operationId: getEvent
+      summary: One event of the logged-in organizer
+      description: |
+        Another organizer's event, an unknown id and an id that is not a uuid all
+        answer the same 404, so ids are not confirmed to strangers. A malformed id is
+        answered before any database query.
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: The event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerEvent"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/WrongRole"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /public/events/{id}:
+    get:
+      tags: [public]
+      operationId: getPublicEvent
+      summary: The public event page
+      description: |
+        No login; the cookie is ignored, so every caller gets the same answer. Passed
+        and cancelled events answer 200 too. Nothing about who is registered is shown.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: The event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicEvent"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     session:
@@ -193,6 +312,124 @@ components:
         password:
           type: string
           format: password
+    NewEvent:
+      type: object
+      required: [title, starts_at, duration_minutes, capacity]
+      properties:
+        title:
+          type: string
+          description: Trimmed, then 1 to 200 characters (code points), no NUL.
+          example: Spring meetup
+        starts_at:
+          type: string
+          format: date-time
+          description: |
+            ISO 8601 with a date, a time (seconds and up to three fraction digits are
+            optional) and `Z` or an offset like `+02:00`. A time without an offset is
+            refused. Must be after the server clock at the time of the request.
+          example: "2030-01-01T10:00:00Z"
+        duration_minutes:
+          type: integer
+          minimum: 1
+          maximum: 1440
+          example: 90
+        capacity:
+          type: integer
+          minimum: 1
+          maximum: 100000
+          example: 25
+    EventStatus:
+      type: string
+      enum: [active, cancelled, passed]
+      description: |
+        Derived at read time: `cancelled` if the event was cancelled; else `passed`
+        from `ends_at` on (at exactly `ends_at` it is passed); else `active`.
+    OrganizerEvent:
+      type: object
+      required:
+        - id
+        - title
+        - starts_at
+        - ends_at
+        - duration_minutes
+        - capacity
+        - registered
+        - seats_left
+        - status
+        - schedule_version
+        - cancelled_at
+        - created_at
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+          description: UTC, from toISOString(), for example `2030-01-01T10:00:00.000Z`.
+        ends_at:
+          type: string
+          format: date-time
+          description: "`starts_at` plus `duration_minutes`, UTC."
+        duration_minutes:
+          type: integer
+        capacity:
+          type: integer
+        registered:
+          type: integer
+          description: The number of `registered` registrations (waiting and cancelled ones do not count). 0 until M3.
+        seats_left:
+          type: integer
+          description: "`capacity - registered`, never below 0. Real numbers for every status."
+        status:
+          $ref: "#/components/schemas/EventStatus"
+        schedule_version:
+          type: integer
+          description: 1 until reschedule exists (M7).
+        cancelled_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    PublicEvent:
+      type: object
+      required: [id, title, starts_at, ends_at, duration_minutes, capacity, status, has_started, seats_left, full]
+      additionalProperties: false
+      description: |
+        Exactly these keys. No organizer, no registrations, no counts beyond
+        `capacity` and `seats_left`.
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        duration_minutes:
+          type: integer
+        capacity:
+          type: integer
+        status:
+          $ref: "#/components/schemas/EventStatus"
+        has_started:
+          type: boolean
+          description: "`starts_at <= now` on the server clock; true while the event runs and after it."
+        seats_left:
+          type: integer
+          description: "`capacity` minus the registered count, never below 0; 0 when `status` is `cancelled` or `passed`."
+        full:
+          type: boolean
+          description: True when `seats_left` is 0 and `status` is `active` (a closed event is not full).
     Error:
       type: object
       required: [error]
@@ -200,6 +437,15 @@ components:
         error:
           type: string
           example: invalid_input
+
+  parameters:
+    EventId:
+      name: id
+      in: path
+      required: true
+      description: The event id. A value that is not a uuid answers 404.
+      schema:
+        type: string
 
   requestBodies:
     Signup:
@@ -271,3 +517,31 @@ components:
             $ref: "#/components/schemas/Error"
           example:
             error: not_logged_in
+    WrongRole:
+      description: Logged in, but as an attendee. No handler runs and nothing is written.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: wrong_role
+    NotFound:
+      description: Unknown id, an id that is not a uuid, or (on the organizer route) another organizer's event. All give the same body.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: not_found
+    InvalidEvent:
+      description: |
+        Bad body: not an object; a field missing or of the wrong type; a title empty
+        after trimming or over 200 characters; `starts_at` not an ISO 8601 timestamp
+        with `Z` or an offset, or not in the future; `capacity` not an integer from 1
+        to 100000; `duration_minutes` not an integer from 1 to 1440. Nothing is written.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: invalid_input
