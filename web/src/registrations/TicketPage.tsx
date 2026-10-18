@@ -79,11 +79,8 @@ export function TicketPage({ eventId }: { eventId: string }) {
     <section className="card card-event ticket-page" data-role="user">
       {back}
       <h1>Your ticket</h1>
-      <p className="ticket-event">
-        <Link to={eventLink} className="action-link">
-          {event.data.title}
-        </Link>
-      </p>
+      {/* The event name is plain text (user request, D72); "Back to event" leads there. */}
+      <p className="ticket-event">{event.data.title}</p>
       <dl className="details">
         <Detail label="Starts">{formatDateTime(event.data.starts_at)}</Detail>
       </dl>

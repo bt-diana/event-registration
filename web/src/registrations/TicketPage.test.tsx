@@ -65,14 +65,14 @@ describe("W-R11: the ticket page", () => {
       "This ticket is no longer valid.",
       "Cancelled",
     ],
-  ])("%s: title link, start, status line and the ticket", async (_case, r, h2, line, badge) => {
+  ])("%s: title, start, status line and the ticket", async (_case, r, h2, line, badge) => {
     const fetch = await ticketPage(ok(publicEvent()), ok(r));
     expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual([
       "Your ticket",
     ]);
-    expect(main().getByRole("link", { name: "Spring meetup" }).getAttribute("href")).toBe(
-      `/event/${EVENT_ID}`,
-    );
+    // D72: the event name is plain text, not a link.
+    expect(main().getByText("Spring meetup").closest("a")).toBeNull();
+    expect(main().queryByRole("link", { name: "Spring meetup" })).toBeNull();
     expect(main().getByText(formatDateTime("2030-01-01T10:00:00.000Z"))).toBeTruthy();
     expect(main().getByText("Open")).toBeTruthy();
     expect(main().getByRole("heading", { level: 2, name: h2 })).toBeTruthy();
@@ -294,8 +294,8 @@ describe("design-alignment.md DA40-DA43: the ticket page back link", () => {
     expect(link.getAttribute("href")).toBe(`/event/${EVENT_ID}`);
     const heading = main().getByRole("heading", { level: 1, name: "Your ticket" });
     expect(link.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // The title link under the h1 stays (W-R11).
-    expect(main().getByRole("link", { name: "Spring meetup" })).toBeTruthy();
+    // The event name under the h1 is plain text (D72).
+    expect(main().getByText("Spring meetup").closest("a")).toBeNull();
   });
 
   it("the load error has the same link; Retry stays", async () => {

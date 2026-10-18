@@ -137,3 +137,16 @@ Started 18-10 21:10 +06.
 **What Claude did.** `styles.css`: one rule gives every back link that is the first element of a `.card`, `.list-page` or `.scan-page` 8 px to the `h1`; the old `.card-form .back-link { margin-top: 16px }` (for the link under the form) is gone. `.back-link` has no `white-space: nowrap` and keeps `min-height: 44px`. Web tests (809), typecheck and lint pass (Bash). `styles.css`, `README.md` and `ROADMAP.md` have another agent's uncommitted header edits, so only this step's lines were staged (index blob script). Earlier, the step 11 (c) commit had taken that agent's two header lines in `README.md` and `ROADMAP.md` by mistake (they changed the files between my check and `git add`); I amended my own commit (not pushed) to drop them, so they are uncommitted in the working copy again. The same race hit this step: the other agent committed its header CSS (`b672022`) between my staging and my commit, so my commit first undid it; I checked that the working copy was exactly `b672022` plus my lines and amended my commit to that, so `b672022` stays intact. **Hand check of DA48 at 320 and 390 px: not done** (no browser in this agent).
 
 **Decision.** None.
+
+## Step 15: the event name on the ticket page is not a link
+
+**Prompt** (21:50 +06, text cleaned)
+
+> Remove the link from the event name on the ticket page.
+
+**What Claude did.** `TicketPage.tsx`: the event title under the `h1` "Your ticket" is plain text in `p.ticket-event` (the "Back to event" link above the `h1`, DA41, is the way to the event). `TicketPage.test.tsx`: the W-R11 case and the DA41 case now check that the title is not a link. README updated. Web tests (809), typecheck and lint pass (Bash). The spec rows that still name the title link (`registration-web.md` W-R11, `design-alignment.md` DA41 "The title link under the `h1` stays") are not changed: spec edits are not made by this agent.
+
+**Decision.**
+
+### D72: the event name on the ticket page is plain text
+21:50:33 +0600. Replaces the title link of W-R11 on the ticket page; "Back to event" (DA41) is the one link to the event. Reason: the user asked for it.
