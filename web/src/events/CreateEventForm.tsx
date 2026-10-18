@@ -1,7 +1,8 @@
 // /organizer/events/new: create an event (W-E4-W-E9, W-E20). Inside RequireRole.
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import type { NewEvent } from "./api";
+import { BackLink } from "./EventParts";
 import { localToIso, localZoneName, toLocalInput } from "./format";
 import { isAuthError, statusOf, useCreateEvent } from "./queries";
 import {
@@ -164,6 +165,8 @@ export function CreateEventForm() {
 
   return (
     <section className="card card-form" data-role="organizer">
+      {/* design-alignment.md DA36: the back link is above the h1. */}
+      <BackLink to="/organizer" name="events" />
       <h1 className="form-title">Create event</h1>
 
       {formError && (
@@ -213,10 +216,6 @@ export function CreateEventForm() {
           {create.isPending ? "Creating..." : "Create event"}
         </button>
       </form>
-
-      <Link to="/organizer" className="back-link">
-        <span aria-hidden="true">&larr;</span> Back to events
-      </Link>
     </section>
   );
 }

@@ -11,9 +11,21 @@ export function EventLoading() {
   );
 }
 
-export function EventLoadError({ onRetry }: { onRetry: () => void }) {
+// The one back link look (design-alignment.md DA35): above the h1, the arrow hidden,
+// so the accessible name is exactly "Back to <name>".
+export function BackLink({ to, name }: { to: string; name: string }) {
+  return (
+    <Link to={to} className="back-link">
+      <span aria-hidden="true">&larr;</span> Back to {name}
+    </Link>
+  );
+}
+
+// backTo: the organizer list for the owner view, the public list otherwise (DA39).
+export function EventLoadError({ onRetry, backTo }: { onRetry: () => void; backTo: string }) {
   return (
     <section className="card card-message">
+      <BackLink to={backTo} name="events" />
       <h1>Could not load this event</h1>
       <p className="intro">Check your connection and try again.</p>
       <button type="button" className="button-primary" onClick={onRetry}>

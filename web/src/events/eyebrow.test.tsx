@@ -44,12 +44,14 @@ describe("RE1: no role eyebrow in page content", () => {
     expect(mainText().startsWith("Your events")).toBe(true);
   });
 
-  it("create form: no Organizer eyebrow, the h1 comes first", async () => {
+  // design-alignment.md DA36: only the back link comes before the h1, no eyebrow.
+  it("create form: no Organizer eyebrow, the h1 comes right after the back link", async () => {
     mockFetch({ "GET /auth/me": () => json(200, OLGA) });
     renderApp("/organizer/events/new");
     expect(await screen.findByRole("heading", { level: 1, name: "Create event" })).toBeTruthy();
     expectNoRoleWord();
-    expect(mainText().startsWith("Create event")).toBe(true);
+    const back = main().getByRole("link", { name: "Back to events" }).textContent ?? "";
+    expect(mainText().startsWith(`${back}Create event`)).toBe(true);
   });
 
   it("organizer event view: no Organizer eyebrow", async () => {

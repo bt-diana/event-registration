@@ -779,7 +779,8 @@ describe("design-alignment.md DA46: Back to registrations above the h1 in every 
     const events = deferred<Response>();
     mockFetch({ [ME]: () => json(200, OLGA), [EVENTS]: () => events.promise });
     renderApp("/registrations/scan");
-    expect((await main().findByRole("status")).textContent).toBe("Loading...");
+    await main().findByRole("heading", { level: 1, name: "Check in" });
+    expect(main().getByRole("status").textContent).toBe("Loading...");
     const link = backLink();
     expect(link.getAttribute("href")).toBe("/registrations");
     beforeHeading(link);

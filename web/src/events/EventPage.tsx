@@ -7,7 +7,7 @@ import { formatDateTime, formatDuration } from "./format";
 import { PublicEventView } from "./PublicEventPage";
 import { isAuthError, statusOf, useEvent } from "./queries";
 import { EventStatusBadge } from "./StatusBadge";
-import { Detail, EventDescription, EventLoadError, EventLoading } from "./EventParts";
+import { BackLink, Detail, EventDescription, EventLoadError, EventLoading } from "./EventParts";
 
 export function EventPage() {
   const { id = "" } = useParams();
@@ -32,7 +32,7 @@ function OwnerOrPublic({ id }: { id: string }) {
   if (query.isError) {
     // Not theirs or unknown: the same 404, so the public view decides (W-E11).
     if (statusOf(query.error) === 404) return <PublicEventView id={id} />;
-    return <EventLoadError onRetry={() => void query.refetch()} />;
+    return <EventLoadError backTo="/organizer" onRetry={() => void query.refetch()} />;
   }
   return <OrganizerEventView event={query.data} />;
 }
@@ -42,9 +42,7 @@ function OrganizerEventView({ event }: { event: OrganizerEvent }) {
   const link = `/event/${event.id}`;
   return (
     <section className="card card-event" data-role="organizer">
-      <Link to="/organizer" className="back-link">
-        <span aria-hidden="true">&larr;</span> Back to events
-      </Link>
+      <BackLink to="/organizer" name="events" />
       <h1>{event.title}</h1>
       <p className="event-status">
         <EventStatusBadge status={event.status} />

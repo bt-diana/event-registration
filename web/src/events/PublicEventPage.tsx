@@ -20,7 +20,7 @@ export function PublicEventView({ id }: { id: string }) {
   if (query.isPending || (query.isError && query.isFetching)) return <EventLoading />;
   if (query.isError) {
     if (statusOf(query.error) === 404) return <EventNotFound />;
-    return <EventLoadError onRetry={() => void query.refetch()} />;
+    return <EventLoadError backTo="/" onRetry={() => void query.refetch()} />;
   }
 
   const event = query.data;

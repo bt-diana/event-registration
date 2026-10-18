@@ -111,3 +111,13 @@ Started 18-10 21:10 +06.
 **What Claude did.** `docs/brand.md`: a "Ticket code" row in the type table (monospace stack, 600, 0.12em, the sizes of DA10 and DA31), the phone page padding (D71) and the phone values of section 2, the shared "Error box" next to the form error box, and the "Not decided yet" list brought up to date (Edit through a short script, Bash). The design canvas (section 8: redraws and new phone boards) was **not** updated: this agent has no tool to edit the claude.ai artifact, so it is left for an agent that has one.
 
 **Decision.** None.
+
+## Step 12: build the spec, step 11 (a) and (b) (back links: tests first, BackLink, DA36, DA39, DA46)
+
+**Prompt** (relayed by the main agent at about 21:40 +06, text cleaned)
+
+> After you finish your current steps, also do step 11 "Back links" in `docs/specs/design-alignment.md` (DA35-DA49, section 1.9; shared BackLink component in `EventParts.tsx`; tests first for DA39 and DA46 as separate test commits). Follow the recommendations for open questions 16-19. Keep the user's DA7 decision (back link at top).
+
+**What Claude did.** Read section 1.9 and questions 16-19 (Bash). (a) Tests first, commit `test(web): ...`: DA39 in `EventPage.test.tsx` (owner view 500: "Back to events" to `/organizer`, before the `h1`, one back link, Retry) and `PublicEventPage.test.tsx` (logged out, 500: to `/`); DA46 in `ScanScreen.test.tsx` (loaded: `/registrations?event=...`; no events, events error, loading: `/registrations`; always before the `h1`, only one back link); 6 new tests failed. (b) `BackLink({ to, name })` in `EventParts.tsx`; the organizer event page uses it (no visible change, D70); `EventLoadError` gets `backTo` (`/organizer` from `OwnerOrPublic`, `/` from the public view); the create form link moved above the `h1` (DA36); `ScanScreen.tsx` `Shell` gets `backTo` and draws the link above the `h1` in all four states. Tests changed with the spec: `eyebrow.test.tsx` (the create form now starts with the back link, then the `h1`; still no eyebrow) and my new DA46 loading test (waits for the `h1`, the guard shows its own "Loading..." first). Web tests (784), typecheck and lint pass (Bash). Not done by me: question 16 asks to update W-E21 in `events-web.md` and question 19 to fix the DA7 files row in `design-alignment.md`; both are spec edits, which this agent does not make.
+
+**Decision.** None.

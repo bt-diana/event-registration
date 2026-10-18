@@ -6,6 +6,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode, type Ref } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
+import { BackLink } from "../events/EventParts";
 import { formatDateTime } from "../events/format";
 import { isAuthError, onApiError, useEvents } from "../events/queries";
 import { Badge, type Tone } from "../events/StatusBadge";
@@ -200,9 +201,13 @@ export function ScanScreen({ submitCode }: Props) {
     choose(id);
   }
 
+  // DA46: the back link goes to the chosen event's registrations, else to the list.
+  const backTo =
+    chosen === null ? "/registrations" : `/registrations?event=${encodeURIComponent(chosen.id)}`;
+
   if (events.isPending || (events.isError && (events.isFetching || isAuthError(events.error)))) {
     return (
-      <Shell>
+      <Shell backTo={backTo}>
         <p role="status" className="status status-gap">
           Loading...
         </p>
@@ -212,7 +217,7 @@ export function ScanScreen({ submitCode }: Props) {
 
   if (events.isError) {
     return (
-      <Shell>
+      <Shell backTo={backTo}>
         {/* design-alignment.md DA14: the error box and a secondary Retry. */}
         <p role="alert" className="error-box">
           Could not load events
@@ -227,7 +232,7 @@ export function ScanScreen({ submitCode }: Props) {
 
   if (chosen === null) {
     return (
-      <Shell>
+      <Shell backTo={backTo}>
         <p className="intro">You have no events yet.</p>
         <Link to={NEW_EVENT} className="button-link">
           Create event
@@ -239,10 +244,7 @@ export function ScanScreen({ submitCode }: Props) {
   const pending = check.kind === "pending";
 
   return (
-    <Shell>
-      <Link to={`/registrations?event=${encodeURIComponent(chosen.id)}`} className="back-link">
-        <span aria-hidden="true">&larr;</span> Back to registrations
-      </Link>
+    <Shell backTo={backTo}>
       <EventSelect events={events.data} value={chosen.id} onChange={changeEvent} />
       {/* checkin-web.md W-C3: in every camera state; a 200 check-in reads it again (W-C11). */}
       <ArrivalsCounter eventId={chosen.id} />
@@ -280,9 +282,10 @@ export function ScanScreen({ submitCode }: Props) {
   );
 }
 
-function Shell({ children }: { children: ReactNode }) {
+function Shell({ backTo, children }: { backTo: string; children: ReactNode }) {
   return (
     <section className="scan-page" data-role="organizer">
+      <BackLink to={backTo} name="registrations" />
       <h1>Check in</h1>
       {children}
     </section>
