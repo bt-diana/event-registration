@@ -30,3 +30,13 @@ The agent made six recommendations in the spec for the user to confirm: check-in
 
 ### D45: no separate arrivals endpoint
 18:47:12 +0600. The arrivals counter is counted by the screen from `GET /events/{id}/registrations`, which `checkin.md` defines. Reason: the user wants one route for the data instead of two.
+
+## Step 3: align the other docs with the check-in spec
+
+**Prompt** (19:00 +06, text cleaned)
+
+> edit docs\specs\checkin.md, docs\specs\registration-web.md and README
+
+**What Claude did.** Took this as "make the three files agree with the decisions D44 and D45". In `registration-web.md`: marked open questions 2 and 10 as answered by `checkin.md` (list route and `POST /checkin` with `{ ticket_code }`, new error codes), and changed the known-gap text, W-R20, W-R33, W-R34, the scan texts and the `checkIn` helper. In `checkin.md`: added the assumption about `registration-web.md` and the Vite `/checkin` proxy entry, and the file row. In `README.md`: added the check-in routes table (marked specified, not built) and the spec link. Other uncommitted `web/` changes belong to another session and were not touched. Used Bash, Read, Grep.
+
+**Decision.** None.
