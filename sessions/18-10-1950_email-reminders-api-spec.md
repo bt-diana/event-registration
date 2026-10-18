@@ -85,3 +85,13 @@ Started 18-10 19:50 +06.
 
 ### D57: real email through Resend is out of scope; the sender stays a console stub
 20:07:37 +0600. Replaces D53, D54 and D55. Reason: the user asked to leave Resend out of the scope.
+
+## Step 7: spec reworked for the stub, retries and `error_sending`
+
+**Prompt** (20:10 +06, text cleaned)
+
+> please, create an env.example, so I could provide the Resend API key
+
+**What Claude did.** Added `EMAIL_API_KEY` and `MAIL_FROM` to the existing `.env.example` (commit 8bf76df; unused until real sending is in scope, D57). The `spec-writer` agent reworked `docs/specs/email-reminders.md` (ER1-ER38): migration `004_outbox_status.sql` (`status`, `send_attempts`, `send_error`), retries, the console stub. The agent could not read the first version, so I put the printed line back to the one of c36c710 (with the body) in ER7 and closed open question 2. Updated `ROADMAP.md` and `README.md`. Used Bash, Agent.
+
+**Decision.** None.
