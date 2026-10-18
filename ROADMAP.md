@@ -21,6 +21,7 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 - M2 API: public events list (`events-public-list.md`, PL1-PL11): `GET /public/events` (not cancelled and not ended, by `starts_at` then `id`, at most 100, no `description`), `api/openapi.yaml`.
 - M2 UI: public events list (`events-public-list-web.md`, W-L1-W-L13): `/` lists the open events as cards (title link, start, duration, badge from `publicStatus`), with loading, error with Retry and empty states; it waits for `me` and redirects an organizer to `/organizer` with no list request. The W-L13 invalidation from the register handler comes with step 18.
 - M3 API spec: `registration.md` (R1-R22): register, waiting list, last seat, my registration.
+- M5 API spec: `checkin.md` (C1-C19): check-in by ticket code, arrivals counter.
 - M3 API: registration (`registration.md`, R1-R22): `POST /events/:id/registrations` (one transaction, `FOR UPDATE` on the event, `ticket` outbox row), `GET /events/:id/registrations/me`, shared `api/src/events/status.ts`, `api/openapi.yaml`.
 
 ## Milestones
@@ -78,7 +79,7 @@ Specs are not written all at once. The first steps of each milestone write (or e
 23. Test, then code: cancel button (confirm, pending, error, checked-in 409) and the capacity form (field error below the registered count, new seats left).
 
 ### M5. Check-in
-24. API spec: `checkin.md` (B6, B7).
+24. API spec: `checkin.md` (B6, B7) (done: C1-C19).
 25. **Red:** B6 test (5 parallel check-ins of one code: one wins, four get 409). Also unknown code, waiting, cancelled event, another organizer's ticket.
 26. **Green:** conditional UPDATE, route `POST /checkin`, arrivals counter route (B7).
 27. UI spec: `checkin-web.md`: check-in by code and the arrivals counter (polling).
