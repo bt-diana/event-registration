@@ -782,6 +782,58 @@ a:hover {
   margin-top: 4px;
 }
 
+/* Attendee list /registrations/me (registration-web.md W-R18, board S3): cards like the
+   public list, on the ground at its width. A row has two links (the event and its
+   ticket), so the card itself is not a link and has no hover border. */
+.registration-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "title badges"
+    "meta meta"
+    "ticket ticket";
+  align-items: center;
+  gap: 8px 16px;
+  padding: 20px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.registration-card-title {
+  grid-area: title;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.registration-card-title:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+/* The registration badge, then the event badge (W-R40); they wrap on a narrow card. */
+.registration-card-badges {
+  grid-area: badges;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.registration-card .badge {
+  white-space: nowrap;
+}
+
+.registration-card-ticket {
+  grid-area: ticket;
+  justify-self: start;
+}
+
 /* Registration area and ticket (registration-web.md, boards Reg*). */
 .registration-area {
   display: flex;
@@ -1372,6 +1424,28 @@ a:hover {
   }
 
   .event-card-badge {
+    margin-top: 4px;
+  }
+
+  /* The attendee list cards stack like the event cards: title, start, badges, link. */
+  .registration-card {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "title"
+      "meta"
+      "badges"
+      "ticket";
+    justify-items: start;
+    gap: 6px;
+    padding: 16px;
+  }
+
+  .registration-card-title {
+    font-size: 20px;
+  }
+
+  .registration-card-badges {
+    justify-content: flex-start;
     margin-top: 4px;
   }
 

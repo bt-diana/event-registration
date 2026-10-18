@@ -1,8 +1,16 @@
-// registration-web.md W-R4 (every row of the section 2 table) and W-R7, as pure functions.
+// registration-web.md W-R4 (every row of the section 2 table), W-R7 and the list helpers
+// (W-R18, W-R40), as pure functions.
 import { publicEvent, type SamplePublicEvent } from "../events/test-helpers";
 import type { RegistrationStatus } from "./api";
 import { registration } from "./test-helpers";
-import { registerAction, showQr, ticketLabel, type RegisterAction } from "./ticket";
+import {
+  eventStatusBadge,
+  listStatusText,
+  registerAction,
+  showQr,
+  ticketLabel,
+  type RegisterAction,
+} from "./ticket";
 
 const OPEN: Partial<SamplePublicEvent> = {};
 const STARTED: Partial<SamplePublicEvent> = { has_started: true };
@@ -92,5 +100,28 @@ describe("W-R25: showQr", () => {
     ["checked in, ended event", PASSED, { checked_in_at: "2030-01-01T09:55:00.000Z" }, false],
   ])("%s: %s", (_case, event, ticket, shown) => {
     expect(showQr(registration(ticket), publicEvent(event))).toBe(shown);
+  });
+});
+
+// W-R18: the registration badge text on the attendee list.
+describe("listStatusText", () => {
+  it.each<[string, Parameters<typeof listStatusText>[0], string]>([
+    ["registered", { status: "registered", waitlist_position: null }, "Registered"],
+    ["waitlisted at place 1", { status: "waitlisted", waitlist_position: 1 }, "Waiting list: place 1"],
+    ["waitlisted at place 3", { status: "waitlisted", waitlist_position: 3 }, "Waiting list: place 3"],
+    ["cancelled", { status: "cancelled", waitlist_position: null }, "Cancelled"],
+  ])("%s", (_case, registration, text) => {
+    expect(listStatusText(registration)).toBe(text);
+  });
+});
+
+// W-R40: the extra badge for the event's status.
+describe("eventStatusBadge", () => {
+  it.each<[Parameters<typeof eventStatusBadge>[0], string | null]>([
+    ["active", null],
+    ["cancelled", "Event cancelled"],
+    ["passed", "Ended"],
+  ])("%s: %s", (status, text) => {
+    expect(eventStatusBadge(status)).toBe(text);
   });
 });

@@ -13,6 +13,7 @@ import {
   checkIn,
   getMyRegistration,
   listEventRegistrations,
+  listMyRegistrations,
   register,
   type CheckInResult,
   type Registration,
@@ -23,6 +24,9 @@ import { EVENT_ARRIVALS_KEY } from "./arrivals";
 // one's ticket (W-R23).
 export const registrationKey = (meId: string, eventId: string) =>
   ["registration", meId, eventId] as const;
+
+// The attendee list of all my registrations, keyed by the account (W-R19, W-R23).
+export const myRegistrationsKey = (meId: string) => ["registrations", meId] as const;
 
 // Keyed by the account like the attendee key (W-R23): a login as another organizer
 // replaces the cookie without a logout, and names and emails must not carry over.
@@ -63,6 +67,23 @@ export function useMyRegistration(eventId: string, enabled: boolean) {
   });
 }
 
+// GET /me/registrations for the attendee list (W-R18, W-R41). Runs only once me is a
+// known attendee, so nothing is sent while me loads, for logged-out viewers or for
+// organizers. A 401/403 re-checks me and the guard decides (W-R13). staleTime 0: opening
+// the screen again reads it again; nothing refetches by itself.
+export function useMyRegistrations() {
+  const queryClient = useQueryClient();
+  const me = useMe();
+  const meId = me.data?.role === "user" ? me.data.id : "";
+  return useQuery({
+    queryKey: myRegistrationsKey(meId),
+    queryFn: () => authCheckedCall(queryClient, listMyRegistrations),
+    enabled: meId !== "",
+    ...QUERY_OPTIONS,
+    staleTime: 0,
+  });
+}
+
 // The mutation variable is the account id at click time, so the answer is stored
 // under the account that registered (W-R6, W-R23). No optimistic update (W-R8).
 export function useRegister(eventId: string) {
@@ -74,6 +95,9 @@ export function useRegister(eventId: string) {
       void queryClient.invalidateQueries({ queryKey: publicEventKey(eventId), exact: true });
       // W-L13: the home list badge is not stale when the person goes back.
       void queryClient.invalidateQueries({ queryKey: PUBLIC_EVENTS_KEY, exact: true });
+      // W-R19: the attendee list is read again on the next visit (no request while it is
+      // not mounted).
+      void queryClient.invalidateQueries({ queryKey: myRegistrationsKey(meId), exact: true });
     },
     onError: (error) => {
       onApiError(queryClient, error);

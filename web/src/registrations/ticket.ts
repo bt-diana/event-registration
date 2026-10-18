@@ -1,9 +1,9 @@
-// Pure helpers shared by the event page, the ticket page and (later) the lists
-// (registration-web.md section 3, W-R4, W-R7).
+// Pure helpers shared by the event page, the ticket page and the lists
+// (registration-web.md section 3, W-R4, W-R7, W-R18, W-R40).
 import type { PublicEvent } from "../events/api";
 import { isClosed, publicStatus } from "../events/publicStatus";
 import type { Tone } from "../events/StatusBadge";
-import type { Registration } from "./api";
+import type { MyRegistration, Registration } from "./api";
 
 export type RegisterAction = "none" | "register" | "register-again" | "waitlist";
 
@@ -78,4 +78,34 @@ export function showQr(
     registration.checked_in_at === null &&
     event.status !== "cancelled"
   );
+}
+
+// W-R18: the registration status on a row of the attendee list. The waiting place is in
+// the badge text; a cancelled row has no place (W-R40).
+export function listStatusText(
+  registration: Pick<Registration, "status" | "waitlist_position">,
+): string {
+  switch (registration.status) {
+    case "registered":
+      return "Registered";
+    case "waitlisted":
+      return registration.waitlist_position === null
+        ? "Waiting list"
+        : `Waiting list: place ${registration.waitlist_position}`;
+    case "cancelled":
+      return "Cancelled";
+  }
+}
+
+// W-R40: the second badge of a row, after the registration's own one; an active event
+// adds nothing.
+export function eventStatusBadge(status: MyRegistration["event_status"]): string | null {
+  switch (status) {
+    case "cancelled":
+      return "Event cancelled";
+    case "passed":
+      return "Ended";
+    case "active":
+      return null;
+  }
 }

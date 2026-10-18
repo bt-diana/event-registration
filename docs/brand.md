@@ -83,6 +83,7 @@ Table (events list): white card with 1px border and radius 12, header cells 14px
 - **Textarea** (description): like the input, but `padding 12px 14px`, 5 rows, resizes vertically. Field order inside a field: label, input, error, hint.
 - **Button link** ("Create event" on the list): a link with the primary button look, 48px high, padding `0 20px`.
 - **Back link** ("Back to events"): a 15px 600 accent link with a left arrow, at least 44px high.
+- **Attendee list** (`/registrations/me`, `specs/registration-web.md` S3; built from the spec text, the "My registrations" board is not on the canvas yet): cards like the public list, on the ground at its width (760px), white, 1px `border`, radius 12, padding `20px 24px` (16px on a phone), 16px apart (12px on a phone). First line the event title as a link (Bricolage Grotesque 22px 700 in `text`, underline on hover; 20px on a phone) with the badges on its right: the registration badge ("Registered" like Open, "Waiting list: place N" like Full, "Cancelled" like Cancelled), then "Event cancelled" (Cancelled colours) or "Ended" (Ended colours), 6px apart, wrapping. Second line the start, 15px `text-muted`. Third line "View ticket", a 15px 600 accent link, 44px high. The card itself is not a link (a row has two links) and has no hover border. On a phone the badges go under the start. No ticket code on the list.
 - **Event page:** the badge under the `h1` (12px above, 24px below), then the description (plain text, `white-space: pre-wrap`), then the details `dl`. A closed public event shows "Capacity: N" and "Registration is closed." (15px `text-muted`) under the `dl`. The organizer view ends with the share link line: 15px `text-muted`, under a 1px `border` divider.
 
 ## Arrivals counter (added from `specs/checkin-web.md`)
@@ -94,4 +95,4 @@ Table (events list): white card with 1px border and radius 12, header cells 14px
 ## Not decided yet
 
 - Dark theme (out of scope in `auth-web.md`).
-- The design canvas is still missing organizer sign-up, the loading and error states board, and phone boards for every page except the public list and the scan screen (the phone values above are derived, `design-alignment.md` question 11).
+- The design canvas is still missing the "My registrations" board (`specs/registration-web.md` S3, desktop and phone), organizer sign-up, the loading and error states board, and phone boards for every page except the public list and the scan screen (the phone values above are derived, `design-alignment.md` question 11).

@@ -235,6 +235,7 @@ const SCREENS = {
   "GET /events": () => json(200, { events: [] }),
   "GET /events/1": () => json(404, { error: "not_found" }),
   "GET /public/events/1": () => json(404, { error: "not_found" }),
+  "GET /me/registrations": () => json(200, { registrations: [] }),
 };
 
 type State = "logged out" | "attendee" | "organizer";

@@ -22,6 +22,14 @@ export type OrganizerRegistration = Omit<Registration, "status"> & {
   attendee_email: string;
 };
 
+// An item of GET /me/registrations (MyRegistration in openapi.yaml, my-registrations.md):
+// the registration keys plus the event's title, start and derived status.
+export type MyRegistration = Registration & {
+  event_title: string;
+  event_starts_at: string;
+  event_status: "active" | "cancelled" | "passed";
+};
+
 function path(eventId: string): string {
   return `/events/${encodeURIComponent(eventId)}/registrations`;
 }
@@ -50,6 +58,15 @@ export async function listEventRegistrations(eventId: string): Promise<Organizer
   const response = await request(path(eventId));
   if (!response.ok) throw new ApiError(response.status);
   const { registrations } = (await response.json()) as { registrations: OrganizerRegistration[] };
+  return registrations;
+}
+
+// All of the caller's own registrations, in the API order (newest first, MR9; W-R18).
+// The server takes the user from the cookie: no user id, no query, no body (W-R19).
+export async function listMyRegistrations(): Promise<MyRegistration[]> {
+  const response = await request("/me/registrations");
+  if (!response.ok) throw new ApiError(response.status);
+  const { registrations } = (await response.json()) as { registrations: MyRegistration[] };
   return registrations;
 }
 
