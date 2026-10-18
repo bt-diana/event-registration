@@ -56,6 +56,59 @@ describe("W-A18: header", () => {
   });
 });
 
+describe("W-E22: organizer look on every screen", () => {
+  function logo() {
+    return header().getByRole("link", { name: "Event Registration" });
+  }
+
+  function logoIcon(): string | null {
+    return logo().querySelector("img")?.getAttribute("src") ?? null;
+  }
+
+  function tabIcon(): string | null {
+    return document.querySelector('link[rel="icon"]')?.getAttribute("href") ?? null;
+  }
+
+  beforeEach(() => {
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.href = "/icon-attendee.svg";
+    document.head.appendChild(link);
+  });
+
+  afterEach(() => {
+    document.head.querySelectorAll('link[rel="icon"]').forEach((link) => link.remove());
+  });
+
+  it.each(["/", "/event/1"])("organizer on %s: logo goes to /organizer with the organizer icon", async (path) => {
+    mockFetch({ "GET /auth/me": () => json(200, OLGA) });
+    renderApp(path);
+    expect(await header().findByText("Olga")).toBeTruthy();
+    expect(header().getByText("Organizer")).toBeTruthy();
+    expect(logo().getAttribute("href")).toBe("/organizer");
+    expect(logoIcon()).toBe("/icon-organizer.svg");
+    expect(tabIcon()).toBe("/icon-organizer.svg");
+  });
+
+  it.each(["/", "/event/1"])("attendee on %s: logo goes to / with the attendee icon", async (path) => {
+    mockFetch({ "GET /auth/me": () => json(200, ANN) });
+    renderApp(path);
+    expect(await header().findByText("Ann")).toBeTruthy();
+    expect(logo().getAttribute("href")).toBe("/");
+    expect(logoIcon()).toBe("/icon-attendee.svg");
+    expect(tabIcon()).toBe("/icon-attendee.svg");
+  });
+
+  it.each(["/", "/event/1"])("logged out on %s: logo goes to / with the attendee icon", async (path) => {
+    mockFetch({ "GET /auth/me": () => json(401, { error: "not_logged_in" }) });
+    renderApp(path);
+    expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
+    expect(logo().getAttribute("href")).toBe("/");
+    expect(logoIcon()).toBe("/icon-attendee.svg");
+    expect(tabIcon()).toBe("/icon-attendee.svg");
+  });
+});
+
 describe("W-A9: log out", () => {
   it("attendee: POST /auth/users/logout, me set to logged out, other queries removed", async () => {
     const fetch = mockFetch({
