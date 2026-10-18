@@ -138,3 +138,15 @@ Reminders and reschedule emails are unique per person per `schedule_version`, so
 Points found: the database has six tables, not five, because of `schema_migrations`, which the spec does not mention. The agent changed its B4 test in the code commit so that removing the lock makes it fail (an earlier version passed by accident). Its commits end with `Co-Authored-By: Claude Opus 5.5`, not the Sonnet 5.5 line from this session's attribution rule. Two migrators started at the same time are not handled.
 
 **Decision.** None.
+
+## Step 8: open the database in pgAdmin
+
+**Prompt** (about 15:15 to 15:24 +06, text cleaned)
+
+> how can i open the db in pgAdmin
+>
+> (then the pgAdmin error "password authentication failed for user postgres" on port 5432, "it's the same password as .env", and "yes" to running the migration)
+
+**What Claude did.** Explained how to register the server in pgAdmin. The error came from port 5432, but the project database runs on port 5433. Claude read `DATABASE_URL` with the password hidden to confirm the host, port and database name (`localhost`, 5433, `events`). On "yes" it ran `npm run db:migrate`. The output was "Nothing to apply": the six tables (`events`, `organizers`, `outbox`, `registrations`, `schema_migrations`, `users`) were already in `public`. Claude listed them with a query to check. Used Bash.
+
+**Decision.** None.
