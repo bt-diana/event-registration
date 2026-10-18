@@ -214,14 +214,99 @@ describe("W-R20: the registrations of the chosen event", () => {
     expect(callsTo(fetch, EVENTS)).toBe(1);
   });
 
-  it('a checked-in ticket has "Checked in" next to its status', async () => {
+});
+
+// W-R42 (c), tests first: the Status cell of a checked-in row is the badge "Checked in"
+// (Open tone) with no separate note; the Arrival column (W-C16) is unchanged.
+describe("W-R42: Checked in as the organizer table status (test first)", () => {
+  const AT = "2030-01-01T09:55:00.000Z";
+  const ANNA_ROW = organizerRegistration({
+    id: "4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f7a",
+    ticket_code: "Q2W3E4R5T6",
+    attendee_name: "Anna Test",
+    attendee_email: "anna@example.com",
+  });
+  // The API never sends a cancelled row (its type has none); mocked data only.
+  const CANCELLED_ROW = {
+    ...organizerRegistration({
+      id: "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b",
+      ticket_code: "Z9X8C7V6B5",
+      attendee_name: "Carl Test",
+      attendee_email: "carl@example.com",
+    }),
+    status: "cancelled",
+  };
+
+  // The Status cell (the second column).
+  function statusOf(name: string): HTMLElement {
+    return within(rowOf(name)).getAllByRole("cell")[1];
+  }
+
+  it('a checked-in row: Status is "Checked in" once with no "Registered"; Arrival still "Arrived" + time', async () => {
     screenAt("/registrations", {
       [EVENTS]: ok(EVENT_LIST),
-      [FIRST]: rows({ ...OLGA_ROW, checked_in_at: "2030-01-01T09:55:00.000Z" }),
+      [FIRST]: rows({ ...OLGA_ROW, checked_in_at: AT }),
     });
-    const row = (await main().findByText("Olga Test")).closest("tr")!;
-    expect(within(row).getByText("Checked in")).toBeTruthy();
-    expect(within(row).getByText("Registered")).toBeTruthy();
+    await main().findByText("Olga Test");
+    const status = statusOf("Olga Test");
+    expect(within(status).getAllByText("Checked in")).toHaveLength(1);
+    expect(status.textContent).toBe("Checked in");
+    expect(within(status).queryByText("Registered")).toBeNull();
+    expect(status.querySelector(".table-note")).toBeNull();
+    const arrival = arrivalOf("Olga Test");
+    expect(within(arrival).getByText("Arrived")).toBeTruthy();
+    expect(arrival.querySelector("time")!.textContent).toBe(formatDateTime(AT));
+    expect(within(arrival).queryByText("Checked in")).toBeNull();
+  });
+
+  it('a registered row not checked in: Status "Registered", Arrival "Not yet"', async () => {
+    screenAt("/registrations", {
+      [EVENTS]: ok(EVENT_LIST),
+      [FIRST]: rows({ ...OLGA_ROW, checked_in_at: AT }, ANNA_ROW),
+    });
+    await main().findByText("Anna Test");
+    const status = statusOf("Anna Test");
+    expect(status.textContent).toBe("Registered");
+    expect(within(status).queryByText("Checked in")).toBeNull();
+    expect(arrivalOf("Anna Test").textContent).toBe("Not yet");
+  });
+
+  it('waitlisted and cancelled rows keep their own badge and never read "Checked in"', async () => {
+    screenAt("/registrations", {
+      [EVENTS]: ok(EVENT_LIST),
+      [FIRST]: rows(IVAN_ROW, CANCELLED_ROW),
+    });
+    await main().findByText("Ivan Test");
+    expect(statusOf("Ivan Test").textContent).toBe("Waiting list");
+    expect(arrivalOf("Ivan Test").textContent).toBe("");
+    expect(statusOf("Carl Test").textContent).toBe("Cancelled");
+  });
+
+  it('even with checked_in_at set (mocked), waitlisted and cancelled rows never read "Checked in"', async () => {
+    screenAt("/registrations", {
+      [EVENTS]: ok(EVENT_LIST),
+      [FIRST]: rows({ ...IVAN_ROW, checked_in_at: AT }, { ...CANCELLED_ROW, checked_in_at: AT }),
+    });
+    await main().findByText("Ivan Test");
+    expect(statusOf("Ivan Test").textContent).toBe("Waiting list");
+    expect(statusOf("Carl Test").textContent).toBe("Cancelled");
+    expect(within(rowOf("Ivan Test")).queryByText("Checked in")).toBeNull();
+    expect(within(rowOf("Carl Test")).queryByText("Checked in")).toBeNull();
+  });
+
+  it("the header row is exactly Name, Status, Arrival, Registered, Emails", async () => {
+    screenAt("/registrations", {
+      [EVENTS]: ok(EVENT_LIST),
+      [FIRST]: rows({ ...OLGA_ROW, checked_in_at: AT }),
+    });
+    const table = await main().findByRole("table");
+    expect(within(table).getAllByRole("columnheader").map((th) => th.textContent)).toEqual([
+      "Name",
+      "Status",
+      "Arrival",
+      "Registered",
+      "Emails",
+    ]);
   });
 });
 
