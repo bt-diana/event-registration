@@ -126,3 +126,15 @@ Accepted as written: tickets and registrations in one table, waiting people get 
 **Time:** 15:03:30 +0600
 
 Reminders and reschedule emails are unique per person per `schedule_version`, so an event that returns to an earlier time still emails everyone. An event that has already started cannot be cancelled (409). Raising capacity promotes the waiting people. The cookie lasts 7 days unless changed.
+
+## Step 7: implement the database
+
+**Prompt** (15:05 +06, text cleaned)
+
+> implement the DB
+
+**What Claude did.** Looked at `api/` (Express, `pg`, Vitest, no migrations yet), then gave the work to the `code-writer` agent (Opus 5.5, high) with `DATABASE.md` as the spec: tests first, then code. The agent made two commits. `ab3f09d test(api): add database schema tests` had 32 of 33 tests failing for the right reason (missing tables). `47f4d58 feat(api): add initial database schema and migrator` added `001_init.sql` (the five tables), a pool helper, a migrator that records files in `schema_migrations`, and the `db:migrate` script. The 28 new tests cover the last seat (20 parallel registrations on 1 seat give 1 registered and 19 waitlisted), the single reminder (10 runs and 10 parallel workers), the single check-in (5 parallel calls give 1 row), B1, the constraints, and the migrator. They run in throw-away schemas, so the dev `public` schema is untouched and has no tables yet. `uuidv7()` exists on this server (PostgreSQL 18.6). Claude ran the tests, typecheck and lint itself: 33 of 33 pass, both clean. Used Agent, Bash.
+
+Points found: the database has six tables, not five, because of `schema_migrations`, which the spec does not mention. The agent changed its B4 test in the code commit so that removing the lock makes it fail (an earlier version passed by accident). Its commits end with `Co-Authored-By: Claude Opus 5.5`, not the Sonnet 5.5 line from this session's attribution rule. Two migrators started at the same time are not handled.
+
+**Decision.** None.
