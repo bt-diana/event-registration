@@ -72,3 +72,16 @@ Started 18-10 21:08 +06.
 21:28:11 +0600. Replaces the in-flow panel of D66 (and the "no overlay, no drawer, no animation" out-of-scope lines). Reason: the user asked for it.
 
 **Result of step 3 (burger menu D66).** The `code-writer` agent built it: tests first `cc6127b`, code and docs `b9f4ebb` (burger at 640 px, in-flow panel, `aria-expanded`, Escape, close on navigation). Checked: web tests 700 passed, 4 todo; typecheck and lint pass. Not done: the HB9 Tab-order text in `header-events-link.md`; README line ~302; checks by hand. Steps 4 and 5 (D67-D69) change this in-flow panel; they are built next from the new spec. Used Agent.
+
+## Step 6: the drawer slides in from the right
+
+**Prompt** (21:5x +06, text cleaned)
+
+> move the modal to the right
+
+**What Claude did.** Sent the small spec change to the `spec-writer` agent (drawer on the right edge, slides from the right). The `code-writer` build of step 5 was still running, so it is told to use the right side once the spec is committed.
+
+**Decision.**
+
+### D70: the drawer opens from the right edge
+21:42:32 +0600. Replaces "from the left" in D69. Reason: the user asked for it (the Menu button is on the right).
