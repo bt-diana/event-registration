@@ -159,3 +159,13 @@ Started 18-10 19:50 +06.
 
 ### D61: `GET /events/:id/emails` can be limited to one attendee with `registration_id`
 22:19:21 +0600. The organizer gets the emails (reminders and the other kinds) of one registration of the own event. Reason: the user asked for the reminders of a separate attendee.
+
+## Step 13: attendee filter added to the outbox spec
+
+**Prompt** (22:20 +06, text cleaned)
+
+> (result of step 12)
+
+**What Claude did.** The `spec-writer` agent added `registration_id` to `docs/specs/email-outbox.md` (OB16-OB18; OB2, OB7, OB15 changed; open question 6). An unknown or foreign registration id gives 200 with an empty list, not 404. Updated the ids in `ROADMAP.md`. Used Agent, Bash.
+
+**Decision.** None.
