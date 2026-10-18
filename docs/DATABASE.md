@@ -75,7 +75,7 @@ Constraints:
 - `CREATE INDEX registrations_waitlist ON registrations (event_id, queue_no) WHERE status = 'waitlisted';` Finds the first waiting person fast (B3, B10).
 - Waiting-list order = `ORDER BY queue_no` among `waitlisted` rows. First come, first served, in the order the event lock was granted.
 
-### outbox (the stub email: a row is the email, the sender prints it and sets `sent_at`)
+### outbox (a row is the email; the sender sends it through the email provider (Resend) and sets `status = 'sent'` and `sent_at`; after 3 failed tries it gives up with `status = 'error_sending'`)
 
 | Column | Type | Rule | Supports |
 |---|---|---|---|
@@ -88,9 +88,12 @@ Constraints:
 | subject | text NOT NULL | | |
 | body | text NOT NULL | | |
 | created_at | timestamptz NOT NULL DEFAULT now() | | |
-| sent_at | timestamptz NULL | NULL = not printed yet | |
+| sent_at | timestamptz NULL | NULL = not sent yet; set when the provider accepted the email | |
+| status | text NOT NULL DEFAULT 'pending' | `CHECK (status IN ('pending','sent','error_sending'))`; `pending` = waiting for the sender, `sent` = the provider accepted it, `error_sending` = 3 failed tries, never picked again (decision 19, migration `004_outbox_status.sql`) | |
+| send_attempts | integer NOT NULL DEFAULT 0 | `CHECK (send_attempts >= 0)`; the number of failed tries (a row sent after two failures has 2) | |
+| send_error | text NULL | the short reason of the last failed try (at most 200 characters, addresses replaced), never the body or an address; NULL when it never failed, cleared when a retry succeeds | |
 
-Constraint: `UNIQUE (registration_id, kind, schedule_version)`. This is the whole "once" rule for B5 (see 3.2): one reminder and one reschedule email per person per schedule version, so A -> B -> A -> B still emails each move. For `ticket`, `promotion` and `event_cancelled` it is only a second guard: each is written once per registration by the app under the event lock (3.4, 3.5, 3.7), and it stops a repeat within one version.
+Constraints: `outbox_status_sent_at` `CHECK ((status = 'sent') = (sent_at IS NOT NULL))`, the `status` and `send_attempts` CHECKs above (004), and `UNIQUE (registration_id, kind, schedule_version)` (unchanged). The unique key is the whole "once" rule for B5 (see 3.2): one reminder and one reschedule email per person per schedule version, so A -> B -> A -> B still emails each move. For `ticket`, `promotion` and `event_cancelled` it is only a second guard: each is written once per registration by the app under the event lock (3.4, 3.5, 3.7), and it stops a repeat within one version.
 
 ## 2. SQL sketch (shape only, not the migration)
 
@@ -158,6 +161,12 @@ CREATE TABLE outbox (
   body            text NOT NULL,
   created_at      timestamptz NOT NULL DEFAULT now(),
   sent_at         timestamptz,
+  -- status, send_attempts and send_error are added by 004_outbox_status.sql, not by 001:
+  --   ALTER TABLE outbox ADD COLUMN status text NOT NULL DEFAULT 'pending'
+  --     CHECK (status IN ('pending','sent','error_sending')),
+  --   ADD COLUMN send_attempts integer NOT NULL DEFAULT 0 CHECK (send_attempts >= 0),
+  --   ADD COLUMN send_error text;
+  --   CHECK ((status = 'sent') = (sent_at IS NOT NULL)) as outbox_status_sent_at
   UNIQUE (registration_id, kind, schedule_version)
 );
 ```
@@ -227,7 +236,7 @@ Same locked transaction as 3.6/3.7: `SELECT ... FROM events WHERE id = $1 AND or
 | B2 | `status`, `capacity`, count under the event lock |
 | B3 | waitlist index, order by `queue_no`, outbox `promotion` |
 | B4 | `FOR UPDATE` on `events` row (3.1) |
-| B5 | `events.schedule_version`; outbox `UNIQUE (registration_id, kind, schedule_version)` (3.2) |
+| B5 | `events.schedule_version`; outbox `UNIQUE (registration_id, kind, schedule_version)` (3.2); the key counts rows of every `status`, so a `sent` or `error_sending` reminder blocks a second one for the same version |
 | B6 | `checked_in_at` and the conditional UPDATE joined to the event's `organizer_id` (3.3) |
 | B7 | `count` of `checked_in_at IS NOT NULL`, joined to the event's `organizer_id` |
 | B8 | `events.starts_at`, `events.schedule_version`, outbox `schedule_version`, `reschedule` rows (3.6) |
@@ -236,10 +245,11 @@ Same locked transaction as 3.6/3.7: `SELECT ... FROM events WHERE id = $1 AND or
 | Event status `passed` (M2) | `events.starts_at` + `events.duration_minutes`, computed at read time, nothing stored (3.10) |
 | Event description (`event-description.md` DS1, DS2) | `events.description`, `NOT NULL DEFAULT ''`, `CHECK (char_length(description) <= 2000)` |
 | Ownership | `events.organizer_id`, `WHERE organizer_id = $organizer` in the locked query and in the check-in join (3.8) |
+| Email delivery status (`email-reminders.md` ER1-ER17) | `outbox.status`, `send_attempts`, `send_error`, `CHECK ((status = 'sent') = (sent_at IS NOT NULL))` (decision 19) |
 
 ## 5. Not in this schema
 
-No sessions table (signed cookie), no roles or permissions table (an organizer owns events, nothing more), no payments, no real email delivery, no separate ticket, waitlist or reminder tables, no counters.
+No sessions table (signed cookie), no roles or permissions table (an organizer owns events, nothing more), no payments, no email delivery table (delivery is through Resend, and the status is a column of `outbox`; without a verified domain Resend delivers only to the account owner's address, so other rows end as `error_sending`), no separate ticket, waitlist or reminder tables, no counters.
 
 ## 6. Decisions
 
@@ -263,6 +273,8 @@ No sessions table (signed cookie), no roles or permissions table (an organizer o
 17. An event has a `duration_minutes` (1 to 1440). Its status `passed` is derived at read time once `starts_at + duration` is reached; it is not stored (3.10). Added by migration `002_event_duration.sql`, not by editing `001`.
 
 18. An event has a plain-text `description`, `NOT NULL DEFAULT ''` (one kind of "none", never `NULL`) and at most 2000 characters (`char_length`, the same code-point count as the app). Trimming is done only in the app. Added by migration `003_event_description.sql`, not by editing `001` or `002` (`event-description.md`).
+
+19. Outbox delivery status: a row is tried at most 3 times, then `error_sending`; not retried automatically. `send_attempts` counts failed tries and `send_error` keeps the short reason of the last one. Added by migration `004_outbox_status.sql`, not by editing `001` (`email-reminders.md` ER1-ER3, D56).
 
 ## 7. Open questions
 
