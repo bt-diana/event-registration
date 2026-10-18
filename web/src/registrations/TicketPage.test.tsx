@@ -425,3 +425,64 @@ describe("email-reminders-web.md W-EM14: no email line on the ticket page", () =
     expect(fetch.mock.calls.filter(([input]) => String(input).includes("/emails"))).toEqual([]);
   });
 });
+
+// email-reminders-web.md W-EM30 (test first): a cancelled event adds one plain line under
+// the event name, before Starts, for every ticket status; it reads no more than before.
+describe("W-EM30: a cancelled event on the ticket page", () => {
+  const LINE = "This event has been cancelled.";
+  const CANCELLED_EVENT: Partial<SamplePublicEvent> = { status: "cancelled", seats_left: 0 };
+
+  it.each<[string, SampleRegistration]>([
+    ["a cancelled ticket", registration({ status: "cancelled" })],
+    ["a checked-in ticket", registration({ checked_in_at: "2030-01-01T09:55:00.000Z" })],
+    ["a registered ticket", registration()],
+    ["a waiting ticket", registration({ status: "waitlisted", waitlist_position: 2 })],
+  ])("%s: the line under the event name and before Starts", async (_case, r) => {
+    const fetch = await ticketPage(ok(publicEvent(CANCELLED_EVENT)), ok(r));
+    const line = main().getByText(LINE);
+    expect(line.tagName).toBe("P");
+    expect(line.classList.contains("ticket-event-note")).toBe(true);
+    expect(line.getAttribute("role")).toBeNull();
+    const name = main().getByText("Spring meetup");
+    const starts = main().getByText("Starts", { selector: "dt" });
+    expect(name.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(line.compareDocumentPosition(starts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(main().getAllByText(LINE)).toHaveLength(1);
+    // No new request: the public event the page already reads.
+    expect(fetch.mock.calls.map(([input, init]) => `${init?.method ?? "GET"} ${String(input)}`)).toEqual([
+      ME,
+      PUBLIC,
+      MY_REGISTRATION,
+    ]);
+  });
+
+  it("the cancelled ticket keeps its badge, the code as text and the note", async () => {
+    await ticketPage(ok(publicEvent(CANCELLED_EVENT)), ok(registration({ status: "cancelled" })));
+    expect(main().getByText(LINE)).toBeTruthy();
+    expect(main().getByText("Cancelled", { selector: ".badge" })).toBeTruthy();
+    expect(main().getByText("K7M2QX9TPA")).toBeTruthy();
+    expect(main().getByText("This ticket is no longer valid.")).toBeTruthy();
+    expect(main().queryByRole("img")).toBeNull();
+  });
+
+  it.each<[string, Partial<SamplePublicEvent>]>([
+    ["an active event", {}],
+    ["an ended event", { status: "passed", has_started: true, seats_left: 0 }],
+  ])("%s: no line", async (_case, event) => {
+    await ticketPage(ok(publicEvent(event)), ok(registration()));
+    expect(main().queryByText(LINE)).toBeNull();
+    expect(screen.getByRole("main").querySelector(".ticket-event-note")).toBeNull();
+  });
+});
+
+// W-EM31: the moved start shows by itself; there is no "Rescheduled" badge or line.
+describe("W-EM31: a moved start on the ticket page", () => {
+  it("shows the new start and no Rescheduled word", async () => {
+    await ticketPage(
+      ok(publicEvent({ starts_at: "2030-02-01T17:30:00.000Z", ends_at: "2030-02-01T19:00:00.000Z" })),
+      ok(registration()),
+    );
+    expect(main().getByText(formatDateTime("2030-02-01T17:30:00.000Z"))).toBeTruthy();
+    expect(screen.getByRole("main").textContent).not.toMatch(/rescheduled/i);
+  });
+});

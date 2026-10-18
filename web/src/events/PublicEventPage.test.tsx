@@ -262,3 +262,80 @@ describe("design-alignment.md DA38, DA40: back links of the public view", () => 
     expect(backLinks()).toHaveLength(0);
   });
 });
+
+// email-reminders-web.md W-EM29 (regression): the public page of an event cancelled through
+// POST /events/{id}/cancel reuses the existing Cancelled state, no new element or word.
+describe("W-EM29: a cancelled event on the public page", () => {
+  const MY_REGISTRATION = `GET /events/${EVENT_ID}/registrations/me`;
+  // The public shape after a cancel (email-reminders.md ER85, events.md E14).
+  const CANCELLED_EVENT = publicEvent({ status: "cancelled", seats_left: 0, full: false });
+  const TICKET = {
+    id: "9c8b7a6d-5e4f-4a3b-9c2d-1e0f9a8b7c6d",
+    event_id: EVENT_ID,
+    ticket_code: "K7M2QX9TPA",
+    waitlist_position: null,
+    created_at: "2026-10-18T10:00:00.000Z",
+  };
+
+  it.each<[string, Record<string, () => Response>, string | null, string | null]>([
+    ["logged out", { "GET /auth/me": () => json(401, { error: "not_logged_in" }) }, null, null],
+    [
+      "an attendee with a cancelled ticket",
+      {
+        "GET /auth/me": () => json(200, ANN),
+        [MY_REGISTRATION]: () =>
+          json(200, { ...TICKET, status: "cancelled", checked_in_at: null }),
+      },
+      "Registration cancelled",
+      null,
+    ],
+    [
+      "an attendee with a checked-in ticket",
+      {
+        "GET /auth/me": () => json(200, ANN),
+        [MY_REGISTRATION]: () =>
+          json(200, { ...TICKET, status: "registered", checked_in_at: "2030-01-01T09:55:00.000Z" }),
+      },
+      "You are registered",
+      "Checked in",
+    ],
+    [
+      "an organizer who is not the owner",
+      {
+        "GET /auth/me": () => json(200, OLGA),
+        [`GET /events/${EVENT_ID}`]: () => json(404, { error: "not_found" }),
+      },
+      null,
+      null,
+    ],
+  ])("%s: the Cancelled badge, Capacity, Registration is closed. and no button", async (_case, routes, panel, line) => {
+    mockFetch({ [PUBLIC]: () => json(200, CANCELLED_EVENT), ...routes });
+    renderApp(`/event/${EVENT_ID}`);
+    await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
+    await waitFor(() => expect(main().queryByText("Loading...")).toBeNull());
+    expect(main().getByText("Cancelled", { selector: ".badge" })).toBeTruthy();
+    expect(main().getByText("Capacity: 25")).toBeTruthy();
+    expect(main().getByText("Registration is closed.")).toBeTruthy();
+    expect(main().queryByText("0 of 25 seats left")).toBeNull();
+    expect(main().queryAllByRole("button")).toEqual([]);
+    if (panel) expect(main().getByRole("heading", { level: 2, name: panel })).toBeTruthy();
+    if (line) expect(main().getByText(line)).toBeTruthy();
+    // No new word: the attendee list and scan texts stay off this page.
+    expect(main().queryByText("Event cancelled")).toBeNull();
+    expect(main().queryByText(/This event (is|has been) cancelled\./)).toBeNull();
+  });
+});
+
+// W-EM31: no "Rescheduled" badge is possible; the new start shows by itself.
+describe("W-EM31: a moved start on the public page", () => {
+  it("shows the new start and ends, and no Rescheduled word", async () => {
+    const moved = publicEvent({
+      starts_at: "2030-02-01T17:30:00.000Z",
+      ends_at: "2030-02-01T19:00:00.000Z",
+    });
+    await show(moved);
+    expect(detail("Starts")).toBe(formatDateTime("2030-02-01T17:30:00.000Z"));
+    expect(detail("Ends")).toBe(formatDateTime("2030-02-01T19:00:00.000Z"));
+    expect(screen.getByRole("main").textContent).not.toMatch(/rescheduled/i);
+  });
+});

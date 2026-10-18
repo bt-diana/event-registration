@@ -1,8 +1,9 @@
 // events-web.md W-E10 (organizer view), W-E12, W-E20, W-E21 (organizer view links).
-import { act, fireEvent, screen, within } from "@testing-library/react";
+// email-reminders-web.md W-EM16, W-EM23: the M7 section only in the owner view.
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { OLGA, backLinks, callsTo, deferred, json, mockFetch, renderApp } from "../auth/test-helpers";
 import { formatDateTime } from "./format";
-import { EVENT_ID, organizerEvent } from "./test-helpers";
+import { EVENT_ID, organizerEvent, publicEvent } from "./test-helpers";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -55,14 +56,75 @@ describe("W-E10: organizer view", () => {
     expect(detail("Seats left")).toBe("22");
   });
 
-  it("is read only: no buttons", async () => {
+  // email-reminders-web.md (M7 assumptions) supersedes "read only" for the owner view: an
+  // active event in the future has the reschedule and cancel controls (W-EM16), nothing else.
+  it("has only the M7 buttons, and only for an active event in the future", async () => {
     mockFetch({
       "GET /auth/me": () => json(200, OLGA),
       [OWN]: () => json(200, organizerEvent()),
     });
     renderApp(`/event/${EVENT_ID}`);
     await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
+    expect(main().queryAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Reschedule",
+      "Cancel event",
+    ]);
+  });
+
+  it.each(["cancelled", "passed"] as const)("is read only for a %s event: no buttons", async (status) => {
+    mockFetch({
+      "GET /auth/me": () => json(200, OLGA),
+      [OWN]: () => json(200, organizerEvent({ status })),
+    });
+    renderApp(`/event/${EVENT_ID}`);
+    await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
     expect(main().queryAllByRole("button")).toEqual([]);
+  });
+});
+
+describe("email-reminders-web.md W-EM16, W-EM23: the M7 section on the event page", () => {
+  const RESCHEDULE = `POST /events/${EVENT_ID}/reschedule`;
+
+  it("appears in the owner view only; the public view of the same event has none", async () => {
+    mockFetch({
+      "GET /auth/me": () => json(200, OLGA),
+      [OWN]: () => json(200, organizerEvent()),
+    });
+    const { unmount } = renderApp(`/event/${EVENT_ID}`);
+    await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
+    expect(main().getByRole("region", { name: "Change the event" })).toBeTruthy();
+    unmount();
+    vi.unstubAllGlobals();
+
+    mockFetch({
+      "GET /auth/me": () => json(401, { error: "not_logged_in" }),
+      [PUBLIC]: () => json(200, publicEvent()),
+    });
+    renderApp(`/event/${EVENT_ID}`);
+    await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
+    expect(main().queryByRole("region", { name: "Change the event" })).toBeNull();
+    expect(main().queryByLabelText("New start")).toBeNull();
+  });
+
+  it("a 404 when the event is read again after a 409 falls back to the public view", async () => {
+    let reads = 0;
+    const fetch = mockFetch({
+      "GET /auth/me": () => json(200, OLGA),
+      [OWN]: () => (reads++ === 0 ? json(200, organizerEvent()) : json(404, { error: "not_found" })),
+      [PUBLIC]: () => json(200, publicEvent()),
+      [RESCHEDULE]: () => json(409, { error: "event_cancelled" }),
+    });
+    renderApp(`/event/${EVENT_ID}`);
+    await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
+    fireEvent.change(main().getByLabelText("New start"), {
+      target: { value: "2030-02-01T18:30" },
+    });
+    fireEvent.click(main().getByRole("button", { name: "Reschedule" }));
+    await waitFor(() => expect(callsTo(fetch, PUBLIC)).toBe(1));
+    expect(await main().findByText("Event", { selector: ".eyebrow" })).toBeTruthy();
+    expect(main().queryByRole("region", { name: "Change the event" })).toBeNull();
+    expect(main().queryByRole("link", { name: "Registrations" })).toBeNull();
+    expect(callsTo(fetch, OWN)).toBe(2);
   });
 });
 

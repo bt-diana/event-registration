@@ -750,3 +750,63 @@ describe("design-alignment.md DA44: the Events back link on the registrations pa
     expectBackToEvents();
   });
 });
+
+// email-reminders-web.md W-EM32 (test first): the chosen event from GET /events, when it is
+// cancelled, adds one muted line under the selector; no new request.
+describe("W-EM32: a cancelled chosen event on /registrations", () => {
+  const LINE = "This event is cancelled.";
+
+  it("a cancelled event: the line under the selector, not an alert; the table as sent", async () => {
+    const checkedIn = organizerRegistration({ checked_in_at: "2030-01-01T09:55:00.000Z" });
+    const fetch = screenAt(`/registrations?event=${EVENT_ID}`, {
+      [EVENTS]: ok({ events: [organizerEvent({ status: "cancelled" })] }),
+      [FIRST]: rows(checkedIn),
+      [FIRST_ARRIVALS]: ok(arrivals(1, 1)),
+    });
+    const line = await main().findByText(LINE);
+    expect(line.getAttribute("role")).toBeNull();
+    expect(line.closest("[role='alert']")).toBeNull();
+    const select = main().getByLabelText("Event");
+    expect(select.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(await main().findByText("Olga Test")).toBeTruthy();
+    expect(main().getAllByText(LINE)).toHaveLength(1);
+    expect(fetch.mock.calls.map(([input]) => String(input)).sort()).toEqual(
+      ["/auth/me", "/events", `/events/${EVENT_ID}/arrivals`, `/events/${EVENT_ID}/registrations`].sort(),
+    );
+  });
+
+  it("a cancelled event with nobody left: the empty text stays", async () => {
+    screenAt(`/registrations?event=${EVENT_ID}`, {
+      [EVENTS]: ok({ events: [organizerEvent({ status: "cancelled" })] }),
+      [FIRST]: rows(),
+    });
+    expect(await main().findByText("No one has registered for this event yet.")).toBeTruthy();
+    expect(main().getByText(LINE)).toBeTruthy();
+  });
+
+  it.each(["active", "passed"] as const)("an %s event: no line", async (status) => {
+    screenAt(`/registrations?event=${EVENT_ID}`, {
+      [EVENTS]: ok({ events: [organizerEvent({ status })] }),
+      [FIRST]: rows(OLGA_ROW),
+    });
+    expect(await main().findByText("Olga Test")).toBeTruthy();
+    expect(main().queryByText(LINE)).toBeNull();
+  });
+
+  it("follows the chosen event: another, active event has no line", async () => {
+    screenAt(`/registrations?event=${SECOND_EVENT_ID}`, {
+      [EVENTS]: ok({
+        events: [
+          organizerEvent({ status: "cancelled" }),
+          organizerEvent({ id: SECOND_EVENT_ID, title: "Autumn fair" }),
+        ],
+      }),
+      [FIRST]: rows(),
+      [SECOND]: rows(OLGA_ROW),
+    });
+    expect(await main().findByText("Olga Test")).toBeTruthy();
+    expect(main().queryByText(LINE)).toBeNull();
+    fireEvent.change(main().getByLabelText("Event"), { target: { value: EVENT_ID } });
+    expect(await main().findByText(LINE)).toBeTruthy();
+  });
+});

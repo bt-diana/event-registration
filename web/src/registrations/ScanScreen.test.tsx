@@ -916,3 +916,50 @@ describe("design-alignment.md DA46: the Registrations back link above the h1 in 
     beforeHeading(link);
   });
 });
+
+// email-reminders-web.md W-EM32 (test first): a cancelled chosen event adds one muted line
+// under the selector; the scan screen keeps working and its result texts are unchanged.
+describe("W-EM32: a cancelled chosen event on the scan screen", () => {
+  const LINE = "This event is cancelled.";
+
+  async function scanFor(status: "active" | "cancelled" | "passed", checkin?: Handler) {
+    const fetch = mockFetch({
+      [ME]: () => json(200, OLGA),
+      [EVENTS]: () => json(200, { events: [organizerEvent({ status })] }),
+      [CHECKIN]: checkin ?? (() => json(409, { error: "event_cancelled" })),
+      ...ARRIVALS_OK,
+    });
+    renderApp(SCAN_PATH);
+    await main().findByRole("heading", { level: 1, name: "Check in" });
+    await main().findByLabelText("Event");
+    return fetch;
+  }
+
+  it("cancelled: the line under the selector, not an alert; camera and code form stay", async () => {
+    const fetch = await scanFor("cancelled");
+    const line = main().getByText(LINE);
+    expect(line.tagName).toBe("P");
+    expect(line.getAttribute("role")).toBeNull();
+    expect(line.closest("[role='alert']")).toBeNull();
+    const select = main().getByLabelText("Event");
+    expect(select.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(main().getByRole("button", { name: "Start camera" })).toBeTruthy();
+    expect(main().getByLabelText("Ticket code")).toBeTruthy();
+    expect(callsTo(fetch, eventRegistrations(EVENT_ID))).toBe(0);
+  });
+
+  it.each(["active", "passed"] as const)("%s: no line", async (status) => {
+    await scanFor(status);
+    expect(main().queryByText(LINE)).toBeNull();
+  });
+
+  it("a ticket of the cancelled event gives the existing event_cancelled result", async () => {
+    const fetch = await scanFor("cancelled");
+    typeCode(CODE);
+    const heading = await main().findByRole("heading", { level: 2, name: LINE });
+    expect(heading.closest("[role]")?.getAttribute("role")).toBe("alert");
+    // The muted line stays; the result is the one alert.
+    expect(main().getAllByText(LINE)).toHaveLength(2);
+    expect(callsTo(fetch, CHECKIN)).toBe(1);
+  });
+});
