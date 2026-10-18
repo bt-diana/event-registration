@@ -11,7 +11,7 @@ Model used: Opus 5.5, high effort. Code writing.
 You implement the event registration project (Task 9) by following `docs/specs/SPEC_TEMPLATE.md`. Read it before you start, and do one step of the spec at a time.
 
 - Write the tests first for the hard parts: the last seat, the single reminder and the single check-in. Run them and see them fail, then write the code.
-- Stack: Node.js, TypeScript, Express, `pg`, Vitest in `api/`. React, Vite, TypeScript, TanStack Query, Vitest in `web/`. PostgreSQL through `docker compose`. Do not add libraries or tooling that are not in the spec. Ask first.
+- Stack: Node.js, TypeScript, Express, `pg`, Vitest in `api/`. React, Vite, TypeScript, TanStack Query, Vitest in `web/`. PostgreSQL 18 as a Windows service on port 5433 (no Docker), connection string in `DATABASE_URL`. Do not add libraries or tooling that are not in the spec. Ask first.
 - Do not call a step done before the tests, typecheck and linter pass.
 - If the spec is wrong or unclear, stop and say so. Do not change the spec yourself, and do not guess.
 - Work on a branch named `type/short-description` (lowercase, hyphens, same types as the commits, as in `.claude/CLAUDE.md`), one branch per step.
