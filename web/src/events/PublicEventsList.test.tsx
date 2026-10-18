@@ -1,19 +1,8 @@
 // Tests first (events-public-list-web.md): W-L3, W-L4, W-L8, W-L9.
 // Then W-L1, W-L2, W-L5-W-L7, W-L10-W-L13.
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { QueryClient, QueryClientProvider, focusManager } from "@tanstack/react-query";
-import { MemoryRouter, useNavigate } from "react-router";
-import { App } from "../App";
-import {
-  ANN,
-  LocationProbe,
-  OLGA,
-  callsTo,
-  deferred,
-  json,
-  mockFetch,
-  renderApp,
-} from "../auth/test-helpers";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { focusManager } from "@tanstack/react-query";
+import { ANN, OLGA, callsTo, deferred, json, mockFetch, renderApp } from "../auth/test-helpers";
 import { formatDateTime, formatDuration } from "./format";
 import { publicListItem, type SamplePublicListItem } from "./test-helpers";
 
@@ -104,48 +93,52 @@ describe("W-L4: empty list", () => {
   });
 });
 
-function Back() {
-  const navigate = useNavigate();
-  return (
-    <button type="button" onClick={() => void navigate(-1)}>
-      Back
-    </button>
-  );
-}
-
-describe("W-L8: an organizer is redirected to /organizer", () => {
-  it("redirects without a list request and without showing the list", async () => {
+describe("W-L8: an organizer stays on / and sees the list (D60)", () => {
+  it("shows the list on /, no redirect, the organizer look in the header", async () => {
     const fetch = mockFetch({
       [ME]: () => json(200, OLGA),
-      [LIST]: () => json(200, { events: [publicListItem()] }),
-      "GET /events": () => json(200, { events: [] }),
+      [LIST]: () => json(200, { events: [publicListItem({ id: "e1" })] }),
     });
     renderApp("/");
-    await waitFor(() => expect(location()).toBe("/organizer"));
-    expect(await screen.findByRole("heading", { level: 1, name: "Your events" })).toBeTruthy();
-    expect(callsTo(fetch, LIST)).toBe(0);
-    expect(screen.queryByText("Spring meetup")).toBeNull();
+    expect(await screen.findByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
+    const link = await main().findByRole("link", { name: "Spring meetup" });
+    expect(link.getAttribute("href")).toBe("/event/e1");
+    expect(location()).toBe("/");
+    const logo = within(screen.getByRole("banner")).getByRole("link", { name: "Event Registration" });
+    expect(logo.getAttribute("href")).toBe("/organizer");
+    expect(within(screen.getByRole("banner")).getByText("Organizer")).toBeTruthy();
+    // RE1: no role word in the content.
+    expect(main().queryByText("Organizer")).toBeNull();
+    expect(screen.getByRole("main").textContent?.startsWith("Events")).toBe(true);
+    // W-L7: only the me and list requests.
+    expect(fetch.mock.calls).toHaveLength(2);
+    expect(callsTo(fetch, ME)).toBe(1);
+    expect(callsTo(fetch, LIST)).toBe(1);
   });
 
-  it("replaces / in the history, so Back does not return to it", async () => {
-    mockFetch({
-      [ME]: () => json(200, OLGA),
-      [LIST]: () => json(200, { events: [] }),
-      "GET /events": () => json(200, { events: [] }),
+  it('shows "Loading..." only until me answers, then makes one list request', async () => {
+    const me = deferred<Response>();
+    const fetch = mockFetch({
+      [ME]: () => me.promise,
+      [LIST]: () => json(200, { events: [publicListItem()] }),
     });
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={["/organizer/events/new", "/"]} initialIndex={1}>
-          <App />
-          <Back />
-          <LocationProbe />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-    await waitFor(() => expect(location()).toBe("/organizer"));
-    fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    await waitFor(() => expect(location()).toBe("/organizer/events/new"));
+    renderApp("/");
+    expect(main().getByRole("status").textContent).toBe("Loading...");
+    expect(main().queryByRole("heading")).toBeNull();
+    expect(callsTo(fetch, LIST)).toBe(0);
+
+    await act(async () => {
+      me.resolve(json(200, OLGA));
+    });
+    expect(await main().findByRole("link", { name: "Spring meetup" })).toBeTruthy();
+    expect(location()).toBe("/");
+    expect(callsTo(fetch, LIST)).toBe(1);
+  });
+
+  it("shows the empty state to an organizer too", async () => {
+    await showList([], () => json(200, OLGA));
+    expect(await main().findByText("No upcoming events.")).toBeTruthy();
+    expect(location()).toBe("/");
   });
 });
 
