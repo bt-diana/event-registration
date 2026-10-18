@@ -39,6 +39,7 @@ Five tables: `organizers`, `users`, `events`, `registrations`, `outbox`. A ticke
 | organizer_id | uuid NOT NULL, FK to organizers(id) | the owner; only this organizer manages the event | ownership (3.8) |
 | title | text NOT NULL | | |
 | starts_at | timestamptz NOT NULL | changed by reschedule | B5, B8 |
+| duration_minutes | integer NOT NULL DEFAULT 60 | `CHECK (duration_minutes > 0 AND duration_minutes <= 1440)`; the end is `starts_at + duration_minutes * interval '1 minute'`; added by migration `002_event_duration.sql` (see below) | derived `passed` status (3.10), M2 |
 | schedule_version | integer NOT NULL DEFAULT 1 | +1 on every reschedule that changes `starts_at`, in the 3.6 locked transaction | B5, B8 |
 | capacity | integer NOT NULL | `CHECK (capacity >= 0)`; changed by B10 | B2, B4, B10 |
 | status | text NOT NULL DEFAULT 'active' | `CHECK (status IN ('active','cancelled'))`; the whole event is cancelled | B9 |
@@ -46,6 +47,8 @@ Five tables: `organizers`, `users`, `events`, `registrations`, `outbox`. A ticke
 | created_at | timestamptz NOT NULL DEFAULT now() | | |
 
 Index: `CREATE INDEX events_organizer ON events (organizer_id);` lists an organizer's events.
+
+**Duration comes as a new migration.** `001` is already applied and is not edited. `api/src/db/migrations/002_event_duration.sql` runs `ALTER TABLE events ADD COLUMN duration_minutes integer NOT NULL DEFAULT 60 CHECK (duration_minutes > 0 AND duration_minutes <= 1440);`. The `DEFAULT 60` is kept on purpose: (a) `ADD COLUMN ... NOT NULL` needs a value for rows that already exist, and (b) the existing tests in `api/test/db/` insert events with plain SQL without a duration and must keep working. The API never relies on it: `POST /events` requires `duration_minutes` (see `events.md`). The stored `status` column is not changed (still `'active'`/`'cancelled'`); `passed` is not stored (3.10).
 
 No `seats_taken` counter: seats used = `count(*)` of `registered` rows for the event (see 3.1). Less state, nothing to drift.
 
@@ -110,6 +113,9 @@ CREATE TABLE events (
   organizer_id uuid NOT NULL REFERENCES organizers(id),
   title        text NOT NULL,
   starts_at    timestamptz NOT NULL,
+  -- duration_minutes is added by 002_event_duration.sql, not by 001:
+  --   ALTER TABLE events ADD COLUMN duration_minutes integer NOT NULL DEFAULT 60
+  --     CHECK (duration_minutes > 0 AND duration_minutes <= 1440);
   schedule_version integer NOT NULL DEFAULT 1,
   capacity     integer NOT NULL CHECK (capacity >= 0),
   status       text NOT NULL DEFAULT 'active' CHECK (status IN ('active','cancelled')),
@@ -199,6 +205,14 @@ Another organizer's event answers 404, the same as a missing event, so ids are n
 ### 3.9 B10 change capacity (test first: no)
 Same locked transaction as 3.6/3.7: `SELECT ... FROM events WHERE id = $1 AND organizer_id = $organizer FOR UPDATE`, only if `status = 'active'`. Count `registered` rows. If `$new < count`: stop with 409 and a warning that says how many people are registered; nothing is written. Otherwise `UPDATE events SET capacity = $new`, then promote the first waitlisted people by `queue_no` until the free seats are filled (`$new - count` people at most), each with a `promotion` outbox row (decision 15). Lowering to a value at or above the registered count promotes nobody and changes no registration.
 
+### 3.10 Derived event status `passed` (M2, test first: no)
+`passed` is never stored: no worker, no CHECK change. The API status is computed at read time from the stored columns: `cancelled` if `events.status = 'cancelled'`, else `passed` if `now() >= starts_at + duration_minutes * interval '1 minute'`, else `active`. Cancelled wins over passed. In this file, "active" and "cancelled" in rules 3.1-3.9 always mean the stored column; the wording still holds. Effects on later milestones (behaviour not changed here, to be decided in their specs):
+- 3.2 reminders: no effect, the 24-hour window (`now() < starts_at`) already excludes ended events.
+- 3.7 cancel event: no effect, `starts_at <= now()` already rejects started events, which includes passed ones (and events in progress).
+- 3.1 register: a passed event is still stored `active`, so the lock rules would accept a registration. M3 should decide whether to reject it (suggested: 409, as for cancelled).
+- 3.3 check-in: the conditional UPDATE needs stored `active`, so a passed event still allows check-in. M5 should decide (suggested: allow, late arrivals are real).
+- 3.6 reschedule and 3.9 capacity: a passed event is stored `active`, so they would be accepted. M4 and M7 should decide (suggested: reject, as for cancelled). A reschedule would also need to keep `duration_minutes`, so the end moves with the start.
+
 ## 4. Behaviour map
 
 | Behaviour | Schema part |
@@ -213,6 +227,7 @@ Same locked transaction as 3.6/3.7: `SELECT ... FROM events WHERE id = $1 AND or
 | B8 | `events.starts_at`, `events.schedule_version`, outbox `schedule_version`, `reschedule` rows (3.6) |
 | B9 | `events.status`, `events.cancelled_at`, registrations set to `cancelled`, outbox `event_cancelled`, event lock, 409 once `starts_at <= now()` (3.7) |
 | B10 | `events.capacity`, count under the event lock, `queue_no` order, outbox `promotion` (3.9) |
+| Event status `passed` (M2) | `events.starts_at` + `events.duration_minutes`, computed at read time, nothing stored (3.10) |
 | Ownership | `events.organizer_id`, `WHERE organizer_id = $organizer` in the locked query and in the check-in join (3.8) |
 
 ## 5. Not in this schema
@@ -237,6 +252,8 @@ No sessions table (signed cookie), no roles or permissions table (an organizer o
 14. An event that has already started (`starts_at <= now()`) cannot be cancelled: 409. Already checked-in people are left alone by a cancel.
 15. Raising capacity promotes the first waitlisted people by `queue_no`, each with a `promotion` email.
 16. The login cookie lasts 7 days. This is a default, the user can change it.
+
+17. An event has a `duration_minutes` (1 to 1440). Its status `passed` is derived at read time once `starts_at + duration` is reached; it is not stored (3.10). Added by migration `002_event_duration.sql`, not by editing `001`.
 
 ## 7. Open questions
 
