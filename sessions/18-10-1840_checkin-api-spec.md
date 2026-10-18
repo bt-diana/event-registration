@@ -50,3 +50,13 @@ The agent made six recommendations in the spec for the user to confirm: check-in
 **What Claude did.** Delegated to the `code-writer` agent with the spec `checkin.md` (C15-C18). It wrote 13 tests first (`api/test/checkin/registrationsList.test.ts`; 12 failed red for the right reason, commit 722d852), then the route (`api/src/checkin/routes.ts`, `api/src/checkin/service.ts`, mounted in `api/src/app.ts`, `registrationShape` exported from `api/src/registrations/routes.ts`), `api/openapi.yaml` 0.4.0, `README.md` and `ROADMAP.md` (commit 510127d). Checked afterwards: 311 API tests, typecheck and lint pass. Step 26 stays open for `POST /checkin`. Notes: the route does an ownership read, then one statement for the rows; `no-store` is also set on the 404; the agent's commit trailer names Opus 5.5 (its own model). Used Agent, Bash.
 
 **Decision.** None.
+
+## Step 5: group the list route with registrations in `openapi.yaml`
+
+**Prompt** (19:20 +06, text cleaned)
+
+> move the endpoint to registration paragraph in openapi.yaml
+
+**What Claude did.** The `GET` was already under the path `/events/{id}/registrations` but tagged `checkin`, so Swagger-style viewers showed it in its own group. Changed its tag to `registrations`, removed the `checkin` tag and widened the `registrations` tag description. API tests and lint still pass. Used Bash.
+
+**Decision.** None.

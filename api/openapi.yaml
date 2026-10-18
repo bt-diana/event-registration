@@ -52,9 +52,7 @@ tags:
   - name: public
     description: Routes that need no login.
   - name: registrations
-    description: The logged-in attendee's own registrations (requireUser).
-  - name: checkin
-    description: Check-in and the registrations list of the logged-in organizer's own events (requireOrganizer).
+    description: Registering and the attendee's own registration (requireUser), and the registrations list of an organizer's own event (requireOrganizer).
 
 paths:
   /auth/users/signup:
@@ -345,7 +343,7 @@ paths:
         "409":
           $ref: "#/components/responses/EventClosed"
     get:
-      tags: [checkin]
+      tags: [registrations]
       operationId: listEventRegistrations
       summary: The registrations of one of the logged-in organizer's events
       description: |
