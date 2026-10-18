@@ -10,7 +10,10 @@ const MESSAGE = {
   to: "ana@example.com",
   subject: "Reminder: Spring Meetup starts soon",
   text: "Spring Meetup\nStarts: 2030-01-02 09:00 (UTC)\nTicket code: ABCDEFGH23",
+  html: '<!doctype html><html lang="en"><body><p>Ticket code ABCDEFGH23</p></body></html>',
 };
+const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const ATTACHMENT = { filename: "ticket-qr.png", content: PNG, contentType: "image/png", contentId: "ticket-qr" };
 
 type SendResult = Awaited<ReturnType<ResendClient["emails"]["send"]>>;
 
@@ -42,6 +45,10 @@ function expectNoSecret(error: Error): void {
   expect(error.message).not.toContain(API_KEY);
   expect(error.message).not.toContain(MESSAGE.text);
   expect(error.message).not.toContain(MESSAGE.subject);
+  // Added by email-templates.md ET24 (ER40): never the html or the attachment.
+  expect(error.message).not.toContain(MESSAGE.html);
+  expect(error.message).not.toContain("<html");
+  expect(error.message).not.toContain(PNG.toString("base64"));
 }
 
 afterEach(() => {
@@ -49,14 +56,53 @@ afterEach(() => {
 });
 
 describe("ER39: the transport sends one email through the client (tests first)", () => {
-  it("calls emails.send once with from, a one-item to array, subject and text only, and resolves with no value", async () => {
+  // Changed by email-templates.md ET23: the payload has html too (it was text only).
+  it("calls emails.send once with from, a one-item to array, subject, text and html, and resolves with no value", async () => {
     const { client, send } = fakeClient(OK);
     await expect(transportWith(client)(MESSAGE)).resolves.toBeUndefined();
 
     expect(send).toHaveBeenCalledTimes(1);
     const [payload] = send.mock.calls[0];
-    expect(payload).toEqual({ from: FROM, to: [MESSAGE.to], subject: MESSAGE.subject, text: MESSAGE.text });
-    expect(payload).not.toHaveProperty("html");
+    expect(payload).toEqual({
+      from: FROM,
+      to: [MESSAGE.to],
+      subject: MESSAGE.subject,
+      text: MESSAGE.text,
+      html: MESSAGE.html,
+    });
+  });
+});
+
+describe("ET23: the transport carries html and attachments (tests first)", () => {
+  it("has no attachments key when the message has none", async () => {
+    const { client, send } = fakeClient(OK);
+    await transportWith(client)(MESSAGE);
+    const [payload] = send.mock.calls[0];
+    expect(payload).not.toHaveProperty("attachments");
+    expect(payload.html).toBe(MESSAGE.html);
+  });
+
+  it("passes the inline attachment with filename, content, contentType and contentId", async () => {
+    const { client, send } = fakeClient(OK);
+    await transportWith(client)({ ...MESSAGE, attachments: [ATTACHMENT], idempotencyKey: "key-1" });
+    expect(send).toHaveBeenCalledTimes(1);
+    const [payload, options] = send.mock.calls[0];
+    expect(payload).toEqual({
+      from: FROM,
+      to: [MESSAGE.to],
+      subject: MESSAGE.subject,
+      text: MESSAGE.text,
+      html: MESSAGE.html,
+      attachments: [{ filename: "ticket-qr.png", content: PNG, contentType: "image/png", contentId: "ticket-qr" }],
+    });
+    expect(options?.idempotencyKey).toBe("key-1");
+  });
+
+  it("a failure with an attachment holds no html and no attachment content", async () => {
+    const { client } = fakeClient({ data: null, error: { name: "validation_error", message: "attachment too big" } });
+    const error = await rejection(transportWith(client)({ ...MESSAGE, attachments: [ATTACHMENT] }));
+    expect(error.message).toBe("resend validation_error: attachment too big");
+    expectNoSecret(error);
   });
 });
 

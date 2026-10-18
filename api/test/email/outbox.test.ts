@@ -261,7 +261,8 @@ describe("OB3 and OB4: the shape, and never the body or the ticket code (tests f
     expect(reply.status).toBe(200);
     expect(reply.text).not.toContain(s.ticketCode);
     expect(reply.text).not.toContain("Ticket code");
-    for (const key of ["body", "ticket_code", "user_id", "organizer_id", "event_id", "password_hash"]) {
+    // html and attachments added by email-templates.md ET24 (ER51).
+    for (const key of ["body", "html", "attachments", "ticket_code", "user_id", "organizer_id", "event_id", "password_hash"]) {
       expect(reply.text).not.toContain(`"${key}"`);
     }
   });

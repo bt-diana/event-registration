@@ -114,7 +114,7 @@ function deferred<T = void>() {
 }
 
 describe("ER4: sendPending sends each pending row once (tests first)", () => {
-  it("calls the transport once per pending row with the row's text and id as key, and marks it sent", async () => {
+  it("calls the transport once per pending row with the built message and id as key, and marks it sent", async () => {
     const rows = [await pending(), await pending({ kind: "reminder" }), await pending({ kind: "promotion" })];
     const transport = collecting();
     const before = new Date();
@@ -123,7 +123,14 @@ describe("ER4: sendPending sends each pending row once (tests first)", () => {
 
     expect(transport).toHaveBeenCalledTimes(3);
     for (const r of rows) {
-      expect(transport).toHaveBeenCalledWith({ to: r.to_email, subject: r.subject, text: r.body, idempotencyKey: r.id });
+      // Changed by email-templates.md ET22: text is the body plus a footer, and html is added.
+      const calls = transport.mock.calls.filter(([message]) => message.idempotencyKey === r.id);
+      expect(calls).toHaveLength(1);
+      const [message] = calls[0];
+      expect(message).toMatchObject({ to: r.to_email, subject: r.subject, idempotencyKey: r.id });
+      expect(message.text.startsWith(r.body)).toBe(true);
+      expect(typeof message.html).toBe("string");
+      expect(message.html.length).toBeGreaterThan(0);
       const after = await row(r.id);
       expect(after.status).toBe("sent");
       expect(after.sent_at).toBeInstanceOf(Date);
@@ -531,6 +538,104 @@ describe("ER10: the sender changes only the four delivery columns", () => {
     expect(await content()).toEqual(outboxBefore);
     expect((await row(ok.id)).status).toBe("sent");
     expect((await row(bad.id)).send_attempts).toBe(1);
+  });
+});
+
+describe("ET22: the sender sends the built message (tests first)", () => {
+  it("every kind gets to, subject, text, html and the key; only the ticket kinds get the QR", async () => {
+    const kinds: OutboxKind[] = ["ticket", "promotion", "reminder", "reschedule", "event_cancelled"];
+    const rows = [];
+    for (const kind of kinds) rows.push(await pending({ kind }));
+    const transport = collecting();
+    const qrPng = vi.fn(async () => Buffer.from("png"));
+    expect(await sendPending(db.pool, { transport, batchSize: 10, qrPng, ...quiet() })).toBe(5);
+
+    for (const r of rows) {
+      const [message] = transport.mock.calls.find(([m]) => m.idempotencyKey === r.id)!;
+      expect(message.to).toBe(r.to_email);
+      expect(message.subject).toBe(r.subject);
+      expect(message.text.startsWith(r.body)).toBe(true);
+      expect(message.html).toMatch(/^<!doctype html>/);
+      if (["ticket", "promotion", "reminder"].includes(r.kind)) {
+        expect(message.attachments).toEqual([
+          { filename: "ticket-qr.png", content: Buffer.from("png"), contentType: "image/png", contentId: "ticket-qr" },
+        ]);
+      } else {
+        expect(message).not.toHaveProperty("attachments");
+      }
+    }
+    expect(qrPng).toHaveBeenCalledTimes(3);
+  });
+
+  it("a repeat try of one failing row gets deep-equal messages, real QR included, and the same key", async () => {
+    const r = await pending({ kind: "ticket" });
+    let calls = 0;
+    const transport = vi.fn<EmailTransport>(async () => {
+      calls += 1;
+      if (calls <= 2) throw new Error(`fail ${calls}`);
+    });
+    for (let call = 0; call < 3; call++) await sendPending(db.pool, { transport, ...quiet() });
+
+    expect(transport).toHaveBeenCalledTimes(3);
+    const [first, second, third] = transport.mock.calls.map(([message]) => message);
+    expect(second).toEqual(first);
+    expect(third).toEqual(first);
+    expect(first.idempotencyKey).toBe(r.id);
+    expect(first.attachments![0].content.equals(third.attachments![0].content)).toBe(true);
+    expect((await row(r.id)).status).toBe("sent");
+  });
+});
+
+describe("ET20: a QR failure is a failed try (tests first)", () => {
+  it("keeps the row pending with one more try and the reason, never calls the transport, gives up after 3", async () => {
+    const r = await pending({ kind: "reminder" });
+    const transport = collecting();
+    const qrPng = vi.fn(async () => {
+      throw new Error("qr broke");
+    });
+    const onError = vi.fn();
+
+    expect(await sendPending(db.pool, { transport, qrPng, log: vi.fn(), onError })).toBe(0);
+    expect(await row(r.id)).toMatchObject({ status: "pending", sent_at: null, send_attempts: 1, send_error: "qr broke" });
+    expect(onError).toHaveBeenCalledWith(`email ${r.id} (reminder) not sent (try 1 of 3): qr broke`);
+    for (let call = 2; call <= 3; call++) await sendPending(db.pool, { transport, qrPng, log: vi.fn(), onError });
+    expect(await row(r.id)).toMatchObject({ status: "error_sending", send_attempts: 3 });
+    expect(transport).not.toHaveBeenCalled();
+  });
+});
+
+describe("ET24: nothing new is logged or stored (tests first)", () => {
+  it("a transport error that holds the html leaves no html and no ticket code in the report or send_error", async () => {
+    const r = await pending({ kind: "ticket" });
+    const code = /Ticket code: (\S+)/.exec(r.body)![1];
+    const transport = vi.fn<EmailTransport>(async (message) => {
+      throw new Error(`provider refused: ${message.html}`);
+    });
+    const log = vi.fn();
+    const onError = vi.fn();
+    await sendPending(db.pool, { transport, log, onError });
+
+    const after = await row(r.id);
+    expect(after.send_attempts).toBe(1);
+    const reports = [...onError.mock.calls.map(([m]) => String(m)), ...log.mock.calls.map(([m]) => String(m))];
+    for (const text of [...reports, after.send_error!]) {
+      expect(text).not.toContain("<html");
+      expect(text).not.toContain("<!doctype");
+      expect(text).not.toContain(code);
+    }
+    expect(after.send_error).toContain("provider refused");
+  });
+
+  it("the sent line holds no html, attachment or code", async () => {
+    const r = await pending({ kind: "ticket" });
+    const code = /Ticket code: (\S+)/.exec(r.body)![1];
+    const log = vi.fn<(line: string) => void>();
+    await sendPending(db.pool, { transport: collecting(), log, onError: vi.fn() });
+    expect(log).toHaveBeenCalledWith(`[email] sent ticket ${r.id}`);
+    for (const [line] of log.mock.calls) {
+      expect(line).not.toContain(code);
+      expect(line).not.toContain("<");
+    }
   });
 });
 
