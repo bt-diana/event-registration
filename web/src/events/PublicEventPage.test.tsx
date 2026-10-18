@@ -113,7 +113,11 @@ describe("W-E16: dates and seats", () => {
     expect(detail("Starts")).toBe(formatDateTime("2030-01-01T10:00:00.000Z"));
     expect(detail("Ends")).toBe(formatDateTime("2030-01-01T11:30:00.000Z"));
     expect(detail("Duration")).toBe("1 h 30 min");
-    expect(detail("Seats")).toBe(seats);
+    // design-alignment.md DA5: its own line under the dl, not a "Seats" row.
+    expect(main().queryByText("Seats", { selector: "dt" })).toBeNull();
+    const line = main().getByText(seats);
+    expect(line.tagName).toBe("P");
+    expect(line.closest("dl")).toBeNull();
     expect(main().queryByText(/^Capacity:/)).toBeNull();
   });
 

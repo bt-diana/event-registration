@@ -456,6 +456,33 @@ a:hover {
   color: #ffffff;
 }
 
+/* A link with the secondary button look (Go home on the wrong-account card, DA4). */
+.button-link-secondary {
+  display: inline-flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 20px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.button-link-secondary:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+/* Button links side by side, wrapping (DA4). */
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 /* Log out looks like the nav links (D63, header-events-link.md HB9). */
 .site-account button.button-secondary {
   display: inline-flex;
@@ -626,6 +653,17 @@ a:hover {
   margin: 24px 0 0;
 }
 
+/* DA5: the seats text of an open event, its own line under the dl. */
+.event-seats {
+  margin: 24px 0 0;
+  font-weight: 600;
+}
+
+/* DA7: 24 px from the dl above; the share line keeps its 24 px margin below. */
+.event-registrations-link {
+  margin-top: 24px;
+}
+
 .event-closed {
   margin: 8px 0 0;
   color: var(--text-muted);
@@ -750,9 +788,15 @@ a:hover {
   align-self: stretch;
 }
 
-.registration-button {
-  width: auto;
-  min-width: 200px;
+/* DA6: the register button and the login link button fill the card width. */
+.registration-button,
+.registration-area > .button-link {
+  align-self: stretch;
+  width: 100%;
+}
+
+.registration-area > .button-link {
+  justify-content: center;
 }
 
 .registration-hint {

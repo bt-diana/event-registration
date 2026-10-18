@@ -39,10 +39,11 @@ export function PublicEventView({ id }: { id: string }) {
         <Detail label="Starts">{formatDateTime(event.starts_at)}</Detail>
         <Detail label="Ends">{formatDateTime(event.ends_at)}</Detail>
         <Detail label="Duration">{formatDuration(event.duration_minutes)}</Detail>
-        {!closed && (
-          <Detail label="Seats">{`${event.seats_left} of ${event.capacity} seats left`}</Detail>
-        )}
       </dl>
+      {/* design-alignment.md DA5: the seats text is its own line under the dl. */}
+      {!closed && (
+        <p className="event-seats">{`${event.seats_left} of ${event.capacity} seats left`}</p>
+      )}
       {closed && (
         <>
           <p className="event-note">{`Capacity: ${event.capacity}`}</p>

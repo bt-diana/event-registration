@@ -57,16 +57,16 @@ function WrongAccount({ need, me }: { need: Role; me: Me }) {
       <p className="intro">
         This page is for {AUDIENCE[need]}. You are logged in as {me.email}.
       </p>
-      <p className="switch-mode" data-role={need}>
-        <Link to={LOGIN[need]} className="action-link">
+      {/* design-alignment.md DA4: a primary button link in the needed role's accent and a
+          secondary one, in a wrapping row. */}
+      <div className="button-row">
+        <Link to={LOGIN[need]} className="button-link" data-role={need}>
           {LOGIN_AS[need]}
         </Link>
-      </p>
-      <p className="switch-mode" data-role={me.role}>
-        <Link to={HOME[me.role]} className="action-link">
+        <Link to={HOME[me.role]} className="button-link-secondary" data-role={me.role}>
           Go home
         </Link>
-      </p>
+      </div>
     </section>
   );
 }

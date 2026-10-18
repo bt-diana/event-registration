@@ -59,7 +59,11 @@ function OrganizerEventView({ event }: { event: OrganizerEvent }) {
         <Detail label="Seats left">{String(event.seats_left)}</Detail>
         <Detail label="Created">{formatDateTime(event.created_at)}</Detail>
       </dl>
-      <Link to={`/registrations?event=${encodeURIComponent(event.id)}`} className="button-link">
+      {/* design-alignment.md DA7: 24 px above (from the dl) and below (to the share line). */}
+      <Link
+        to={`/registrations?event=${encodeURIComponent(event.id)}`}
+        className="button-link event-registrations-link"
+      >
         Registrations
       </Link>
       <p className="share">
