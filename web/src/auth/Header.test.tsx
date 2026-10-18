@@ -539,7 +539,8 @@ describe("HB8: look kept, only the logo href changed", () => {
 
 describe("HB9: accessibility", () => {
   // jsdom has no Tab key: the Tab order is the DOM order of the focusable elements,
-  // none of them with a tabindex of its own. The icon-only Menu button counts by its aria-label.
+  // none of them with a tabindex of its own. The icon-only Menu and Close menu buttons count
+  // by their aria-label. The backdrop is a div, not focusable (header-responsive.md HR1, D69).
   function tabOrder(): string[] {
     const banner = screen.getByRole("banner");
     return Array.from(banner.querySelectorAll<HTMLElement>("a[href], button")).map((element) => {
@@ -548,18 +549,26 @@ describe("HB9: accessibility", () => {
     });
   }
 
-  it("logged out: Tab order logo, Menu, then the account links", async () => {
+  it("logged out: Tab order logo, Menu, Close menu, All events, then the account links", async () => {
     mockFetch({ [ME]: loggedOut, ...SCREENS });
     renderApp("/event/1");
     await meShown("logged out");
-    expect(tabOrder()).toEqual([LOGO, "Menu", "Log in", "Sign up", "For organizers"]);
+    expect(tabOrder()).toEqual([
+      LOGO,
+      "Menu",
+      "Close menu",
+      "All events",
+      "Log in",
+      "Sign up",
+      "For organizers",
+    ]);
   });
 
   // The account link texts belong to W-R14; only their place after the logo is checked here.
   it.each<[State, () => Response]>([
     ["attendee", () => json(200, ANN)],
     ["organizer", () => json(200, OLGA)],
-  ])("%s: Tab order logo, Menu, the account link, then Log out", async (state, me) => {
+  ])("%s: Tab order logo, Menu, Close menu, All events, the account link, then Log out", async (state, me) => {
     mockFetch({ [ME]: me, ...SCREENS });
     renderApp("/event/1");
     await meShown(state);
@@ -567,7 +576,7 @@ describe("HB9: accessibility", () => {
       .getAllByRole("link")
       .map((link) => link.textContent ?? "");
     expect(accountLinks.length).toBeGreaterThan(0);
-    expect(tabOrder()).toEqual([LOGO, "Menu", ...accountLinks, "Log out"]);
+    expect(tabOrder()).toEqual([LOGO, "Menu", "Close menu", "All events", ...accountLinks, "Log out"]);
   });
 
   // Enter on a focused <a href> follows it natively; jsdom does not, so the click stands in.
@@ -606,18 +615,25 @@ function accountInfo(): HTMLElement {
   return info;
 }
 
-// The DOM order of the focusable elements; the icon-only Menu button counts by its aria-label.
+// The DOM order of the focusable elements; the icon-only Menu and Close menu buttons count by
+// their aria-label. The backdrop is a div and not focusable (HR1, D69).
 function focusables(): string[] {
   return Array.from(
     screen.getByRole("banner").querySelectorAll<HTMLElement>("a[href], button"),
   ).map((element) => element.getAttribute("aria-label") ?? element.textContent ?? "");
 }
 
-// D66: the burger and the panel it controls (header-responsive.md HR6, HR11-HR17).
-// Open and closed are read from aria-expanded and data-open, never from visibility
-// (jsdom does not read styles.css).
+// D66, D69: the burger and the drawer it controls (header-responsive.md HR6, HR11-HR17,
+// HR21-HR35). Open and closed are read from aria-expanded and data-open, the modal state from
+// role, inert and body.style.overflow, never from visibility (jsdom does not read styles.css).
+// By the attribute, so HR26 and HR35 still find it after they set display: none on it (a
+// hidden element has no accessible name). HR6 checks the role and the name.
 function menuButton(): HTMLElement {
-  return header().getByRole("button", { name: "Menu" });
+  const button = screen
+    .getByRole("banner")
+    .querySelector<HTMLElement>('button[aria-label="Menu"]');
+  if (!button) throw new Error("no Menu button");
+  return button;
 }
 
 function panel(): HTMLElement {
@@ -626,6 +642,20 @@ function panel(): HTMLElement {
   const element = document.getElementById(id);
   if (!element) throw new Error(`no element with the id ${id}`);
   return element;
+}
+
+function closeButton(): HTMLElement {
+  return header().getByRole("button", { name: "Close menu" });
+}
+
+function backdrop(): HTMLElement {
+  const element = screen.getByRole("banner").querySelector<HTMLElement>(".nav-backdrop");
+  if (!element) throw new Error("no .nav-backdrop");
+  return element;
+}
+
+function allEvents(): HTMLElement {
+  return header().getByRole("link", { name: "All events" });
 }
 
 function expectMenu(open: boolean) {
@@ -638,7 +668,20 @@ function openMenu() {
   expectMenu(true);
 }
 
-describe("HR1: account block order: nav link, account info, Log out", () => {
+// The elements behind the drawer that get inert while it is open (HR33).
+function inertTargets(): HTMLElement[] {
+  const main = document.querySelector<HTMLElement>("main");
+  if (!main) throw new Error("no main");
+  return [main, logoLink(), menuButton()];
+}
+
+function expectModal(open: boolean) {
+  for (const element of inertTargets()) expect(element.hasAttribute("inert")).toBe(open);
+  expect(document.querySelectorAll("[inert]")).toHaveLength(open ? 3 : 0);
+  expect(document.body.style.overflow === "hidden").toBe(open);
+}
+
+describe("HR1: account block order and Tab order with the drawer", () => {
   it.each(LOGGED_IN)("%s: DOM order and Tab order", async (state, me) => {
     mockFetch({ [ME]: me, ...SCREENS });
     renderApp("/event/1");
@@ -650,7 +693,22 @@ describe("HR1: account block order: nav link, account info, Log out", () => {
     expect(children[2]).toBe(header().getByRole("button", { name: "Log out" }));
     expect(panel().contains(accountBlock())).toBe(true);
     const link = within(header().getByRole("navigation", { name: "Main" })).getByRole("link");
-    expect(focusables()).toEqual([LOGO, "Menu", link.textContent, "Log out"]);
+    expect(focusables()).toEqual([LOGO, "Menu", "Close menu", "All events", link.textContent, "Log out"]);
+  });
+
+  it("logged out: logo, Menu, Close menu, All events, Log in, Sign up, role switch", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/event/1");
+    await meShown("logged out");
+    expect(focusables()).toEqual([
+      LOGO,
+      "Menu",
+      "Close menu",
+      "All events",
+      "Log in",
+      "Sign up",
+      "For organizers",
+    ]);
   });
 });
 
@@ -689,7 +747,7 @@ describe("HR3: the full name in the text and in title", () => {
     expect(nameElement.textContent).toBe(name);
   });
 
-  it("with the panel open: the same full name and title", async () => {
+  it("with the drawer open: the same full name and title", async () => {
     mockFetch({ [ME]: () => json(200, { ...ANN, name: LONG_NAME }), ...SCREENS });
     renderApp("/event/1");
     await header().findByRole("button", { name: "Log out" });
@@ -726,7 +784,7 @@ describe("HR4: the log-out error after Log out, outside .account-info", () => {
     expect(accountInfo().children[0].textContent).toBe("Ann");
   });
 
-  it("with the panel open: the alert follows the button, in the panel, outside .account-info", async () => {
+  it("with the drawer open: the alert follows the button, in the drawer, outside .account-info", async () => {
     mockFetch({
       [ME]: () => json(200, ANN),
       "POST /auth/users/logout": () => {
@@ -763,22 +821,23 @@ describe("HR4: the log-out error after Log out, outside .account-info", () => {
 });
 
 // Tests first (header-responsive.md, D66): HR6, HR11-HR17 and the Menu button in HR1 and HB9.
+// Reworked tests first for D67-D69: the drawer, the header click and All events.
 describe("HR6: the Menu button", () => {
   type MeCase = [string, () => Response | Promise<Response>, string[], string | null];
   const CASES: MeCase[] = [
     ["pending", () => deferred<Response>().promise, [], null],
-    ["logged out", loggedOut, ["Menu"], "Account"],
-    ["5xx", () => json(500, { error: "internal" }), ["Menu"], "Account"],
+    ["logged out", loggedOut, ["Menu", "Close menu"], "Account"],
+    ["5xx", () => json(500, { error: "internal" }), ["Menu", "Close menu"], "Account"],
     [
       "network error",
       () => {
         throw new TypeError("Failed to fetch");
       },
-      ["Menu"],
+      ["Menu", "Close menu"],
       "Account",
     ],
-    ["attendee", () => json(200, ANN), ["Menu", "Log out"], "Main"],
-    ["organizer", () => json(200, OLGA), ["Menu", "Log out"], "Main"],
+    ["attendee", () => json(200, ANN), ["Menu", "Close menu", "Log out"], "Main"],
+    ["organizer", () => json(200, OLGA), ["Menu", "Close menu", "Log out"], "Main"],
   ];
 
   async function settled(state: string) {
@@ -799,7 +858,9 @@ describe("HR6: the Menu button", () => {
     ).toEqual(buttons);
     expect(screen.getByRole("banner").querySelectorAll("button")).toHaveLength(buttons.length);
     const navs = header().queryAllByRole("navigation");
-    expect(navs.map((element) => element.getAttribute("aria-label"))).toEqual(nav ? [nav] : []);
+    expect(navs.map((element) => element.getAttribute("aria-label"))).toEqual(
+      nav ? ["Site", nav] : [],
+    );
     expect(logoLink().getAttribute("href")).toBe("/");
     if (state === "pending") {
       expect(header().queryByRole("button", { name: "Menu" })).toBeNull();
@@ -822,6 +883,7 @@ describe("HR6: the Menu button", () => {
       const icon = button.querySelector("svg");
       expect(icon?.getAttribute("aria-hidden")).toBe("true");
       expect(logoLink().nextElementSibling).toBe(button);
+      expect(header().getAllByRole("button", { name: "Close menu" })).toHaveLength(1);
     },
   );
 
@@ -831,19 +893,24 @@ describe("HR6: the Menu button", () => {
     await meShown("attendee");
     const button = menuButton();
     fireEvent.click(button);
+    expectMenu(true);
     expect(menuButton()).toBe(button);
     expect(button.getAttribute("aria-label")).toBe("Menu");
-    fireEvent.click(button);
+    fireEvent.click(closeButton());
+    expectMenu(false);
     expect(button.getAttribute("aria-label")).toBe("Menu");
   });
 });
 
 describe("HR11: closed by default", () => {
-  it.each(STATES)("%s: aria-expanded false and data-open false", async (state, me) => {
+  it.each(STATES)("%s: closed, no dialog role, no inert, no scroll lock", async (state, me) => {
     mockFetch({ [ME]: me, ...SCREENS });
     renderApp("/event/1");
     await meShown(state);
     expectMenu(false);
+    expect(panel().hasAttribute("role")).toBe(false);
+    expect(panel().hasAttribute("aria-modal")).toBe(false);
+    expectModal(false);
   });
 
   it("5xx: closed by default", async () => {
@@ -851,10 +918,12 @@ describe("HR11: closed by default", () => {
     renderApp("/event/1");
     await meShown("logged out");
     expectMenu(false);
+    expect(panel().hasAttribute("role")).toBe(false);
+    expectModal(false);
   });
 });
 
-describe("HR12: aria-controls points to the panel", () => {
+describe("HR12: aria-controls points to the drawer, the backdrop before it", () => {
   it.each<[State, () => Response, string]>([
     ["logged out", loggedOut, "Account"],
     ["attendee", () => json(200, ANN), "Main"],
@@ -868,32 +937,53 @@ describe("HR12: aria-controls points to the panel", () => {
     expect(document.querySelectorAll(`[id="${id}"]`)).toHaveLength(1);
     expect(screen.getByRole("banner").contains(panel())).toBe(true);
     expect(panel()).not.toBe(menuButton());
+    expect(panel().classList.contains("site-header-end")).toBe(true);
+    expect(panel().tagName).toBe("DIV");
     expect(panel().contains(header().getByRole("navigation", { name: nav }))).toBe(true);
+    expect(panel().getAttribute("aria-label")).toBe("Menu");
+    const shade = panel().previousElementSibling as HTMLElement;
+    expect(shade).toBe(backdrop());
+    expect(shade.tagName).toBe("DIV");
+    expect(shade.getAttribute("aria-hidden")).toBe("true");
+    expect(shade.hasAttribute("role")).toBe(false);
+    expect(shade.hasAttribute("tabindex")).toBe(false);
+    openMenu();
+    expect(panel().getAttribute("aria-label")).toBe("Menu");
   });
 });
 
-describe("HR13: a click toggles the menu", () => {
-  it.each(STATES)("%s: open, closed, three times", async (state, me) => {
+describe("HR13: Menu opens, it does not toggle", () => {
+  it.each(STATES)("%s: a second click on Menu or on the header row keeps it open", async (state, me) => {
     mockFetch({ [ME]: me, ...SCREENS });
     renderApp("/event/1");
     await meShown(state);
-    for (let cycle = 0; cycle < 3; cycle += 1) {
+    fireEvent.click(menuButton());
+    expectMenu(true);
+    for (let click = 0; click < 3; click += 1) {
       fireEvent.click(menuButton());
       expectMenu(true);
-      fireEvent.click(menuButton());
-      expectMenu(false);
+      fireEvent.click(screen.getByRole("banner"));
+      expectMenu(true);
     }
   });
 });
 
-describe("HR14: what is in the panel", () => {
-  // Outside the panel the banner has only the logo and the Menu button.
+describe("HR14: what is in the drawer", () => {
+  // Outside the drawer the banner has only the logo, the Menu button and the backdrop.
   function expectOnlyLogoAndMenuOutside() {
     const banner = screen.getByRole("banner");
-    expect(Array.from(banner.children)).toEqual([logoLink(), menuButton(), panel()]);
+    expect(Array.from(banner.children)).toEqual([logoLink(), menuButton(), backdrop(), panel()]);
   }
 
-  it.each(LOGGED_IN)("%s: Main nav, account info, Log out", async (state, me) => {
+  // The drawer starts with Close menu, then the Site nav with All events.
+  function expectCloseThenSiteNav() {
+    const [first, second] = Array.from(panel().children);
+    expect(first).toBe(closeButton());
+    expect(first.classList.contains("nav-close")).toBe(true);
+    expect(second).toBe(header().getByRole("navigation", { name: "Site" }));
+  }
+
+  it.each(LOGGED_IN)("%s: Close menu, All events, Main nav, account info, Log out", async (state, me) => {
     mockFetch({ [ME]: me, ...SCREENS });
     renderApp("/event/1");
     await meShown(state);
@@ -902,16 +992,23 @@ describe("HR14: what is in the panel", () => {
     expect(within(main).getAllByRole("link")).toHaveLength(1);
     expect(panel().contains(accountInfo())).toBe(true);
     expect(panel().contains(header().getByRole("button", { name: "Log out" }))).toBe(true);
+    expectCloseThenSiteNav();
+    expect(within(panel()).getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "All events",
+      within(main).getByRole("link").textContent,
+    ]);
     expectOnlyLogoAndMenuOutside();
   });
 
-  it("logged out: the Account nav with the three links", async () => {
+  it("logged out: Close menu, All events, the Account nav with the three links", async () => {
     mockFetch({ [ME]: loggedOut, ...SCREENS });
     renderApp("/event/1");
     await meShown("logged out");
     const nav = header().getByRole("navigation", { name: "Account" });
     expect(panel().contains(nav)).toBe(true);
+    expectCloseThenSiteNav();
     expect(within(panel()).getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "All events",
       "Log in",
       "Sign up",
       "For organizers",
@@ -922,11 +1019,13 @@ describe("HR14: what is in the panel", () => {
 
 describe("HR15: Escape closes and gives the focus back to Menu", () => {
   it.each<[string, () => HTMLElement]>([
-    ["the panel link", () => within(panel()).getByRole("link", { name: "My registrations" })],
+    ["the drawer link", () => within(panel()).getByRole("link", { name: "My registrations" })],
+    ["All events", () => allEvents()],
     ["Log out", () => header().getByRole("button", { name: "Log out" })],
+    ["Close menu", () => closeButton()],
     ["the Menu button", () => menuButton()],
     ["the logo", () => logoLink()],
-  ])("open, Escape on %s: closed, focus on Menu", async (_case, target) => {
+  ])("open, Escape on %s: closed, focus on Menu, no inert left", async (_case, target) => {
     mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
     renderApp("/event/1");
     await meShown("attendee");
@@ -935,10 +1034,11 @@ describe("HR15: Escape closes and gives the focus back to Menu", () => {
     element.focus();
     fireEvent.keyDown(element, { key: "Escape" });
     expectMenu(false);
+    expectModal(false);
     expect(document.activeElement).toBe(menuButton());
   });
 
-  it("logged out: Escape on a panel link closes", async () => {
+  it("logged out: Escape on a drawer link closes", async () => {
     mockFetch({ [ME]: loggedOut, ...SCREENS });
     renderApp("/event/1");
     await meShown("logged out");
@@ -990,7 +1090,7 @@ describe("HR16: the menu closes on navigation", () => {
     );
   }
 
-  it("logged out: a panel link closes it", async () => {
+  it("logged out: a drawer link closes it, no inert left, focus not moved to Menu", async () => {
     mockFetch({ [ME]: loggedOut, ...SCREENS });
     renderApp("/event/1");
     await meShown("logged out");
@@ -998,6 +1098,8 @@ describe("HR16: the menu closes on navigation", () => {
     fireEvent.click(within(panel()).getByRole("link", { name: "Sign up" }));
     await waitFor(() => expect(currentLocation()).toBe("/signup"));
     expectMenu(false);
+    expectModal(false);
+    expect(document.activeElement).not.toBe(menuButton());
   });
 
   it("organizer: My events closes it", async () => {
@@ -1008,16 +1110,29 @@ describe("HR16: the menu closes on navigation", () => {
     fireEvent.click(within(panel()).getByRole("link", { name: "My events" }));
     await waitFor(() => expect(currentLocation()).toBe("/organizer"));
     expectMenu(false);
+    expect(document.activeElement).not.toBe(menuButton());
   });
 
-  it("the logo closes it", async () => {
+  it("All events closes it", async () => {
     mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
     renderApp("/event/1");
     await meShown("attendee");
     openMenu();
-    fireEvent.click(logoLink());
+    fireEvent.click(allEvents());
     await waitFor(() => expect(currentLocation()).toBe("/"));
     expectMenu(false);
+    expectModal(false);
+    expect(document.activeElement).not.toBe(menuButton());
+  });
+
+  it("All events on / closes it (new location key)", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/");
+    await meShown("logged out");
+    openMenu();
+    fireEvent.click(allEvents());
+    await waitFor(() => expectMenu(false));
+    expect(currentLocation()).toBe("/");
   });
 
   it("the link of the current page closes it (new location key)", async () => {
@@ -1028,6 +1143,7 @@ describe("HR16: the menu closes on navigation", () => {
     fireEvent.click(within(panel()).getByRole("link", { name: "My events" }));
     await waitFor(() => expectMenu(false));
     expect(currentLocation()).toBe("/organizer");
+    expect(document.activeElement).not.toBe(menuButton());
   });
 
   it("Back and Forward close it", async () => {
@@ -1047,6 +1163,8 @@ describe("HR16: the menu closes on navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "test back" }));
     await waitFor(() => expect(currentLocation()).toBe("/event/1"));
     expectMenu(false);
+    expectModal(false);
+    expect(document.activeElement).not.toBe(menuButton());
     openMenu();
     fireEvent.click(screen.getByRole("button", { name: "test forward" }));
     await waitFor(() => expect(currentLocation()).toBe("/signup"));
@@ -1070,7 +1188,7 @@ describe("HR16: the menu closes on navigation", () => {
 });
 
 describe("HR17: Log out and the menu", () => {
-  it("a click on Log out keeps the panel open while pending", async () => {
+  it("a click on Log out keeps the drawer open while pending", async () => {
     const answer = deferred<Response>();
     mockFetch({ [ME]: () => json(200, ANN), "POST /auth/users/logout": () => answer.promise });
     renderApp("/");
@@ -1085,7 +1203,7 @@ describe("HR17: Log out and the menu", () => {
     expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
   });
 
-  it("failed log out: the panel stays open with the alert in it", async () => {
+  it("failed log out: the drawer stays open with the alert in it", async () => {
     mockFetch({
       [ME]: () => json(200, ANN),
       "POST /auth/users/logout": () => json(500, { error: "internal" }),
@@ -1097,11 +1215,13 @@ describe("HR17: Log out and the menu", () => {
     const alert = await header().findByRole("alert");
     expect(alert.textContent).toBe("Could not log out. Try again.");
     expectMenu(true);
+    expectModal(true);
+    expect(header().getByRole("dialog", { name: "Menu" })).toBe(panel());
     expect(panel().contains(alert)).toBe(true);
     expect(header().getByRole("button", { name: "Log out" })).toBeTruthy();
   });
 
-  it("attendee success: logged-out header with the menu closed", async () => {
+  it("attendee success: logged-out header with the menu closed, no inert, no scroll lock", async () => {
     mockFetch({
       [ME]: () => json(200, ANN),
       "POST /auth/users/logout": () => json(204),
@@ -1110,10 +1230,13 @@ describe("HR17: Log out and the menu", () => {
     renderApp("/");
     await meShown("attendee");
     openMenu();
+    expectModal(true);
     fireEvent.click(header().getByRole("button", { name: "Log out" }));
     expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
     expect(currentLocation()).toBe("/");
     expectMenu(false);
+    expectModal(false);
+    expect(header().queryByRole("dialog")).toBeNull();
   });
 
   it("organizer success: redirected by the guard, menu closed", async () => {
@@ -1131,6 +1254,7 @@ describe("HR17: Log out and the menu", () => {
     );
     expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
     expectMenu(false);
+    expectModal(false);
   });
 
   it("log in: the menu starts closed for the logged-in header", async () => {
@@ -1169,5 +1293,473 @@ describe("HR5: logged out: three links in order, no account info", () => {
     renderApp("/event/1");
     expect(focusables()).toEqual([LOGO]);
     expect(screen.getByRole("banner").querySelector(".account-info")).toBeNull();
+  });
+});
+
+// Tests first (header-responsive.md, D67-D69): HR21-HR35.
+describe("HR21: a click on the header row opens the menu", () => {
+  it.each(STATES)("%s: a click on the banner itself opens it", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    fireEvent.click(screen.getByRole("banner"));
+    expectMenu(true);
+  });
+
+  it.each(STATES)("%s: a click on Menu opens it", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    fireEvent.click(menuButton());
+    expectMenu(true);
+  });
+
+  it("a click on the Menu icon opens it", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    const icon = menuButton().querySelector("svg");
+    if (!icon) throw new Error("no icon");
+    fireEvent.click(icon);
+    expectMenu(true);
+  });
+});
+
+describe("HR22: the logo navigates and does not open the menu", () => {
+  it.each(STATES)("%s from /event/1: goes to /, menu stays closed", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    const logo = logoLink();
+    logo.focus();
+    fireEvent.click(logo);
+    expectMenu(false);
+    await waitFor(() => expect(currentLocation()).toBe("/"));
+    expectMenu(false);
+    expectModal(false);
+    // An open that was closed again by the navigation would have moved the focus to Close menu.
+    expect(document.activeElement).toBe(logo);
+  });
+
+  it("a click on the logo icon does not open the menu either", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/event/1");
+    await meShown("logged out");
+    const icon = logoLink().querySelector("img");
+    if (!icon) throw new Error("no logo icon");
+    logoLink().focus();
+    fireEvent.click(icon);
+    await waitFor(() => expect(currentLocation()).toBe("/"));
+    expectMenu(false);
+    expect(document.activeElement).toBe(logoLink());
+  });
+});
+
+describe("HR23: clicks inside the drawer or on the backdrop never open the menu", () => {
+  it("closed: a drawer link navigates and the menu stays closed", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/event/1");
+    await meShown("logged out");
+    const link = within(panel()).getByRole("link", { name: "Sign up" });
+    link.focus();
+    fireEvent.click(link);
+    expectMenu(false);
+    await waitFor(() => expect(currentLocation()).toBe("/signup"));
+    expectMenu(false);
+    expect(document.activeElement).toBe(link);
+  });
+
+  it("closed: All events navigates and the menu stays closed", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    const link = allEvents();
+    link.focus();
+    fireEvent.click(link);
+    await waitFor(() => expect(currentLocation()).toBe("/"));
+    expectMenu(false);
+    expect(document.activeElement).toBe(link);
+  });
+
+  it("closed: .account-info, the backdrop, Close menu and the drawer itself do nothing", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    fireEvent.click(accountInfo());
+    expectMenu(false);
+    fireEvent.click(backdrop());
+    expectMenu(false);
+    fireEvent.click(closeButton());
+    expectMenu(false);
+    fireEvent.click(panel());
+    expectMenu(false);
+    expectModal(false);
+  });
+
+  it("closed: Log out acts and the menu stays closed", async () => {
+    const answer = deferred<Response>();
+    const fetch = mockFetch({
+      [ME]: () => json(200, ANN),
+      "POST /auth/users/logout": () => answer.promise,
+    });
+    renderApp("/");
+    await meShown("attendee");
+    fireEvent.click(header().getByRole("button", { name: "Log out" }));
+    expect(await header().findByRole("button", { name: "Logging out..." })).toBeTruthy();
+    expectMenu(false);
+    expect(callsTo(fetch, "POST /auth/users/logout")).toBe(1);
+    await act(async () => {
+      answer.resolve(json(204));
+    });
+    expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
+  });
+
+  it("open: .account-info keeps it open", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    openMenu();
+    fireEvent.click(accountInfo());
+    expectMenu(true);
+    fireEvent.click(panel());
+    expectMenu(true);
+  });
+});
+
+describe("HR24: Enter and Space on Menu open it once", () => {
+  // jsdom turns no key into a click: a keyboard press on a button is a keydown, a click
+  // with detail 0 and a keyup in the browser, so that sequence stands in for it.
+  function keyboardClick(element: HTMLElement, key: string) {
+    fireEvent.keyDown(element, { key });
+    fireEvent.click(element, { detail: 0 });
+    fireEvent.keyUp(element, { key });
+  }
+
+  it.each(["Enter", " "])("%j: open after one press, still open after a second", async (key) => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    const button = menuButton();
+    button.focus();
+    keyboardClick(button, key);
+    expectMenu(true);
+    keyboardClick(button, key);
+    expectMenu(true);
+  });
+
+  it("two clicks in a row: open", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/event/1");
+    await meShown("logged out");
+    fireEvent.click(menuButton());
+    fireEvent.click(menuButton());
+    expectMenu(true);
+  });
+});
+
+describe("HR25: the header bar is not a second button", () => {
+  it.each(STATES)("%s: no tabindex, no role, no aria-* on the banner", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    const banner = screen.getByRole("banner");
+    expect(banner.tagName).toBe("HEADER");
+    expect(banner.hasAttribute("tabindex")).toBe(false);
+    expect(banner.hasAttribute("role")).toBe(false);
+    expect(banner.getAttributeNames().filter((name) => name.startsWith("aria-"))).toEqual([]);
+  });
+});
+
+describe("HR26: no header click open while Menu is not displayed", () => {
+  it.each(STATES)("%s: Menu display none, a click on the banner keeps it closed", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    menuButton().style.display = "none";
+    fireEvent.click(screen.getByRole("banner"));
+    expectMenu(false);
+    expectModal(false);
+  });
+});
+
+describe("HR27: All events, first in the drawer after Close menu", () => {
+  it.each(
+    STATES.flatMap(([state, me]) =>
+      ["/", "/event/1", "/login"].map((path) => [state, path, me] as const),
+    ),
+  )("%s on %s: one link All events to / in the Site nav", async (state, path, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp(path);
+    await meShown(state);
+    const site = header().getByRole("navigation", { name: "Site" });
+    expect(panel().contains(site)).toBe(true);
+    expect(panel().children[1]).toBe(site);
+    const links = within(site).getAllByRole("link");
+    expect(links).toHaveLength(1);
+    expect(links[0]).toBe(allEvents());
+    expect(links[0].textContent).toBe("All events");
+    expect(links[0].getAttribute("href")).toBe("/");
+    expect(header().getAllByRole("link", { name: "All events" })).toHaveLength(1);
+    const other = header().getByRole("navigation", { name: state === "logged out" ? "Account" : "Main" });
+    expect(site.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it.each(["/organizer", "/organizer/events/new"])("organizer on %s: All events to /", async (path) => {
+    mockFetch({ [ME]: () => json(200, OLGA), ...SCREENS });
+    renderApp(path);
+    await meShown("organizer");
+    expect(allEvents().getAttribute("href")).toBe("/");
+  });
+});
+
+describe("HR28: All events aria-current on / only (exact match)", () => {
+  it.each(STATES)("%s on /: aria-current is page", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/");
+    await meShown(state);
+    expect(allEvents().getAttribute("aria-current")).toBe("page");
+  });
+
+  it("ignores the query string and the hash", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/?from=mail#top");
+    await meShown("logged out");
+    expect(allEvents().getAttribute("aria-current")).toBe("page");
+  });
+
+  it.each<[State, string]>([
+    ["logged out", "/event/1"],
+    ["logged out", "/login"],
+    ["attendee", "/event/1"],
+    ["organizer", "/event/1"],
+    ["organizer", "/organizer"],
+  ])("%s on %s: no aria-current", async (state, path) => {
+    const me = STATES.find(([name]) => name === state)?.[1] ?? loggedOut;
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp(path);
+    await meShown(state);
+    expect(allEvents().getAttribute("aria-current")).toBeNull();
+  });
+});
+
+describe("HR29: a dialog only while open", () => {
+  it.each(STATES)("%s: no dialog closed, dialog Menu open, none after close", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    openMenu();
+    expect(header().getByRole("dialog", { name: "Menu" })).toBe(panel());
+    expect(panel().getAttribute("role")).toBe("dialog");
+    expect(panel().getAttribute("aria-modal")).toBe("true");
+    fireEvent.click(closeButton());
+    expectMenu(false);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(panel().hasAttribute("aria-modal")).toBe(false);
+  });
+});
+
+describe("HR30: Close menu", () => {
+  it.each(STATES)("%s: a button type=button, icon only, first in the drawer", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    const button = closeButton();
+    expect(button.tagName).toBe("BUTTON");
+    expect(button.getAttribute("type")).toBe("button");
+    expect(button.getAttribute("aria-label")).toBe("Close menu");
+    expect(button.classList.contains("nav-close")).toBe(true);
+    expect(button.textContent).toBe("");
+    expect(button.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    expect(panel().firstElementChild).toBe(button);
+  });
+
+  it.each(STATES)("%s: open moves the focus to Close menu; Close closes and focuses Menu", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    menuButton().focus();
+    openMenu();
+    expect(document.activeElement).toBe(closeButton());
+    fireEvent.click(closeButton());
+    expectMenu(false);
+    expectModal(false);
+    expect(document.activeElement).toBe(menuButton());
+  });
+
+  it("the header row click also moves the focus to Close menu", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    fireEvent.click(screen.getByRole("banner"));
+    expect(document.activeElement).toBe(closeButton());
+  });
+});
+
+describe("HR31: the focus stays in the open drawer", () => {
+  function tab(element: Element, shiftKey = false): boolean {
+    return fireEvent.keyDown(element, { key: "Tab", shiftKey });
+  }
+
+  it.each<[State, () => Response, () => HTMLElement]>([
+    ["logged out", loggedOut, () => header().getByRole("link", { name: "For organizers" })],
+    ["attendee", () => json(200, ANN), () => header().getByRole("button", { name: "Log out" })],
+    ["organizer", () => json(200, OLGA), () => header().getByRole("button", { name: "Log out" })],
+  ])("%s: Tab on the last goes to Close menu, Shift+Tab on Close menu to the last", async (state, me, last) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    openMenu();
+    expect(document.activeElement).toBe(closeButton());
+
+    expect(tab(closeButton(), true)).toBe(false);
+    expect(document.activeElement).toBe(last());
+
+    expect(tab(last())).toBe(false);
+    expect(document.activeElement).toBe(closeButton());
+  });
+
+  it("Tab inside the drawer is left to the browser away from the ends", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    openMenu();
+    expect(tab(closeButton())).toBe(true);
+    expect(document.activeElement).toBe(closeButton());
+    const link = allEvents();
+    link.focus();
+    expect(tab(link)).toBe(true);
+    expect(tab(link, true)).toBe(true);
+    expect(document.activeElement).toBe(link);
+    const logOut = header().getByRole("button", { name: "Log out" });
+    logOut.focus();
+    expect(tab(logOut, true)).toBe(true);
+    expect(document.activeElement).toBe(logOut);
+  });
+
+  it("a disabled Logging out... is skipped: the nav link is the last", async () => {
+    const answer = deferred<Response>();
+    mockFetch({ [ME]: () => json(200, ANN), "POST /auth/users/logout": () => answer.promise });
+    renderApp("/");
+    await meShown("attendee");
+    openMenu();
+    fireEvent.click(header().getByRole("button", { name: "Log out" }));
+    expect(await header().findByRole("button", { name: "Logging out..." })).toBeTruthy();
+    const link = within(header().getByRole("navigation", { name: "Main" })).getByRole("link");
+    closeButton().focus();
+    expect(tab(closeButton(), true)).toBe(false);
+    expect(document.activeElement).toBe(link);
+    expect(tab(link)).toBe(false);
+    expect(document.activeElement).toBe(closeButton());
+    await act(async () => {
+      answer.resolve(json(204));
+    });
+    expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
+  });
+
+  it("closed: Tab is not trapped", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    const logOut = header().getByRole("button", { name: "Log out" });
+    logOut.focus();
+    expect(tab(logOut)).toBe(true);
+    expect(document.activeElement).toBe(logOut);
+  });
+});
+
+describe("HR32: a click on the backdrop closes", () => {
+  it.each(STATES)("%s: closed, focus on Menu, no inert, no lock", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    openMenu();
+    fireEvent.click(backdrop());
+    expectMenu(false);
+    expectModal(false);
+    expect(document.activeElement).toBe(menuButton());
+  });
+});
+
+describe("HR33: the page behind is inert while open", () => {
+  it.each(STATES)("%s: inert on main, the logo and Menu; not on the drawer", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    openMenu();
+    expectModal(true);
+    expect(panel().closest("[inert]")).toBeNull();
+    expect(screen.getByRole("banner").hasAttribute("inert")).toBe(false);
+    expect(screen.getByRole("main").hasAttribute("aria-hidden")).toBe(false);
+    fireEvent.keyDown(closeButton(), { key: "Escape" });
+    expectModal(false);
+  });
+
+  it("unmount while open removes inert", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    const view = renderApp("/event/1");
+    await meShown("attendee");
+    openMenu();
+    const targets = inertTargets();
+    view.unmount();
+    for (const element of targets) expect(element.hasAttribute("inert")).toBe(false);
+  });
+});
+
+describe("HR34: the page does not scroll while open", () => {
+  afterEach(() => {
+    document.body.style.overflow = "";
+  });
+
+  it("locks the body and restores the earlier value on close", async () => {
+    document.body.style.overflow = "scroll";
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    expect(document.body.style.overflow).toBe("scroll");
+    openMenu();
+    expect(document.body.style.overflow).toBe("hidden");
+    fireEvent.click(closeButton());
+    expect(document.body.style.overflow).toBe("scroll");
+    openMenu();
+    fireEvent.click(backdrop());
+    expect(document.body.style.overflow).toBe("scroll");
+  });
+
+  it("restores the earlier value on unmount", async () => {
+    document.body.style.overflow = "auto";
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    const view = renderApp("/event/1");
+    await meShown("logged out");
+    openMenu();
+    expect(document.body.style.overflow).toBe("hidden");
+    view.unmount();
+    expect(document.body.style.overflow).toBe("auto");
+  });
+});
+
+describe("HR35: a resize to desktop closes an open menu", () => {
+  it.each(STATES)("%s: Menu not displayed and resize: closed, no inert, no lock", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    openMenu();
+    const focused = document.activeElement;
+    menuButton().style.display = "none";
+    fireEvent(window, new Event("resize"));
+    expectMenu(false);
+    expectModal(false);
+    expect(document.activeElement).toBe(focused);
+    expect(document.activeElement).not.toBe(menuButton());
+  });
+
+  it("a resize while Menu is displayed keeps it open", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    openMenu();
+    fireEvent(window, new Event("resize"));
+    expectMenu(true);
+    expectModal(true);
   });
 });
