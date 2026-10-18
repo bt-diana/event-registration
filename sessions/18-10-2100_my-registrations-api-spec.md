@@ -102,3 +102,13 @@ Started 18-10 21:00 +06.
 **What Claude did.** Read it as the registration badge on the ticket page and on the "My registrations" cards (the API already sends `checked_in_at`). Spec first: `spec-writer` added W-R42 to `registration-web.md` (tone stays Open, the separate "Checked in" line goes from the ticket page and stays on the event page panel, waitlisted and cancelled rows keep their own badge, organizer table unchanged), committed as `be65343`. Then `code-writer`: `a20db97` (red, 8 tests failed for the right reason) and `0450180` (`ticket.ts`, `TicketPanel.tsx`, README, ROADMAP). It also changed `OrganizerRegistrations.tsx` so the organizer table still shows "Registered" (the table reused `ticketLabel().badge`); the spec's files table does not list that file yet. API 495 pass; web 941 pass, 2 fail in `OrganizerRegistrations.test.tsx` (from `37d7e53`, which removed the Ticket code column without updating the tests). Not done: canvas boards (S2 checked-in state, S3 card), `brand.md` line 77. Used Agent, Bash.
 
 **Decision.** None.
+
+## Step 10: "Checked in" in the organizer table
+
+**Prompt** (23:40 +06, text cleaned)
+
+> i still see "Checked in" along with "Registered" in registrations table. fix that
+
+**What Claude did.** The earlier W-R42 had kept the organizer table on "Registered" plus a "Checked in" note; that was the cause. Spec first: `spec-writer` reversed it in `registration-web.md` (W-R20, W-R42 item c, S4, files and tests) and listed the five built columns (Name, Status, Arrival, Registered, Emails); one word in `checkin-web.md` W-C16 ("after Place" to "after Status"); committed as `d2a1519`. Then `code-writer`: `676b028` (red, 2 of 37 failed for the right reason, including a waitlisted row that also showed the note) and `0ea42a6` (Status cell uses `ticketLabel(...).badge`, note and override removed, README and ROADMAP columns updated). Web 958 of 958 pass, typecheck and lint pass. `verify.sh` stops at api lint on another person's untracked `api/test/events/reschedule.test.ts` (`no-useless-assignment`), so the api tests did not run in it. Not done: S4 board on the canvas, manual check against the real API. Used Agent, Bash.
+
+**Decision.** None.
