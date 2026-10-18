@@ -37,3 +37,19 @@ Branches are for team work and there is one person on this project, so they only
 **What Claude did.** Saw that Postgres was published on all interfaces with a dev password. Changed the port mapping to `127.0.0.1:5432:5432`. Used Bash.
 
 **Decision.** None.
+
+## Step 4: add the linter
+
+**Prompt** (after the question about ESLint)
+
+> yes
+
+**What Claude did.** Added ESLint with typescript-eslint (recommended rules) to `api/` and `web/`, with an `npm run lint` script in each. The install failed because `typescript-eslint` does not support TypeScript 7, so both apps were pinned to TypeScript ~6.0. Lint, typecheck and tests pass in both. Filled in the lint command in `.claude/CLAUDE.md`. Used Bash.
+
+**Decision.**
+
+### D17: ESLint with typescript-eslint, TypeScript pinned to 6.0
+
+**Time:** 14:09:19 +0600
+
+The task needs a linter and the spec names none. ESLint with typescript-eslint is the common choice. It forced TypeScript ~6.0 because the newest release is outside its supported range.
