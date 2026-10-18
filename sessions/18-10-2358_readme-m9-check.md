@@ -15,8 +15,19 @@
 
 **Prompt** (text cleaned)
 
-> also mention how to run locally, how to set up the env, and what is needed to run PostgreSQL
+> also mention how to run locally and how to set up the env
+> what will be needed to run PostgreSQL
 
 **What Claude did.** Read `api/src/db/run-migrations.ts` and `pool.ts` (the migrator does not create the database; `.env` is read from the repo root). Rewrote the README "Prerequisites" and "Run locally": added the `CREATE DATABASE events` step, a table of the four required `.env` values with a command for `COOKIE_SECRET`, the Resend key, and the migrate and start order (Bash, Read, Edit via a Python script).
+
+**Decision.** None
+
+## Step 3: log the session
+
+**Prompt** (text cleaned)
+
+> capture this session in sessions
+
+**What Claude did.** Checked that this file already holds steps 1 and 2, corrected the cleaned wording of the step 2 prompt to match what was asked, and added this step. Commits of the session: `38ea675` (README sync and demo link), `e5e453b` (database and environment setup), then the session log commits (Read, Bash).
 
 **Decision.** None
