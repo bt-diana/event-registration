@@ -86,23 +86,29 @@ export async function insertEvent(
     title?: string;
     // Left out of the insert when undefined, so the column DEFAULT applies.
     durationMinutes?: number;
+    description?: string;
   } = {},
 ): Promise<string> {
-  const values = [
+  const columns = ["organizer_id", "title", "starts_at", "capacity", "status"];
+  const values: unknown[] = [
     organizerId,
     options.title ?? "Test event",
     options.startsAt ?? new Date(Date.now() + 12 * 60 * 60 * 1000),
     options.capacity ?? 10,
     options.status ?? "active",
   ];
-  const withDuration = options.durationMinutes !== undefined;
+  if (options.durationMinutes !== undefined) {
+    columns.push("duration_minutes");
+    values.push(options.durationMinutes);
+  }
+  if (options.description !== undefined) {
+    columns.push("description");
+    values.push(options.description);
+  }
+  const placeholders = values.map((_value, i) => `$${i + 1}`).join(", ");
   const { rows } = await pool.query<{ id: string }>(
-    withDuration
-      ? `INSERT INTO events (organizer_id, title, starts_at, capacity, status, duration_minutes)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
-      : `INSERT INTO events (organizer_id, title, starts_at, capacity, status)
-         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-    withDuration ? [...values, options.durationMinutes] : values,
+    `INSERT INTO events (${columns.join(", ")}) VALUES (${placeholders}) RETURNING id`,
+    values,
   );
   return rows[0].id;
 }

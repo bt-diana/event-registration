@@ -4,10 +4,12 @@ import { createApp } from "../../src/app.js";
 import { listen, mintSessionCookie, TEST_SECRET, type Running } from "../auth/helpers.js";
 import { insertOrganizer, insertUser } from "../db/helpers.js";
 
-// The organizer event shape, in the order of events.md section 3.
+// The organizer event shape, in the order of events.md section 3 (with
+// `description` from event-description.md DS9).
 export const ORGANIZER_KEYS = [
   "id",
   "title",
+  "description",
   "starts_at",
   "ends_at",
   "duration_minutes",
@@ -20,10 +22,12 @@ export const ORGANIZER_KEYS = [
   "created_at",
 ];
 
-// The public event shape, in the order of events.md E11 and E13.
+// The public event shape, in the order of events.md E11 and E13 (with
+// `description` from event-description.md DS10).
 export const PUBLIC_KEYS = [
   "id",
   "title",
+  "description",
   "starts_at",
   "ends_at",
   "duration_minutes",

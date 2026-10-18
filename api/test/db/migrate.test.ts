@@ -1,9 +1,9 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { migrate } from "../../src/db/migrate.js";
-import { createTestDb, type TestDb } from "./helpers.js";
+import { migrate, MIGRATIONS_DIR } from "../../src/db/migrate.js";
+import { createTestDb, insertEvent, insertOrganizer, type TestDb } from "./helpers.js";
 
 describe("migrate", () => {
   let db: TestDb | undefined;
@@ -16,16 +16,18 @@ describe("migrate", () => {
     tempDir = undefined;
   });
 
-  it("applies 001_init.sql and 002_event_duration.sql once, records them, and creates the five tables", async () => {
+  const ALL = ["001_init.sql", "002_event_duration.sql", "003_event_description.sql"];
+
+  it("applies 001, 002 and 003 once, records them, and creates the five tables", async () => {
     db = await createTestDb({ migrate: false });
 
-    expect(await migrate(db.pool)).toEqual(["001_init.sql", "002_event_duration.sql"]);
+    expect(await migrate(db.pool)).toEqual(ALL);
     expect(await migrate(db.pool)).toEqual([]);
 
     const applied = await db.pool.query<{ filename: string }>(
       "SELECT filename FROM schema_migrations ORDER BY filename",
     );
-    expect(applied.rows.map((r) => r.filename)).toEqual(["001_init.sql", "002_event_duration.sql"]);
+    expect(applied.rows.map((r) => r.filename)).toEqual(ALL);
 
     const tables = await db.pool.query<{ table_name: string }>(
       `SELECT table_name FROM information_schema.tables WHERE table_schema = $1 ORDER BY table_name`,
@@ -39,6 +41,35 @@ describe("migrate", () => {
       "schema_migrations",
       "users",
     ]);
+  });
+
+  it("DS2: 003 gives rows made before it description '' and changes nothing else in them", async () => {
+    db = await createTestDb({ migrate: false });
+    tempDir = await mkdtemp(join(tmpdir(), "migrations-"));
+    for (const file of ["001_init.sql", "002_event_duration.sql"]) {
+      await copyFile(join(MIGRATIONS_DIR, file), join(tempDir, file));
+    }
+    expect(await migrate(db.pool, tempDir)).toEqual(["001_init.sql", "002_event_duration.sql"]);
+
+    const organizerId = await insertOrganizer(db.pool);
+    const ids = [
+      await insertEvent(db.pool, organizerId, { title: "Old one", capacity: 3, durationMinutes: 45 }),
+      await insertEvent(db.pool, organizerId, { title: "Old two", status: "cancelled" }),
+    ];
+    const readRows = (columns: string) =>
+      db!.pool.query(`SELECT ${columns} FROM events WHERE id = ANY($1::uuid[]) ORDER BY id`, [ids]);
+    const before = (await readRows("*")).rows;
+
+    expect(await migrate(db.pool)).toEqual(["003_event_description.sql"]);
+
+    const after = (await readRows("*")).rows as Array<Record<string, unknown>>;
+    expect(after.map((row) => row.description)).toEqual(["", ""]);
+    const withoutDescription = after.map((row) => {
+      const copy = { ...row };
+      delete copy.description;
+      return copy;
+    });
+    expect(withoutDescription).toEqual(before);
   });
 
   it("applies files in name order, each in its own transaction", async () => {

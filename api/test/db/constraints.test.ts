@@ -124,9 +124,14 @@ describe("database constraints", () => {
       ).rejects.toMatchObject({ code: CHECK_VIOLATION });
     });
 
-    it("has the events columns, with duration_minutes from 002_event_duration.sql", async () => {
-      const { rows } = await db.pool.query<{ column_name: string; data_type: string; is_nullable: string }>(
-        `SELECT column_name, data_type, is_nullable FROM information_schema.columns
+    it("has the events columns, with duration_minutes from 002 and description from 003", async () => {
+      const { rows } = await db.pool.query<{
+        column_name: string;
+        data_type: string;
+        is_nullable: string;
+        column_default: string | null;
+      }>(
+        `SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns
          WHERE table_schema = $1 AND table_name = 'events' ORDER BY column_name`,
         [db.schema],
       );
@@ -134,6 +139,7 @@ describe("database constraints", () => {
         "cancelled_at",
         "capacity",
         "created_at",
+        "description",
         "duration_minutes",
         "id",
         "organizer_id",
@@ -142,11 +148,52 @@ describe("database constraints", () => {
         "status",
         "title",
       ]);
-      expect(rows.find((r) => r.column_name === "duration_minutes")).toEqual({
+      expect(rows.find((r) => r.column_name === "duration_minutes")).toMatchObject({
         column_name: "duration_minutes",
         data_type: "integer",
         is_nullable: "NO",
       });
+      // DS1: description text NOT NULL DEFAULT ''.
+      expect(rows.find((r) => r.column_name === "description")).toEqual({
+        column_name: "description",
+        data_type: "text",
+        is_nullable: "NO",
+        column_default: "''::text",
+      });
+    });
+
+    it("DS1: description defaults to '', allows 2000 characters and rejects 2001 and NULL", async () => {
+      const organizerId = await insertOrganizer(db.pool);
+      const readDescription = async (id: string) => {
+        const { rows } = await db.pool.query<{ description: string }>(
+          "SELECT description FROM events WHERE id = $1",
+          [id],
+        );
+        return rows[0].description;
+      };
+
+      // An insert by SQL without the column stores ''.
+      expect(await readDescription(await insertEvent(db.pool, organizerId))).toBe("");
+
+      const ascii = "x".repeat(2000);
+      expect(await readDescription(await insertEvent(db.pool, organizerId, { description: ascii }))).toBe(ascii);
+      // char_length counts characters (code points), not bytes or UTF-16 units.
+      const emoji = "\u{1F600}".repeat(2000);
+      expect(await readDescription(await insertEvent(db.pool, organizerId, { description: emoji }))).toBe(emoji);
+
+      for (const description of ["x".repeat(2001), "\u{1F600}".repeat(2001)]) {
+        await expect(
+          insertEvent(db.pool, organizerId, { description }),
+          `${description.length} UTF-16 units`,
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }
+      await expect(
+        db.pool.query(
+          `INSERT INTO events (organizer_id, title, starts_at, capacity, description)
+           VALUES ($1, 'T', now(), 1, NULL)`,
+          [organizerId],
+        ),
+      ).rejects.toMatchObject({ code: "23502" });
     });
 
     it("requires duration_minutes between 1 and 1440 and defaults it to 60", async () => {

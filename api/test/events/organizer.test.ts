@@ -33,6 +33,7 @@ afterAll(async () => {
 type OrganizerEvent = {
   id: string;
   title: string;
+  description: string;
   starts_at: string;
   ends_at: string;
   duration_minutes: number;
@@ -86,6 +87,7 @@ describe("E1: POST /events creates one event owned by the caller", () => {
     expect(event).toEqual({
       id: expect.any(String),
       title: "Spring meetup",
+      description: "",
       starts_at: "2030-01-01T10:00:00.000Z",
       ends_at: "2030-01-01T11:30:00.000Z",
       duration_minutes: 90,
