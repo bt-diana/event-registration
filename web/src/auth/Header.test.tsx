@@ -1,6 +1,17 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { useNavigate } from "react-router";
+import { App } from "../App";
 import { publicListItem } from "../events/test-helpers";
-import { ANN, OLGA, callsTo, deferred, json, mockFetch, renderApp } from "./test-helpers";
+import {
+  ANN,
+  OLGA,
+  callsTo,
+  deferred,
+  json,
+  mockFetch,
+  renderApp,
+  renderWith,
+} from "./test-helpers";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -528,27 +539,27 @@ describe("HB8: look kept, only the logo href changed", () => {
 
 describe("HB9: accessibility", () => {
   // jsdom has no Tab key: the Tab order is the DOM order of the focusable elements,
-  // none of them with a tabindex of its own.
+  // none of them with a tabindex of its own. The icon-only Menu button counts by its aria-label.
   function tabOrder(): string[] {
     const banner = screen.getByRole("banner");
     return Array.from(banner.querySelectorAll<HTMLElement>("a[href], button")).map((element) => {
       expect(element.hasAttribute("tabindex")).toBe(false);
-      return element.textContent ?? "";
+      return element.getAttribute("aria-label") ?? element.textContent ?? "";
     });
   }
 
-  it("logged out: Tab order logo, then the account links", async () => {
+  it("logged out: Tab order logo, Menu, then the account links", async () => {
     mockFetch({ [ME]: loggedOut, ...SCREENS });
     renderApp("/event/1");
     await meShown("logged out");
-    expect(tabOrder()).toEqual([LOGO, "Log in", "Sign up", "For organizers"]);
+    expect(tabOrder()).toEqual([LOGO, "Menu", "Log in", "Sign up", "For organizers"]);
   });
 
   // The account link texts belong to W-R14; only their place after the logo is checked here.
   it.each<[State, () => Response]>([
     ["attendee", () => json(200, ANN)],
     ["organizer", () => json(200, OLGA)],
-  ])("%s: Tab order logo, the account link, then Log out", async (state, me) => {
+  ])("%s: Tab order logo, Menu, the account link, then Log out", async (state, me) => {
     mockFetch({ [ME]: me, ...SCREENS });
     renderApp("/event/1");
     await meShown(state);
@@ -556,7 +567,7 @@ describe("HB9: accessibility", () => {
       .getAllByRole("link")
       .map((link) => link.textContent ?? "");
     expect(accountLinks.length).toBeGreaterThan(0);
-    expect(tabOrder()).toEqual([LOGO, ...accountLinks, "Log out"]);
+    expect(tabOrder()).toEqual([LOGO, "Menu", ...accountLinks, "Log out"]);
   });
 
   // Enter on a focused <a href> follows it natively; jsdom does not, so the click stands in.
@@ -595,10 +606,36 @@ function accountInfo(): HTMLElement {
   return info;
 }
 
+// The DOM order of the focusable elements; the icon-only Menu button counts by its aria-label.
 function focusables(): string[] {
   return Array.from(
     screen.getByRole("banner").querySelectorAll<HTMLElement>("a[href], button"),
-  ).map((element) => element.textContent ?? "");
+  ).map((element) => element.getAttribute("aria-label") ?? element.textContent ?? "");
+}
+
+// D66: the burger and the panel it controls (header-responsive.md HR6, HR11-HR17).
+// Open and closed are read from aria-expanded and data-open, never from visibility
+// (jsdom does not read styles.css).
+function menuButton(): HTMLElement {
+  return header().getByRole("button", { name: "Menu" });
+}
+
+function panel(): HTMLElement {
+  const id = menuButton().getAttribute("aria-controls");
+  if (!id) throw new Error("the Menu button has no aria-controls");
+  const element = document.getElementById(id);
+  if (!element) throw new Error(`no element with the id ${id}`);
+  return element;
+}
+
+function expectMenu(open: boolean) {
+  expect(menuButton().getAttribute("aria-expanded")).toBe(String(open));
+  expect(panel().getAttribute("data-open")).toBe(String(open));
+}
+
+function openMenu() {
+  fireEvent.click(menuButton());
+  expectMenu(true);
 }
 
 describe("HR1: account block order: nav link, account info, Log out", () => {
@@ -611,8 +648,9 @@ describe("HR1: account block order: nav link, account info, Log out", () => {
     expect(children[0]).toBe(header().getByRole("navigation", { name: "Main" }));
     expect(children[1].classList.contains("account-info")).toBe(true);
     expect(children[2]).toBe(header().getByRole("button", { name: "Log out" }));
+    expect(panel().contains(accountBlock())).toBe(true);
     const link = within(header().getByRole("navigation", { name: "Main" })).getByRole("link");
-    expect(focusables()).toEqual([LOGO, link.textContent, "Log out"]);
+    expect(focusables()).toEqual([LOGO, "Menu", link.textContent, "Log out"]);
   });
 });
 
@@ -651,6 +689,17 @@ describe("HR3: the full name in the text and in title", () => {
     expect(nameElement.textContent).toBe(name);
   });
 
+  it("with the panel open: the same full name and title", async () => {
+    mockFetch({ [ME]: () => json(200, { ...ANN, name: LONG_NAME }), ...SCREENS });
+    renderApp("/event/1");
+    await header().findByRole("button", { name: "Log out" });
+    openMenu();
+    const nameElement = accountInfo().children[0];
+    expect(panel().contains(nameElement)).toBe(true);
+    expect(nameElement.getAttribute("title")).toBe(LONG_NAME);
+    expect(nameElement.textContent).toBe(LONG_NAME);
+  });
+
   it("the test names have the lengths of the spec", () => {
     expect(LONG_NAME).toHaveLength(80);
     expect(LONG_WORD).toHaveLength(40);
@@ -677,6 +726,24 @@ describe("HR4: the log-out error after Log out, outside .account-info", () => {
     expect(accountInfo().children[0].textContent).toBe("Ann");
   });
 
+  it("with the panel open: the alert follows the button, in the panel, outside .account-info", async () => {
+    mockFetch({
+      [ME]: () => json(200, ANN),
+      "POST /auth/users/logout": () => {
+        throw new TypeError("Failed to fetch");
+      },
+    });
+    renderApp("/");
+    await header().findByRole("button", { name: "Log out" });
+    openMenu();
+    fireEvent.click(header().getByRole("button", { name: "Log out" }));
+    const alert = await header().findByRole("alert");
+    const button = header().getByRole("button", { name: "Log out" });
+    expect(button.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(alert.closest(".account-info")).toBeNull();
+    expect(panel().contains(alert)).toBe(true);
+  });
+
   it("pending log out: Logging out..., disabled, still after .account-info", async () => {
     const answer = deferred<Response>();
     mockFetch({ [ME]: () => json(200, ANN), "POST /auth/users/logout": () => answer.promise });
@@ -695,37 +762,387 @@ describe("HR4: the log-out error after Log out, outside .account-info", () => {
   });
 });
 
-describe("HR6: no menu button", () => {
+// Tests first (header-responsive.md, D66): HR6, HR11-HR17 and the Menu button in HR1 and HB9.
+describe("HR6: the Menu button", () => {
   type MeCase = [string, () => Response | Promise<Response>, string[], string | null];
   const CASES: MeCase[] = [
     ["pending", () => deferred<Response>().promise, [], null],
-    ["logged out", loggedOut, [], "Account"],
-    ["5xx", () => json(500, { error: "internal" }), [], "Account"],
+    ["logged out", loggedOut, ["Menu"], "Account"],
+    ["5xx", () => json(500, { error: "internal" }), ["Menu"], "Account"],
     [
       "network error",
       () => {
         throw new TypeError("Failed to fetch");
       },
-      [],
+      ["Menu"],
       "Account",
     ],
-    ["attendee", () => json(200, ANN), ["Log out"], "Main"],
-    ["organizer", () => json(200, OLGA), ["Log out"], "Main"],
+    ["attendee", () => json(200, ANN), ["Menu", "Log out"], "Main"],
+    ["organizer", () => json(200, OLGA), ["Menu", "Log out"], "Main"],
   ];
 
-  it.each(CASES)("%s: buttons, aria-expanded and landmarks", async (state, me, buttons, nav) => {
-    mockFetch({ [ME]: me, ...SCREENS });
-    renderApp("/event/1");
+  async function settled(state: string) {
     if (state === "attendee") await meShown("attendee");
     else if (state === "organizer") await meShown("organizer");
     else if (state !== "pending") await meShown("logged out");
+  }
+
+  it.each(CASES)("%s: buttons and landmarks", async (state, me, buttons, nav) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await settled(state);
     expect(screen.getAllByRole("banner")).toHaveLength(1);
-    expect(header().queryAllByRole("button").map((button) => button.textContent)).toEqual(buttons);
+    expect(
+      header()
+        .queryAllByRole("button")
+        .map((button) => button.getAttribute("aria-label") ?? button.textContent),
+    ).toEqual(buttons);
     expect(screen.getByRole("banner").querySelectorAll("button")).toHaveLength(buttons.length);
-    expect(document.querySelector("[aria-expanded]")).toBeNull();
     const navs = header().queryAllByRole("navigation");
     expect(navs.map((element) => element.getAttribute("aria-label"))).toEqual(nav ? [nav] : []);
     expect(logoLink().getAttribute("href")).toBe("/");
+    if (state === "pending") {
+      expect(header().queryByRole("button", { name: "Menu" })).toBeNull();
+      expect(document.querySelector("[aria-expanded]")).toBeNull();
+    }
+  });
+
+  it.each(CASES.filter(([state]) => state !== "pending"))(
+    "%s: one icon-only <button type=button> named Menu, right after the logo",
+    async (state, me) => {
+      mockFetch({ [ME]: me, ...SCREENS });
+      renderApp("/event/1");
+      await settled(state);
+      expect(header().getAllByRole("button", { name: "Menu" })).toHaveLength(1);
+      const button = menuButton();
+      expect(button.tagName).toBe("BUTTON");
+      expect(button.getAttribute("type")).toBe("button");
+      expect(button.getAttribute("aria-label")).toBe("Menu");
+      expect(button.textContent).toBe("");
+      const icon = button.querySelector("svg");
+      expect(icon?.getAttribute("aria-hidden")).toBe("true");
+      expect(logoLink().nextElementSibling).toBe(button);
+    },
+  );
+
+  it("keeps the name Menu open and closed", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    const button = menuButton();
+    fireEvent.click(button);
+    expect(menuButton()).toBe(button);
+    expect(button.getAttribute("aria-label")).toBe("Menu");
+    fireEvent.click(button);
+    expect(button.getAttribute("aria-label")).toBe("Menu");
+  });
+});
+
+describe("HR11: closed by default", () => {
+  it.each(STATES)("%s: aria-expanded false and data-open false", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    expectMenu(false);
+  });
+
+  it("5xx: closed by default", async () => {
+    mockFetch({ [ME]: () => json(500, { error: "internal" }), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("logged out");
+    expectMenu(false);
+  });
+});
+
+describe("HR12: aria-controls points to the panel", () => {
+  it.each<[State, () => Response, string]>([
+    ["logged out", loggedOut, "Account"],
+    ["attendee", () => json(200, ANN), "Main"],
+    ["organizer", () => json(200, OLGA), "Main"],
+  ])("%s: one element with that id, in the banner, holding the nav", async (state, me, nav) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    const id = menuButton().getAttribute("aria-controls");
+    expect(id).toBeTruthy();
+    expect(document.querySelectorAll(`[id="${id}"]`)).toHaveLength(1);
+    expect(screen.getByRole("banner").contains(panel())).toBe(true);
+    expect(panel()).not.toBe(menuButton());
+    expect(panel().contains(header().getByRole("navigation", { name: nav }))).toBe(true);
+  });
+});
+
+describe("HR13: a click toggles the menu", () => {
+  it.each(STATES)("%s: open, closed, three times", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    for (let cycle = 0; cycle < 3; cycle += 1) {
+      fireEvent.click(menuButton());
+      expectMenu(true);
+      fireEvent.click(menuButton());
+      expectMenu(false);
+    }
+  });
+});
+
+describe("HR14: what is in the panel", () => {
+  // Outside the panel the banner has only the logo and the Menu button.
+  function expectOnlyLogoAndMenuOutside() {
+    const banner = screen.getByRole("banner");
+    expect(Array.from(banner.children)).toEqual([logoLink(), menuButton(), panel()]);
+  }
+
+  it.each(LOGGED_IN)("%s: Main nav, account info, Log out", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    const main = header().getByRole("navigation", { name: "Main" });
+    expect(panel().contains(main)).toBe(true);
+    expect(within(main).getAllByRole("link")).toHaveLength(1);
+    expect(panel().contains(accountInfo())).toBe(true);
+    expect(panel().contains(header().getByRole("button", { name: "Log out" }))).toBe(true);
+    expectOnlyLogoAndMenuOutside();
+  });
+
+  it("logged out: the Account nav with the three links", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/event/1");
+    await meShown("logged out");
+    const nav = header().getByRole("navigation", { name: "Account" });
+    expect(panel().contains(nav)).toBe(true);
+    expect(within(panel()).getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "Log in",
+      "Sign up",
+      "For organizers",
+    ]);
+    expectOnlyLogoAndMenuOutside();
+  });
+});
+
+describe("HR15: Escape closes and gives the focus back to Menu", () => {
+  it.each<[string, () => HTMLElement]>([
+    ["the panel link", () => within(panel()).getByRole("link", { name: "My registrations" })],
+    ["Log out", () => header().getByRole("button", { name: "Log out" })],
+    ["the Menu button", () => menuButton()],
+    ["the logo", () => logoLink()],
+  ])("open, Escape on %s: closed, focus on Menu", async (_case, target) => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    openMenu();
+    const element = target();
+    element.focus();
+    fireEvent.keyDown(element, { key: "Escape" });
+    expectMenu(false);
+    expect(document.activeElement).toBe(menuButton());
+  });
+
+  it("logged out: Escape on a panel link closes", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/event/1");
+    await meShown("logged out");
+    openMenu();
+    const link = within(panel()).getByRole("link", { name: "Sign up" });
+    link.focus();
+    fireEvent.keyDown(link, { key: "Escape" });
+    expectMenu(false);
+    expect(document.activeElement).toBe(menuButton());
+  });
+
+  it("closed: Escape does nothing and the focus stays", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    const logo = logoLink();
+    logo.focus();
+    fireEvent.keyDown(logo, { key: "Escape" });
+    expectMenu(false);
+    expect(document.activeElement).toBe(logo);
+  });
+
+  it("open: another key does not close", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    openMenu();
+    const logOut = header().getByRole("button", { name: "Log out" });
+    logOut.focus();
+    fireEvent.keyDown(logOut, { key: "a" });
+    expectMenu(true);
+    expect(document.activeElement).toBe(logOut);
+  });
+});
+
+describe("HR16: the menu closes on navigation", () => {
+  // Back and Forward of the browser, from outside the header.
+  function HistoryButtons() {
+    const navigate = useNavigate();
+    return (
+      <div>
+        <button type="button" onClick={() => navigate(-1)}>
+          test back
+        </button>
+        <button type="button" onClick={() => navigate(1)}>
+          test forward
+        </button>
+      </div>
+    );
+  }
+
+  it("logged out: a panel link closes it", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/event/1");
+    await meShown("logged out");
+    openMenu();
+    fireEvent.click(within(panel()).getByRole("link", { name: "Sign up" }));
+    await waitFor(() => expect(currentLocation()).toBe("/signup"));
+    expectMenu(false);
+  });
+
+  it("organizer: My events closes it", async () => {
+    mockFetch({ [ME]: () => json(200, OLGA), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("organizer");
+    openMenu();
+    fireEvent.click(within(panel()).getByRole("link", { name: "My events" }));
+    await waitFor(() => expect(currentLocation()).toBe("/organizer"));
+    expectMenu(false);
+  });
+
+  it("the logo closes it", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    renderApp("/event/1");
+    await meShown("attendee");
+    openMenu();
+    fireEvent.click(logoLink());
+    await waitFor(() => expect(currentLocation()).toBe("/"));
+    expectMenu(false);
+  });
+
+  it("the link of the current page closes it (new location key)", async () => {
+    mockFetch({ [ME]: () => json(200, OLGA), ...SCREENS });
+    renderApp("/organizer");
+    await meShown("organizer");
+    openMenu();
+    fireEvent.click(within(panel()).getByRole("link", { name: "My events" }));
+    await waitFor(() => expectMenu(false));
+    expect(currentLocation()).toBe("/organizer");
+  });
+
+  it("Back and Forward close it", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderWith(
+      <>
+        <App />
+        <HistoryButtons />
+      </>,
+      "/event/1",
+    );
+    await meShown("logged out");
+    openMenu();
+    fireEvent.click(within(panel()).getByRole("link", { name: "Sign up" }));
+    await waitFor(() => expect(currentLocation()).toBe("/signup"));
+    openMenu();
+    fireEvent.click(screen.getByRole("button", { name: "test back" }));
+    await waitFor(() => expect(currentLocation()).toBe("/event/1"));
+    expectMenu(false);
+    openMenu();
+    fireEvent.click(screen.getByRole("button", { name: "test forward" }));
+    await waitFor(() => expect(currentLocation()).toBe("/signup"));
+    expectMenu(false);
+  });
+
+  it("stays open on a re-render without navigation and on a click on .account-info", async () => {
+    mockFetch({ [ME]: () => json(200, ANN), ...SCREENS });
+    const { queryClient } = renderApp("/event/1");
+    await meShown("attendee");
+    openMenu();
+    fireEvent.click(accountInfo());
+    expectMenu(true);
+    act(() => {
+      queryClient.setQueryData(["me"], { ...ANN, name: "Ann Lee" });
+    });
+    expect(await header().findByText("Ann Lee")).toBeTruthy();
+    expectMenu(true);
+    expect(currentLocation()).toBe("/event/1");
+  });
+});
+
+describe("HR17: Log out and the menu", () => {
+  it("a click on Log out keeps the panel open while pending", async () => {
+    const answer = deferred<Response>();
+    mockFetch({ [ME]: () => json(200, ANN), "POST /auth/users/logout": () => answer.promise });
+    renderApp("/");
+    await meShown("attendee");
+    openMenu();
+    fireEvent.click(header().getByRole("button", { name: "Log out" }));
+    expect(await header().findByRole("button", { name: "Logging out..." })).toBeTruthy();
+    expectMenu(true);
+    await act(async () => {
+      answer.resolve(json(204));
+    });
+    expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
+  });
+
+  it("failed log out: the panel stays open with the alert in it", async () => {
+    mockFetch({
+      [ME]: () => json(200, ANN),
+      "POST /auth/users/logout": () => json(500, { error: "internal" }),
+    });
+    renderApp("/");
+    await meShown("attendee");
+    openMenu();
+    fireEvent.click(header().getByRole("button", { name: "Log out" }));
+    const alert = await header().findByRole("alert");
+    expect(alert.textContent).toBe("Could not log out. Try again.");
+    expectMenu(true);
+    expect(panel().contains(alert)).toBe(true);
+    expect(header().getByRole("button", { name: "Log out" })).toBeTruthy();
+  });
+
+  it("attendee success: logged-out header with the menu closed", async () => {
+    mockFetch({
+      [ME]: () => json(200, ANN),
+      "POST /auth/users/logout": () => json(204),
+      ...SCREENS,
+    });
+    renderApp("/");
+    await meShown("attendee");
+    openMenu();
+    fireEvent.click(header().getByRole("button", { name: "Log out" }));
+    expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
+    expect(currentLocation()).toBe("/");
+    expectMenu(false);
+  });
+
+  it("organizer success: redirected by the guard, menu closed", async () => {
+    mockFetch({
+      [ME]: () => json(200, OLGA),
+      "POST /auth/organizers/logout": () => json(204),
+      ...SCREENS,
+    });
+    renderApp("/organizer");
+    await meShown("organizer");
+    openMenu();
+    fireEvent.click(header().getByRole("button", { name: "Log out" }));
+    await waitFor(() =>
+      expect(currentLocation()).toBe("/organizer/login?next=%2Forganizer"),
+    );
+    expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
+    expectMenu(false);
+  });
+
+  it("log in: the menu starts closed for the logged-in header", async () => {
+    mockFetch({ [ME]: loggedOut, "POST /auth/users/login": () => json(200, ANN), ...SCREENS });
+    renderApp("/login");
+    await meShown("logged out");
+    openMenu();
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "ann@mail.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret-pass" } });
+    fireEvent.click(within(screen.getByRole("main")).getByRole("button", { name: "Log in" }));
+    expect(await header().findByText("Ann")).toBeTruthy();
+    expectMenu(false);
   });
 });
 
