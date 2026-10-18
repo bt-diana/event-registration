@@ -25,3 +25,13 @@ Started 18-10 21:00 +06.
 **What Claude did.** Read the canvas with the Artifact tool. The saved page only shows "Design / Loading...", so no board could be read from it. The API spec has no screen, so it does not depend on the design.
 
 **Decision.** None.
+
+## Step 3: implement the route
+
+**Prompt** (22:10 +06, text cleaned)
+
+> implement
+
+**What Claude did.** Delegated to the `code-writer` agent with the spec's recommended answers to the open questions. Two commits on `main`: `f3563a9` (22 red tests, MR1-MR15, failing with the 404 catch-all) and `d51f95f` (`listMyRegistrations` in `service.ts`, the route in `routes.ts`, `openapi.yaml` 0.7.0, the `/me` proxy line, ROADMAP). `scripts/verify.sh` passed (api 378 tests, web 825 passed and 4 todo). The README edits for this route landed in another session's commit `fbbc96b`, not in `d51f95f`. `MyRegistration` in `openapi.yaml` lists the keys instead of allOf (`Registration` has `additionalProperties: false`); fixed the spec wording to match. Used Agent, Bash, Grep.
+
+**Decision.** None.

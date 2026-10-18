@@ -78,7 +78,7 @@ No screen in this spec (API only). What the API gives the web (`registration-web
 | `api/src/registrations/service.ts` | Add `listMyRegistrations(pool, userId, now)` with the SQL above, built from `REGISTRATION_COLUMNS`; returns rows with the event columns | MR4-MR10, MR13 |
 | `api/src/registrations/routes.ts` | Add `GET /me/registrations`: `requireUser`, header, mapping (`registrationShape` plus the three event keys, `deriveStatus`) | MR1-MR3, MR7, MR11, MR14 |
 | `web/vite.config.ts` | Add `"/me": "http://localhost:3000"` to the `proxy` object (one line; shared by `server` and `preview`) | MR15 (dev only) |
-| `api/openapi.yaml` | Add `GET /me/registrations` (tag `registrations`), the `MyRegistration` schema (allOf `Registration` plus three keys), 200 with `Cache-Control: no-store`, 401, 403; raise the minor version | all |
+| `api/openapi.yaml` | Add `GET /me/registrations` (tag `registrations`), the `MyRegistration` schema (the `Registration` keys written out plus three keys, like `OrganizerRegistration`; `Registration` has `additionalProperties: false`, so allOf would reject real items), 200 with `Cache-Control: no-store`, 401, 403; raise the minor version | all |
 | `README.md` | Add the route to the list; update "Project status" (list route exists; the web screen waits for `registration-web.md` W-R18) | |
 | `ROADMAP.md` | Add the step for this route (tests, then code) before the web step for W-R18, W-R19 | |
 | `docs/specs/registration-web.md` | Follow-up (not made by this spec): drop "blocked-until-API" on W-R18 and W-R19, use `GET /me/registrations`, close open question 1, add the `/me` proxy line to its files | W-R18, W-R19 |
