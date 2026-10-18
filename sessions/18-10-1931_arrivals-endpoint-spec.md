@@ -52,3 +52,14 @@ Started 18-10 19:31 +06.
 **What Claude did.** Edited `docs/specs/checkin.md`: the intro, C16, the assumption about the arrivals route, the section 2 counter line, "Polling now, SSE later", the done line and open question 5 now point to `arrivals.md` and D47. `checkin-web.md` is not edited yet. Checked the code question below. Used Bash.
 
 **Decision.** None.
+
+## Step 5: update `checkin-web.md` and build `GET /events/:id/arrivals`
+
+**Prompt** (19:43 +06, text cleaned)
+
+> edit
+> implement GET /events/:id/arrivals
+
+**What Claude did.** The `spec-writer` agent edited `docs/specs/checkin-web.md` (the counter reads the arrivals route through `useEventArrivals`, key `["event-arrivals", me.id, eventId]`, "Capacity: {capacity}" line, a 200 check-in invalidates both keys); commit 4f774bf. The `code-writer` agent built the route: tests first (c12099c, test fix 5c5da87), code (1cdb45f), docs and openapi 0.6.0 (29657d6). Checked afterwards: 356 API tests, typecheck and lint pass. One spec problem: AR4 asks for a waiting row with `checked_in_at` set, but the table CHECK forbids it, so that test uses a throwaway schema without the CHECK. Used Agent, Bash.
+
+**Decision.** None.
