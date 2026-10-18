@@ -88,3 +88,15 @@
 **What Claude did.** Wrote this file from the conversation and the git log (Bash, Read).
 
 **Decision.** None
+
+## Step 9: spec and code for `VITE_API_URL`
+
+**Prompt** (about 00:10 +0600, text cleaned)
+
+> add env variable
+
+**What Claude did.** The `spec-writer` agent wrote `docs/specs/api-base-url.md` (decisions P1 to P4, behaviours R1 to R11); closed its two open questions and committed it (`886762d`). Then the `code-writer` agent worked tests first: `8dcdf8c` adds `api/test/cors.test.ts`, the cross-site cookie cases in `api/test/auth/cookie.test.ts` and the new `web/src/auth/api.test.ts`; `ed5e12d` adds `api/src/cors.ts` (hand-written, first middleware in `app.ts`), the `SameSite=None` cookie when `CORS_ORIGIN` is set in production, and `request()` in `web/src/auth/api.ts` reading `VITE_API_URL` on each call. Updated `.env.example`, `README.md` (Deploy on Render, environment table) and `ROADMAP.md`. Typecheck, lint and tests passed in both apps (api 645, web 1054). The only `fetch(` in `web/src` is inside `request()`. The two commits carry the `Co-Authored-By: Claude Opus 5.5` line, because the agent is Opus 5.5.
+
+On Render still to do by hand: set `VITE_API_URL` on the Static Site (before the build) and `CORS_ORIGIN` plus `NODE_ENV=production` on the Web Service, then redeploy. A Static Site with client-side routes probably also needs a `/*` to `/index.html` rewrite; this was not checked.
+
+**Decision.** None
