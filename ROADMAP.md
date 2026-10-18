@@ -56,7 +56,7 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 | M1 | Accounts and login | `auth.md` | `auth-web.md` | | auth basics; session and guards |
 | M2 | Events (organizer) | `events.md` | `events-web.md` | | ownership |
 | M3 | Register and waiting list | `registration.md` | `registration-web.md` | B1, B2, B4 | B4 |
-| M4 | Cancel, promote, capacity change | `registration.md` (extend) | `registration-web.md` (extend) | B3, B10 | |
+| M4 | Cancel, promote, capacity change | `cancel-registration.md`, `capacity.md` | `cancel-registration-web.md`, `capacity-web.md` | B3, B10 | done |
 | M5 | Check-in and arrivals counter | `checkin.md` | `checkin-web.md` | B6, B7 | B6 |
 | M6 | Outbox sender and reminder worker | `email-reminders.md` | `email-reminders-web.md` | B5 | B5 |
 | M7 | Reschedule and event cancel | `email-reminders.md` (extend) | `email-reminders-web.md` (extend) | B8, B9 | |
@@ -98,11 +98,11 @@ Specs are not written all at once. The first steps of each milestone write (or e
 18. Test, then code: registration form (states: loading, error, full so the list, already registered, not logged in) and the ticket page (code, status, place on the list). (done: tests-first commit, then `web/src/registrations/`: the registration area on the public view of `/event/:id`, the ticket page `/registrations/me?event={id}`, the route entries `/registrations` and `/registrations/me` with the role redirects, header links; W-R1-W-R23 with the recommended answers to questions 1-8; the register handler also invalidates `["public-events"]` (W-L13). Not built: the two lists are placeholders (W-R18-W-R21, `it.todo`; attendee list waits for an API route, question 1; organizer list waits for `GET /events/{id}/registrations`, step 26); the scan screen (W-R28-W-R37). Later: the user chose `qr-creator` and `qr-scanner` (question 9, D46); the ticket QR (W-R24-W-R27) is built, tests-first commit, then `qr.ts`, `QrCode.tsx`, `showQr`; the organizer list (W-R20, W-R21) is built, tests-first commit, then `OrganizerRegistrations.tsx`, `EventSelect.tsx`, `listEventRegistrations`, keyed by account; the scan screen (W-R28-W-R37) is built with the real `POST /checkin`, tests-first commit, then `ScanScreen.tsx`, `scanner.ts`, `camera.ts`, `ticketCode.ts`; the attendee list (W-R18, W-R19, W-R39-W-R41) is built, tests-first commit `MyRegistrations.test.tsx`, then `MyRegistrations.tsx`, `listMyRegistrations`, `useMyRegistrations` (key `["registrations", me.id]`), `listStatusText` and `eventStatusBadge` in `ticket.ts`, and the list invalidation in `useRegister`; no placeholder is left)
 
 ### M4. Cancel and capacity
-19. API spec: extend `registration.md` (B3, B10).
-20. Test, then code: cancel a registration and promote the first waiting person with a `promotion` row (B3). Cancelling a waiting person promotes nobody. A checked-in ticket answers 409.
-21. Test, then code: change capacity, promote up to the free seats, refuse below the registered count (B10).
-22. UI spec: extend `registration-web.md`: cancel button on the ticket page, capacity form on the organizer event page.
-23. Test, then code: cancel button (confirm, pending, error, checked-in 409) and the capacity form (field error below the registered count, new seats left).
+19. API spec: extend `registration.md` (B3, B10). (done: `cancel-registration.md` CR1-CR27 and `capacity.md` CP1-CP24)
+20. Test, then code: cancel a registration and promote the first waiting person with a `promotion` row (B3). Cancelling a waiting person promotes nobody. A checked-in ticket answers 409. (done: tests-first commit `api/test/registrations/cancel.test.ts`, then `cancelRegistration` in `api/src/registrations/service.ts` and `POST /events/:id/registrations/me/cancel`, `api/openapi.yaml` 0.11.0)
+21. Test, then code: change capacity, promote up to the free seats, refuse below the registered count (B10). (done: tests-first commit `api/test/events/capacity.test.ts`, then `promoteWaiting`, `setCapacity` in `api/src/events/manage.ts` and `POST /events/:id/capacity`, `api/openapi.yaml` 0.12.0; 409 `capacity_below_registered`)
+22. UI spec: extend `registration-web.md`: cancel button on the ticket page, capacity form on the organizer event page. (done: `cancel-registration-web.md` W-CR and `capacity-web.md` W-CP1-W-CP12)
+23. Test, then code: cancel button (confirm, pending, error, checked-in 409) and the capacity form (field error below the registered count, new seats left). (done: tests-first commits, then `web/src/registrations/CancelRegistration.tsx` on the ticket page and `web/src/events/EventCapacity.tsx` on the organizer event page. Not done: the canvas boards "Ticket: cancel registration" and "Organizer event: capacity", and a by-hand check with the API running)
 
 ### M5. Check-in
 24. API spec: `checkin.md` (B6, B7) (done: C1-C19).
