@@ -58,3 +58,19 @@ export function organizerRegistration(
 
 export const SECOND_EVENT_ID = "5a4b3c2d-1e0f-4a9b-8c7d-6e5f4a3b2c1d";
 export const eventRegistrations = (eventId: string) => `GET /events/${eventId}/registrations`;
+
+// GET /events/{id}/arrivals (Arrivals in api/openapi.yaml, checkin-web.md W-C1).
+export const eventArrivals = (eventId: string) => `GET /events/${eventId}/arrivals`;
+
+export function arrivals(arrived: number, registered: number, capacity = 25) {
+  return { capacity, registered, arrived };
+}
+
+// The deepest element whose whole text is `text`, so a line split into spans
+// ("Arrived:" and the numbers) can be found as one string.
+export function wholeText(text: string) {
+  return (_content: string, element: Element | null): boolean =>
+    element !== null &&
+    element.textContent === text &&
+    [...element.children].every((child) => child.textContent !== text);
+}

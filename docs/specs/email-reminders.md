@@ -128,7 +128,7 @@ Tests use the existing style (a pool from `createTestDb()` with its own schema, 
 - `api/src/db/migrations/` and `api/openapi.yaml` have no change in the diff.
 - Starting the API (`npm run dev` in `api/`) with an unsent outbox row (for example a ticket email) prints one line for it within one period, and prints nothing for it afterwards. Checked by hand once and noted in the README.
 
-## 6. Open questions (each with a recommended answer)
+## 6. Open questions (answered: D52, all recommendations accepted)
 
 1. **Reminder for a person who already checked in.** ER14 leaves them out. **Recommended: leave them out** (they are at the event; the roadmap line only says "registered person"). To include them, drop `r.checked_in_at IS NULL` from the statement and ER14.
 2. **Print before commit (at least once) or mark before print (at most once).** The spec prints inside the transaction (assumption 1), so a crash can print a row twice but never loses an email. **Recommended: keep it**; for a console stub losing nothing is the better side. The alternative (UPDATE ... RETURNING first, print after) never repeats but loses a line if `log` throws.

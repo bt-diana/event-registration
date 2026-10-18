@@ -216,6 +216,9 @@ describe("W-R28: /registrations/scan is an organizer screen", () => {
       [ME]: () => json(200, OLGA),
       [EVENTS]: () => json(200, { events: [organizerEvent()] }),
       [`GET /events/${EVENT_ID}/registrations`]: () => json(200, { registrations: [] }),
+      // The arrivals counter of both screens (checkin-web.md W-C3).
+      [`GET /events/${EVENT_ID}/arrivals`]: () =>
+        json(200, { capacity: 25, registered: 0, arrived: 0 }),
     });
     renderApp("/registrations");
     const link = await main().findByRole("link", { name: "Check in attendees" });

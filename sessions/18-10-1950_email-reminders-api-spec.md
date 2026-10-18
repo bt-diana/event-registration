@@ -13,3 +13,17 @@ Started 18-10 19:50 +06.
 **Decision.** None.
 
 **Result.** The `spec-writer` agent wrote `docs/specs/email-reminders.md` (ER1-ER28: sender ER1-ER8, worker ER9-ER21, timer ER22-ER28; five open questions with recommendations). Marked step 29 done in `ROADMAP.md`, linked the spec in `README.md`. Nothing is built yet. Used Agent, Bash.
+
+## Step 2: accept the recommendations and ask where the email appears
+
+**Prompt** (19:56 +06, text cleaned)
+
+> accept all recommendations
+> where will the email draft appear?
+
+**What Claude did.** Marked the open questions of `docs/specs/email-reminders.md` as answered. Answered the question: the email text is stored in the `outbox` row (`subject`, `body`, `to_email`) and the sender prints it as one console line in the API terminal (ER4); nothing is shown in the web app (M6 UI spec decides that). Then started the build (steps 30-32) with the `code-writer` agent. Used Bash, Agent.
+
+**Decision.**
+
+### D52: accept all five recommendations of `email-reminders.md`
+19:56:21 +0600. Checked-in people get no reminder; print before commit; period 10 s (`EMAIL_JOB_INTERVAL_MS`); reminder text as in ER10; queued reminders after a reschedule or cancel are left to M7. Reason: the user accepted all recommendations.
