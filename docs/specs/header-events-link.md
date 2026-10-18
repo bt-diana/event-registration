@@ -21,7 +21,7 @@ History: D58 and D59 added the "Watch all events" button, D62 gave the organizer
 | HB7 | An organizer who clicks the logo from `/organizer` stays on `/` and sees "Loading..." until `me`, then the public list in the organizer look, with one `GET /public/events` request (W-L8). The "My events" link (`href` `/organizer`) is still in the Main nav and opens `/organizer`. | |
 | HB8 | Look kept: the organizer logo and tab icon are `/icon-organizer.svg` for a logged-in organizer on every screen (W-E22), `/icon-attendee.svg` for everyone else; the account block shows "Organizer" / "Attendee"; account links per role (W-R14), `Log in` / `Sign up` / role switch (W-A18) and Log out (W-A9) work as before. Only the logo `href` changed. | |
 | HB9 | Log out keeps the link look (D63): no border or background, `--text`, 15 px semibold, 44 px high, underline on hover. Tab order: logo, then the account links (`Log in`, `Sign up`, role switch; or "My events" / "My registrations"), then Log out. Enter on the logo opens `/`; visible focus ring (the existing `a:focus-visible`). | |
-| HB10 | Replaced by `header-responsive.md` HR7 (phone layout, D65). | |
+| HB10 | Replaced by `header-responsive.md` HR18 (phone layout with the Menu button, D66; was HR7, D65). | |
 
 **Out of scope.** A separate events button or any other new header element; subscribing, notifications or email for new events; counters or badges; a dropdown or menu; changing the `/` or `/organizer` pages; changing "My events" / "My registrations"; translations; dark theme; new icons.
 
@@ -40,7 +40,7 @@ History: D58 and D59 added the "Watch all events" button, D62 gave the organizer
 | Right group | `div.site-header-end` stays as the wrapper of the account links / `Log in` nav (flex, wrap, gap), now without the button in front. Desktop: one row, logo left, group right. |
 | Log out | Link look (D63), unchanged. |
 | Current state | `aria-current="page"` on the logo on `/`; no visual change. |
-| Phone (up to 520 px, the width in `styles.css`) | See `header-responsive.md` HR7 (D65). |
+| Phone (up to 640 px, the header width in `styles.css`) | See `header-responsive.md` HR18 (D66): the logo and a Menu button, the rest in a panel. |
 
 **Copy.** No new text. "Watch all events" no longer exists in the app.
 

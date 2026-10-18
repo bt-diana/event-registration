@@ -104,8 +104,33 @@ body {
   text-decoration: underline;
 }
 
-/* The right part of the header: the logged-in account block or the logged-out Account nav
-   (header-responsive.md). */
+/* The Menu (burger) button, shown only at 640 px and below (header-responsive.md HR6, HR10).
+   Icon only; its name "Menu" is the aria-label. */
+.nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.nav-toggle[aria-expanded="true"] {
+  border-color: var(--accent);
+}
+
+.nav-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The panel of the Menu button: the logged-in account block or the logged-out Account nav.
+   Above 640 px it is always shown as one row, whatever data-open says (HR19). */
 .site-header-end {
   display: flex;
   flex-wrap: wrap;
@@ -136,7 +161,7 @@ body {
   min-width: 0;
 }
 
-/* Desktop divider between the nav and the account info: decorative, no element (HR9). */
+/* Desktop divider between the nav and the account info: decorative, no element (HR19). */
 .site-nav + .account-info {
   min-height: 28px;
   padding-left: 16px;
@@ -957,6 +982,64 @@ a:hover {
   font-size: 15px;
 }
 
+/* Phone header (header-responsive.md D66, HR18, HR20), header only. Closed: one row, the logo
+   left and the Menu button right; the panel is display: none, so its items are not on the
+   screen, not in the Tab order and not in the accessibility tree. Open: the panel in the page
+   flow under that row, items stacked in the DOM order (no CSS order): the nav link, a line,
+   the account info left and Log out right, the log-out error; or the three logged-out links. */
+@media (max-width: 640px) {
+  .site-header {
+    padding: 8px 16px;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+    margin-left: auto;
+  }
+
+  .site-header-end {
+    flex-basis: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .site-header-end[data-open="false"] {
+    display: none;
+  }
+
+  .site-nav {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .site-account {
+    gap: 0 16px;
+  }
+
+  /* The horizontal line between the nav link and the account row replaces the divider. */
+  .site-account .site-nav {
+    flex-basis: 100%;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .site-account .account-info {
+    flex: 1 1 0;
+    min-height: 44px;
+  }
+
+  .site-nav + .account-info {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .site-account button.button-secondary {
+    margin-left: auto;
+  }
+}
+
 @media (max-width: 520px) {
   .event-card {
     grid-template-columns: 1fr;
@@ -975,42 +1058,6 @@ a:hover {
 
   .event-card-badge {
     margin-top: 4px;
-  }
-
-  /* Phone (header-responsive.md HR7): rows in the DOM order, no CSS order. (1) the logo;
-     (2) the nav link(s); (3) the account info on the left, Log out on the right; (4) the
-     log-out error. */
-  .site-header {
-    padding: 8px 16px;
-  }
-
-  .site-header-end {
-    flex-basis: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-  }
-
-  .site-account {
-    gap: 0 16px;
-  }
-
-  .site-account .site-nav {
-    flex-basis: 100%;
-  }
-
-  .site-account .account-info {
-    flex: 1 1 0;
-  }
-
-  .site-nav + .account-info {
-    min-height: 0;
-    padding-left: 0;
-    border-left: 0;
-  }
-
-  .site-account button.button-secondary {
-    margin-left: auto;
   }
 }
 
