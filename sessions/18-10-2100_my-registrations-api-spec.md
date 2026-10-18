@@ -55,3 +55,13 @@ Started 18-10 21:00 +06.
 **What Claude did.** Delegated to the `code-writer` agent with the spec's recommended answers (no ticket code on rows, event status as an extra badge, duplicate rows kept). Two commits on `main`: `9063ce1` (red: `MyRegistrations.test.tsx`, invalidation case, placeholder tests removed; 38 failed for the right reasons) and `01daf85` (green: `useMyRegistrations`, `MyRegistrations.tsx`, helpers in `ticket.ts`, styles, `brand.md`, README, ROADMAP). Web: 863 tests pass, typecheck and lint pass on the committed content. `verify.sh` was red from other work in the tree (`api/test/db/outboxStatus.test.ts` from commit `648bb2a`, and uncommitted edits to `OrganizerRegistrations`). The design canvas could not be read (only "Design / Loading..."), so the screen was built from the spec's S3 text and `brand.md`; no board was added to the canvas. Not done: manual check with the real API, a look at phone and desktop widths. Used Agent, Bash.
 
 **Decision.** None.
+
+## Step 6: whole card as one link
+
+**Prompt** (23:05 +06, text cleaned)
+
+> on "my registrations" remove "view ticket" and a link in the meetup name; make the whole card a link to the ticket
+
+**What Claude did.** Spec first: the `spec-writer` agent changed `registration-web.md` (W-R18, W-R22, W-R40, S3, files table, new question 15 on hover and focus), committed as `bf61704`. Then the `code-writer` agent: `38999c0` (red, 8 of 32 tests failed for the right reason) and `77e7ca6` (the card is one link to `/registrations/me?event={id}`, title is plain text, no "View ticket", no link to the event page; styles, `brand.md`, README, ROADMAP). Hover and focus use the spec's recommendation: accent border, underlined title, 2px focus ring. Web: 862 of 866 pass; the 4 failures are in `OrganizerRegistrations.test.tsx` and come from the earlier commit `835a4a9` (columns removed, tests still expect 7), so `verify.sh` is red for that reason. API: 436 pass. Not done: browser check of hover, focus and Tab then Enter; the S3 board on the canvas. `design-alignment.md` DA11 and DA12 still describe the old links. Used Agent, Bash.
+
+**Decision.** None.
