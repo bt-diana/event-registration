@@ -95,3 +95,18 @@ A running event still accepts registrations until it ends (same as `registration
 **What Claude did.** Sent the `code-writer` agent to build the description API (`event-description.md`). It stopped without changes: another session was writing M3 code in `api/` (same files: `events/routes.ts`, `openapi.yaml`). So the description API is waiting. Sent a second `code-writer` run for the web screens in `web/` (steps 11 and 12, tests first): commits `5b08cc1` (tests), `8981092` (role eyebrow tests), `26d245b` (events list and create form), `e703432` (event page, organizer and public views). 265 web tests, typecheck and lint pass; `verify.sh` and the real-API manual check were not run. The web accepts a missing `description` until the API step lands. Used Agent, Bash.
 
 **Decision.** None.
+
+## Step 9: description bug and the attendee events list
+
+**Prompt** (cleaned)
+
+> bug: the implementation does not contain description
+>
+> let's also add to spec the attendee event view and create the mock-ups
+
+**What Claude did.** Found that the web has the description but the API step was never built (it had been blocked by the M3 session). M3 was committed, so the description API step went to the `code-writer` agent again (running; it commits itself). For the attendee view, asked two questions (answers: a public events list on `/`, in new spec files). The `spec-writer` agent wrote `events-public-list.md` (API, PL1-PL11, `GET /public/events`) and `events-public-list-web.md` (UI, W-L1-W-L13). Claude drew four boards on the canvas: list (logged out), phone, and a states board (empty, loading, error, headers). ROADMAP and README steps are added after the description API agent is done. Used AskUserQuestion, Agent, Write, Artifact (publish).
+
+### D41: attendee view is a public events list on `/`, in its own spec files
+**Time:** 18:15:59 +0600
+
+The attendee home `/` becomes a list of upcoming events (new route `GET /public/events`), specified in `events-public-list.md` and `events-public-list-web.md`. Reason: the user chose this when asked.
