@@ -16,9 +16,9 @@ describe("migrate", () => {
     tempDir = undefined;
   });
 
-  const ALL = ["001_init.sql", "002_event_duration.sql", "003_event_description.sql", "004_outbox_status.sql"];
+  const ALL = ["001_init.sql", "002_event_duration.sql", "003_event_description.sql", "004_outbox_status.sql", "005_seed_test_data.sql"];
 
-  it("applies 001 to 004 once, records them, and creates the five tables", async () => {
+  it("applies 001 to 005 once, records them, and creates the five tables", async () => {
     db = await createTestDb({ migrate: false });
 
     expect(await migrate(db.pool)).toEqual(ALL);
@@ -60,7 +60,7 @@ describe("migrate", () => {
       db!.pool.query(`SELECT ${columns} FROM events WHERE id = ANY($1::uuid[]) ORDER BY id`, [ids]);
     const before = (await readRows("*")).rows;
 
-    expect(await migrate(db.pool)).toEqual(["003_event_description.sql", "004_outbox_status.sql"]);
+    expect(await migrate(db.pool)).toEqual(["003_event_description.sql", "004_outbox_status.sql", "005_seed_test_data.sql"]);
 
     const after = (await readRows("*")).rows as Array<Record<string, unknown>>;
     expect(after.map((row) => row.description)).toEqual(["", ""]);

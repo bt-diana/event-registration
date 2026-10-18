@@ -142,7 +142,7 @@ describe("ER2: rows from before 004 are valid after it (tests first)", () => {
     const sent = await insertOutbox(db.pool, registrationId, { kind: "ticket", sentAt });
     const unsent = await insertOutbox(db.pool, registrationId, { kind: "reminder" });
 
-    expect(await migrate(db.pool)).toEqual(["004_outbox_status.sql"]);
+    expect(await migrate(db.pool)).toEqual(["004_outbox_status.sql", "005_seed_test_data.sql"]);
 
     expect(await statusOf(db, sent)).toEqual({ status: "sent", send_attempts: 0, send_error: null, sent_at: sentAt });
     expect(await statusOf(db, unsent)).toEqual({
