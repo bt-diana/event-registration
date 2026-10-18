@@ -195,6 +195,34 @@ describe.each(ROLES)("auth routes for /auth/$path", ({ path, table, role, otherP
     expect(await countRows(table, long)).toBe(0);
   });
 
+  it("A7: a NUL character in the email or the name answers 400 and creates nothing", async () => {
+    const id = randomUUID();
+    const bodies = [
+      { email: `ann-${id}\u0000@example.com`, name: "Ann", password: PASSWORD },
+      { email: `ann-${id}@example.com\u0000`, name: "Ann", password: PASSWORD },
+      { email: `ann-${id}@example.com`, name: "An\u0000n", password: PASSWORD },
+      { email: `ann-${id}@example.com`, name: "\u0000", password: PASSWORD },
+    ];
+    for (const body of bodies) {
+      const reply = await call("POST", `${base}/signup`, { body });
+      expect(reply.status, JSON.stringify(body)).toBe(400);
+      expect(reply.body).toEqual({ error: "invalid_input" });
+      expect(reply.cookie).toBeUndefined();
+    }
+    expect(await countRows(table, `ann-${id}@example.com`)).toBe(0);
+  });
+
+  it("A7: a password far over 128 characters (a body over the JSON size limit) answers 400", async () => {
+    const address = email("huge");
+    const reply = await call("POST", `${base}/signup`, {
+      body: { email: address, name: "Ann", password: `${MARK}${"x".repeat(200 * 1024)}` },
+    });
+    expect(reply.status).toBe(400);
+    expect(reply.body).toEqual({ error: "invalid_input" });
+    expect(reply.cookie).toBeUndefined();
+    expect(await countRows(table, address)).toBe(0);
+  });
+
   it("A7: the limits themselves are accepted (8 and 128 password characters, 100 name characters, 254 email characters)", async () => {
     const short = await signup(email(), "Ann", `${MARK}`.slice(0, 8));
     expect(short.status).toBe(201);
@@ -234,6 +262,17 @@ describe.each(ROLES)("auth routes for /auth/$path", ({ path, table, role, otherP
     expect(wrongPassword.body).toEqual({ error: "invalid_credentials" });
     expect(wrongPassword.setCookie).toBeUndefined();
     expect(unknownEmail.setCookie).toBeUndefined();
+  });
+
+  it("A9: a NUL character in the login email answers the same 401 as bad credentials", async () => {
+    const address = email();
+    await signup(address);
+    for (const bad of [`${address}\u0000`, `\u0000${address}`, "\u0000"]) {
+      const reply = await call("POST", `${base}/login`, { body: { email: bad, password: PASSWORD } });
+      expect(reply.status, JSON.stringify(bad)).toBe(401);
+      expect(reply.body).toEqual({ error: "invalid_credentials" });
+      expect(reply.setCookie).toBeUndefined();
+    }
   });
 
   it("login with a missing or non-string field answers 400", async () => {
@@ -395,6 +434,32 @@ describe("routes outside the fixed role map", () => {
     });
     expect(reply.status).toBe(404);
     expect(reply.body).toEqual({ error: "not_found" });
+  });
+});
+
+describe("request bodies the JSON parser refuses", () => {
+  it("a body over the size limit answers 400 invalid_input on login too", async () => {
+    const reply = await call("POST", "/auth/users/login", {
+      body: { email: email(), password: `${MARK}${"x".repeat(200 * 1024)}` },
+    });
+    expect(reply.status).toBe(400);
+    expect(reply.body).toEqual({ error: "invalid_input" });
+    expect(reply.setCookie).toBeUndefined();
+  });
+
+  it("other 4xx parser errors keep their status and answer a JSON error, not 500", async () => {
+    const body = JSON.stringify({ email: email(), name: "Ann", password: PASSWORD });
+    const cases: Array<{ headers: Record<string, string>; status: number }> = [
+      { headers: { "content-type": "application/json; charset=latin1" }, status: 415 },
+      { headers: { "content-type": "application/json", "content-encoding": "x-unknown" }, status: 415 },
+    ];
+    for (const { headers, status } of cases) {
+      const res = await fetch(`${api.url}/auth/users/signup`, { method: "POST", headers, body });
+      expect(res.status, JSON.stringify(headers)).toBe(status);
+      expect(res.headers.get("content-type")).toMatch(/^application\/json/);
+      expect(await res.json()).toEqual({ error: "invalid_input" });
+      expect(sessionSetCookie(res)).toBeUndefined();
+    }
   });
 });
 
