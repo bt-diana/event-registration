@@ -40,3 +40,20 @@ Started 18-10 21:08 +06.
 
 ### D66: the header uses a burger menu on mobile
 21:20:31 +0600. Replaces D65 (phone option A, no Menu button). Reason: the user said the layout is still not responsive and asked for the burger.
+
+## Step 4: click on the header opens the menu; "All events" in the menu
+
+**Prompt** (21:3x +06, text cleaned)
+
+> open the burger on clicking the header;
+> add a separate "all events" button to the menu
+
+**What Claude did.** Read it as two changes on phone width: (1) a click on the header bar (not only on the Menu button) opens and closes the menu; the logo link and the panel items keep their own action; (2) the menu gets a separate "All events" link to `/`, first in the panel, for logged out people, attendees and organizers. The build of step 3 (`code-writer`) was still running, so only the spec was changed first; `spec-writer` updates `header-responsive.md` and the affected rows of `header-events-link.md`.
+
+**Decision.**
+
+### D67: the header bar toggles the menu on mobile
+21:27:34 +0600. Extends D66. Reason: the user asked for it. Read as: a click on the empty part of the header row toggles the menu; the logo and the panel items work as before.
+
+### D68: the menu has a separate "All events" link to `/`
+21:27:34 +0600. Partly replaces D64 (no separate events button): the logo still opens `/`, and the menu now also has an "All events" link. Reason: the user asked for it.
