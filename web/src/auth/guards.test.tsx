@@ -65,11 +65,14 @@ describe("W-A2: loading status while me is pending", () => {
 
   it("does not flash the login page for a logged-in organizer", async () => {
     const me = deferred<Response>();
-    mockFetch({ "GET /auth/me": () => me.promise });
+    mockFetch({
+      "GET /auth/me": () => me.promise,
+      "GET /events": () => json(200, { events: [] }),
+    });
     renderApp("/organizer");
     expect(screen.queryByLabelText("Email")).toBeNull();
     await act(async () => me.resolve(json(200, OLGA)));
-    expect(await screen.findByRole("heading", { level: 1, name: "Organizer home" })).toBeTruthy();
+    expect(await screen.findByText("You have no events yet.")).toBeTruthy();
     expect(location()).toBe("/organizer");
   });
 });
@@ -86,7 +89,7 @@ describe("W-A6: wrong-role message", () => {
       screen.getByRole("link", { name: "Log in as an organizer" }).getAttribute("href"),
     ).toBe("/organizer/login");
     expect(screen.getByRole("link", { name: "Go home" }).getAttribute("href")).toBe("/");
-    expect(screen.queryByRole("heading", { level: 1, name: "Organizer home" })).toBeNull();
+    expect(screen.queryByRole("heading", { level: 1, name: "Your events" })).toBeNull();
     expect(location()).toBe("/organizer");
     expect(callsTo(fetch, "GET /auth/me")).toBe(1);
   });
@@ -164,12 +167,13 @@ describe("W-A4: logged out on a guarded screen", () => {
     mockFetch({
       "GET /auth/me": () => json(401, { error: "not_logged_in" }),
       "POST /auth/organizers/login": () => json(200, OLGA),
+      "GET /events": () => json(200, { events: [] }),
     });
     renderApp("/organizer?tab=2");
     fireEvent.change(await screen.findByLabelText("Email"), { target: { value: "olga@mail.com" } });
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "whatever" } });
     fireEvent.click(screen.getByRole("button", { name: "Log in" }));
-    expect(await screen.findByRole("heading", { level: 1, name: "Organizer home" })).toBeTruthy();
+    expect(await screen.findByText("You have no events yet.")).toBeTruthy();
     expect(location()).toBe("/organizer?tab=2");
   });
 });

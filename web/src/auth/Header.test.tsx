@@ -130,6 +130,7 @@ describe("W-A9: log out", () => {
     const fetch = mockFetch({
       "GET /auth/me": () => json(200, OLGA),
       "POST /auth/organizers/logout": () => json(204),
+      "GET /events": () => json(200, { events: [] }),
     });
     renderApp("/organizer");
     fireEvent.click(await header().findByRole("button", { name: "Log out" }));

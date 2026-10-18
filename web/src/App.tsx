@@ -2,25 +2,16 @@ import { Route, Routes } from "react-router";
 import { AuthForm } from "./auth/AuthForm";
 import { RedirectIfLoggedIn, RequireRole } from "./auth/guards";
 import { Header } from "./auth/Header";
+import { CreateEventForm } from "./events/CreateEventForm";
+import { EventsList } from "./events/EventsList";
 
-// Public: no guard. The event screens come from web.md.
+// Public: no guard. A placeholder; there is no public list of events yet (events-web.md).
+// No role eyebrow: the header shows the role (W-E24).
 function AttendeeHome() {
   return (
     <section className="card" data-role="user">
-      <p className="eyebrow">Attendee</p>
       <h1>Events</h1>
       <p className="intro">The event list is not built yet.</p>
-    </section>
-  );
-}
-
-// Placeholder for the organizer screens from web.md.
-function OrganizerHome() {
-  return (
-    <section className="card" data-role="organizer">
-      <p className="eyebrow">Organizer</p>
-      <h1>Organizer home</h1>
-      <p className="intro">The organizer screens are not built yet.</p>
     </section>
   );
 }
@@ -52,7 +43,15 @@ export function App() {
             path="/organizer"
             element={
               <RequireRole role="organizer">
-                <OrganizerHome />
+                <EventsList />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/organizer/events/new"
+            element={
+              <RequireRole role="organizer">
+                <CreateEventForm />
               </RequireRole>
             }
           />

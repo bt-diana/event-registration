@@ -4,7 +4,7 @@ A small service for event registration. An organizer creates an event with a lim
 
 This is my solution for Task 9. I built it together with an AI agent.
 
-> **Draft.** Only the database schema, accounts and login (milestone M1), the web login, sign-up and session screens (M1 step 6), the events API (milestone M2, API only: organizer events and the public event page) and the registration API (milestone M3, API only: register, waiting list, my registration) are built so far. `[TODO]` marks what I fill in during and after the build. The "Project status" section must only say what really works.
+> **Draft.** Only the database schema, accounts and login (milestone M1), the web login, sign-up and session screens (M1 step 6), the events API (milestone M2: organizer events and the public event page), the organizer events list and create form in the web app (M2 step 11) and the registration API (milestone M3, API only: register, waiting list, my registration) are built so far. `[TODO]` marks what I fill in during and after the build. The "Project status" section must only say what really works.
 
 ## Features
 
@@ -60,7 +60,7 @@ npm run dev
 
 Open http://localhost:5173.
 
-The web app calls the API on its own origin. In development the Vite dev server proxies `/auth` to the API on http://localhost:3000 (`web/vite.config.ts`), so no CORS is needed and `fetch` uses `credentials: "same-origin"`. This proxy exists only in `npm run dev`; a production build must be served from the same origin as the API (for example behind one reverse proxy), or the login cookie and the calls will not work.
+The web app calls the API on its own origin. In development the Vite dev server proxies `/auth`, `/events` and `/public` to the API on http://localhost:3000 (`web/vite.config.ts`), so no CORS is needed and `fetch` uses `credentials: "same-origin"`. This proxy exists only in `npm run dev`; a production build must be served from the same origin as the API (for example behind one reverse proxy), or the login cookie and the calls will not work.
 
 ### Try it with two clients
 
@@ -125,14 +125,15 @@ Later routes use the middleware in `api/src/auth/middleware.ts`: `authenticate` 
 
 ## Web routes
 
-From [docs/specs/auth-web.md](docs/specs/auth-web.md) section 2, styled by [docs/brand.md](docs/brand.md).
+From [docs/specs/auth-web.md](docs/specs/auth-web.md) and [docs/specs/events-web.md](docs/specs/events-web.md) section 2, styled by [docs/brand.md](docs/brand.md). The web paths avoid the API prefixes `/events` and `/public` (one origin).
 
 | Route | Who sees it | Shows |
 |---|---|---|
 | `/` | Everyone (public) | Attendee home (placeholder) |
 | `/login`, `/signup` | Logged out, or an organizer | Attendee login and sign-up form (`POST /auth/users/login`, `/signup`) |
 | `/organizer/login`, `/organizer/signup` | Logged out, or an attendee | Organizer login and sign-up form (`POST /auth/organizers/login`, `/signup`) |
-| `/organizer` | Organizers (guarded) | Organizer home (placeholder). Logged out: redirect to `/organizer/login?next=/organizer`. Attendee: a wrong-account message |
+| `/organizer` | Organizers (guarded) | The organizer's events (`GET /events`): title (link to the event page), start, status, registered / capacity; an empty state; "Create event". Logged out: redirect to `/organizer/login?next=/organizer`. Attendee: a wrong-account message |
+| `/organizer/events/new` | Organizers (guarded) | Create form: title, description (optional), start (local time), duration, capacity (`POST /events`). Client checks with the API limits; a 400 shows one form-level message. On success it goes to `/event/{id}` |
 
 At start the app calls `GET /auth/me` once (TanStack Query key `["me"]`); 401 means logged out. Login and sign-up put the answer into that cache, so no second call is made, and then go to a safe `?next=` path or the role's home. A person already logged in with the page's role is sent on from the login and sign-up pages. The header shows "Log in", "Sign up" and "For organizers" (or "For attendees" on `/organizer` pages) when logged out, and the name, the role and "Log out" when logged in. A logged-in organizer keeps the organizer look on every screen, also on `/` and `/event/:id`: the logo links to `/organizer` and the logo and tab icon are the organizer ones (W-E22).
 
@@ -157,6 +158,9 @@ web/                 frontend (React, Vite, TypeScript)
   src/auth/          api.ts (fetch wrapper), session.ts (useMe and the login, sign-up and
                      logout mutations), validate.ts (client checks, safeNext), guards.tsx
                      (RequireRole, RedirectIfLoggedIn), AuthForm, Header, and their tests
+  src/events/        api.ts (event routes), queries.ts (hooks, 401/403 re-check me),
+                     format.ts (dates in the viewer's zone, durations), validate.ts,
+                     EventsList, CreateEventForm, StatusBadge, and their tests
   src/styles.css     brand tokens and styles from docs/brand.md
 ROADMAP.md           the order of work, milestones and steps
 sessions/            the work log: one markdown file per session
@@ -203,9 +207,10 @@ All of these are automatic tests. `[TODO: fill the Status column with real resul
 - **Works:** the database schema and migrator. Accounts and login (API only, M1): sign-up, login and logout for attendees and organizers, `GET /auth/me` for either role, the signed 7-day cookie (expiry checked on the server), and the `authenticate`, `requireUser` and `requireOrganizer` middleware. Behaviours A1-A18 of `docs/specs/auth.md` (except the removed A11) have tests in `api/test/auth/` and `api/test/app.test.ts`.
 - **Works (web, M9 step 28):** sign-up, login and logout in the browser for both roles, the session from one `GET /auth/me`, the `RequireRole` and `RedirectIfLoggedIn` guards (loading, error with Retry, redirect with `next`, wrong-account message), client checks, the API error texts (400, 401, 409, 5xx and network), pending buttons, focus and aria. Behaviours W-A1 to W-A20 of `docs/specs/auth-web.md` have component tests in `web/src/` (`fetch` mocked). Not covered by a test: the W-A20 part "the cookie is `httpOnly` and the app never reads it" (an API fact, tested in `api/`; the web code has no cookie access). The contract was checked by hand through the dev proxy with `curl` (sign-up 201, a second sign-up 409, `me` 200 with the cookie, logout 204, `me` 401 after it, wrong password 401, bad body 400); the full browser walk-through (reload, redirect back after login) is still to be done by hand.
 - **The UI guards are not security.** They only decide what the screen shows. The API is the real guard (`requireUser`, `requireOrganizer`): a person who edits the page in the browser still gets 401 or 403 from the API.
-- **Works (API, M2):** an organizer creates events (`POST /events`, with title, start, duration and capacity) and lists and reads only their own (`GET /events`, `GET /events/:id`; another organizer's event answers 404 like a missing one). Anyone reads the public event page (`GET /public/events/:id`, no login) with the start and end, capacity, seats left, `full`, `has_started` and the status `active`, `cancelled` or `passed` (derived from the start and the duration with the server clock, not stored). Migration `002_event_duration.sql` adds `events.duration_minutes`. Behaviours E1-E20 of `docs/specs/events.md` have tests in `api/test/events/` and `api/test/db/`. Events cannot be edited, cancelled or rescheduled through the API yet (M4, M7), and there are no event screens in the web app yet (M2 UI).
+- **Works (API, M2):** an organizer creates events (`POST /events`, with title, start, duration and capacity) and lists and reads only their own (`GET /events`, `GET /events/:id`; another organizer's event answers 404 like a missing one). Anyone reads the public event page (`GET /public/events/:id`, no login) with the start and end, capacity, seats left, `full`, `has_started` and the status `active`, `cancelled` or `passed` (derived from the start and the duration with the server clock, not stored). Migration `002_event_duration.sql` adds `events.duration_minutes`. Behaviours E1-E20 of `docs/specs/events.md` have tests in `api/test/events/` and `api/test/db/`. Events cannot be edited, cancelled or rescheduled through the API yet (M4, M7).
+- **Works (web, M2 step 11):** the organizer events list (`/organizer`: one `GET /events`, rows in the API order, Active / Cancelled / Ended, "registered / capacity", empty, loading and error with Retry) and the create form (`/organizer/events/new`: client checks with the API limits, the start entered in local time and sent in UTC, one `POST /events` also after a double click, 400 and 5xx/network messages at form level, focus and aria). A 401 or 403 from an event call re-checks `me`, so the guard redirects to the login or shows the wrong-account message. The form sends `description`; the list does not show it. Dates are shown in the viewer's time zone with the zone name. Behaviours W-E1 to W-E9, W-E13, W-E14, W-E19 to W-E21 and W-E24 of `docs/specs/events-web.md` have component tests in `web/src/events/` (`fetch` mocked). No registration yet, so registered is 0 until the M3 screens.
 - **Works (API, M3):** a logged-in attendee registers for an event (`POST /events/:id/registrations`) and reads their own registration (`GET /events/:id/registrations/me`): ticket code, status and place on the waiting list. The register transaction locks the event row, so 20 attendees at once for the last seat give exactly one seat and 19 waiting places (tested). Registering again answers the same ticket (200). Cancelled and passed events answer 409; a running event still accepts registrations. A new seat stores one `ticket` row in the `outbox` table. Behaviours R1-R22 of `docs/specs/registration.md` have tests in `api/test/registrations/`. Not built yet: cancelling a registration and promoting the first waiting person (M4), the email sender (outbox rows are only stored, nothing is sent or printed, M6), and the register button and ticket page in the web app (`registration-web.md`, steps 17 and 18).
-- **Does not work, or not done, and why:** cancel and promotion, check-in, sending emails, live updates, the event screens and the rest of the web app are not built yet (the M2 UI and milestones M3-M8 in `ROADMAP.md`).
+- **Does not work, or not done, and why:** cancel and promotion, check-in, sending emails, live updates, the event page in the web app (`/event/:id`, M2 step 12), the registration screens and the rest of the web app are not built yet (M2 step 12 and milestones M3-M8 in `ROADMAP.md`).
 - **Known limits of the login:** logout only clears the cookie in the browser (the web app then shows the logged-out header; it cannot do more). A copy of the cookie stays valid until its 7 days end, because there is no sessions table (a test shows this). `sameSite=lax` is the only CSRF defence, which is not full protection (for example a hostile subdomain). No rate limiting, password reset or email verification.
 - **Known limits (expected, confirm after the build):** live updates use an in-process event stream, so only one server instance is supported. The reminder worker checks on a timer and uses the server clock. Email is a stub.
 - **Assumption:** the task does not say what happens to reminders after a reschedule. I assume one reminder per person per start time.

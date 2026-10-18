@@ -29,10 +29,13 @@ describe("App", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
   });
 
-  it("shows the organizer home placeholder at /organizer to an organizer", async () => {
-    mockFetch({ "GET /auth/me": () => json(200, OLGA) });
+  it("shows the events list at /organizer to an organizer", async () => {
+    mockFetch({
+      "GET /auth/me": () => json(200, OLGA),
+      "GET /events": () => json(200, { events: [] }),
+    });
     renderApp("/organizer");
-    expect(await screen.findByRole("heading", { level: 1, name: "Organizer home" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Your events" })).toBeTruthy();
   });
 
   it("shows the attendee login page at /login", async () => {

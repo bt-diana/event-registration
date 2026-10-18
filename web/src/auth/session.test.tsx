@@ -86,6 +86,7 @@ describe("W-A8: login and sign-up fill the me cache", () => {
     const fetch = mockFetch({
       "GET /auth/me": () => json(401, { error: "not_logged_in" }),
       "POST /auth/organizers/signup": () => json(201, OLGA),
+      "GET /events": () => json(200, { events: [] }),
     });
     const { queryClient } = renderApp("/organizer/signup");
     fireEvent.change(await screen.findByLabelText("Email"), { target: { value: "olga@mail.com" } });
@@ -93,7 +94,7 @@ describe("W-A8: login and sign-up fill the me cache", () => {
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "long-enough" } });
     fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Organizer home" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Your events" })).toBeTruthy();
     expect(queryClient.getQueryData(["me"])).toEqual(OLGA);
     await waitFor(() => expect(screen.getByText("Olga")).toBeTruthy());
     expect(bodyOf(fetch, "POST /auth/organizers/signup")).toEqual({
@@ -103,6 +104,7 @@ describe("W-A8: login and sign-up fill the me cache", () => {
     });
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(callsTo(fetch, "GET /auth/me")).toBe(1);
-    expect(fetch).toHaveBeenCalledTimes(2);
+    // The sign-up, the one me and the events list of the organizer home.
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
 });

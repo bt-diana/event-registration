@@ -55,7 +55,7 @@ Both from Google Fonts. Fallback: `system-ui, sans-serif`.
 - **Secondary button:** same size, white background, 1px `border-input`, dark text.
 - **Form error box:** above the form, padding `12px 14px`, `error-tint` background, 1px `error` border, radius 8, `role="alert"`.
 - **Links:** accent colour, 600 when they are actions ("Sign up", "I organize events"). The switch to the other role is a link under a divider.
-- **Eyebrow:** the role name ("Attendee", "Organizer") above the title in the role accent. "Wrong account" uses the dark error colour.
+- **Eyebrow:** the role name ("Attendee", "Organizer") above the title in the role accent, only on the login and sign-up forms. Pages for logged-in people have no role eyebrow; the role is in the header (`events-web.md` W-E24) and the `h1` is the first line. The public event page uses "Event". "Wrong account" uses the dark error colour.
 
 ## Rules
 
@@ -75,7 +75,11 @@ Status badge colours are approved (user, 18-10). Pill, radius 999px, padding `2p
 | Cancelled | `#8C1D18` | `#FDECEA` |
 | Ended, Already started | `#3A4A47` | `#E4E8E7` |
 
-Table (events list): white card with 1px border and radius 12, header cells 14px 600 `text-muted`, rows 16px with a 1px `border` line, scrolls sideways under 640px. Event details are a `dl` grid (label 14px 600 `text-muted`, value 16px). Wide cards: 640px (event pages), 960px (list). The organizer pages use `accent-organizer`, the public page `accent-attendee`.
+Table (events list): white card with 1px border and radius 12, header cells 14px 600 `text-muted`, rows 16px with a 1px `border` line, scrolls sideways under 640px. Event details are a `dl` grid (label 14px 600 `text-muted`, value 16px). Wide cards: 520px (create form), 640px (event pages), 960px (list). The organizer pages use `accent-organizer`, the public page `accent-attendee`.
+
+- **Textarea** (description): like the input, but `padding 12px 14px`, 5 rows, resizes vertically. Field order inside a field: label, input, error, hint.
+- **Button link** ("Create event" on the list): a link with the primary button look, 48px high, padding `0 20px`.
+- **Back link** ("Back to events"): a 15px 600 accent link with a left arrow, at least 44px high.
 
 ## Not decided yet
 

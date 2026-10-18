@@ -18,7 +18,8 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path: string, init: RequestInit = {}): Promise<Response> {
+// Shared by the other API clients (events/api.ts). Network errors become ApiError(0).
+export async function request(path: string, init: RequestInit = {}): Promise<Response> {
   try {
     return await fetch(path, { ...init, credentials: "same-origin" });
   } catch {
