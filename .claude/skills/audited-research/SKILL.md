@@ -19,7 +19,7 @@ For a quick factual lookup, just search. This skill is for decisions with money 
 
 A researcher who starts cold will fill any gap with guesses, so the brief must close the gaps first.
 
-- If the topic is not yet specified, run the `grilling` skill first. End it with two things: a decision table (topic, decision) and a "loose ends" list of anything ambiguous or contradictory in the user's answers.
+- If the topic is not yet specified, run the `mattpocock-skills:grilling` skill first. End it with two things: a decision table (topic, decision) and a "loose ends" list of anything ambiguous or contradictory in the user's answers.
 - The brief must contain: the decision the research supports; success defined with numbers and dates; time, money and effort limits; hard exclusions; anything parked on purpose; and, for every ambiguous answer, the reading the researcher should use plus "if you disagree, show both".
 - Parked topics stay parked. If the user removed a topic (for example payments or legal), do not reopen it as a question. If the research later shows it gates the result, state that once in one sentence as an assumption, not as a new interview.
 - Save the brief to the project (`project_write`) so it persists, and paste it verbatim into the delegation prompt.
