@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Event registration API - accounts, login, events, registration, check-in and emails
-  version: 0.8.0
+  version: 0.9.0
   description: |
     Hand-written description of the seven auth routes (milestone M1, docs/specs/auth.md):
     signup, login and logout for each role, and GET /auth/me for either role. All bodies are JSON. Errors use the body { "error": "<code>" }; the status is
@@ -46,6 +46,16 @@ info:
     lists the outbox rows of the organizer's own event with their delivery status,
     newest first, at most 200, optionally of one kind, one status or one
     registration. Never the body (it holds the ticket code).
+
+    Reschedule and cancel an event (milestone M7, docs/specs/email-reminders.md
+    ER61-ER87): `POST /events/{id}/reschedule` moves the start of an own event that
+    has not started (same time: a no-op), bumps `schedule_version` and queues one
+    `reschedule` email per waiting or not checked-in registered person;
+    `POST /events/{id}/cancel` cancels an own event that has not started, cancels
+    its waiting and not checked-in registered registrations and queues one
+    `event_cancelled` email for each (a second cancel answers 200 and does
+    nothing). Both delete the pending reminders that would carry an old time. Both
+    run in one transaction under the same event lock as registering.
 
     Login is one signed cookie named `session` (cookie-parser), valid 7 days,
     httpOnly, sameSite=lax, secure only when NODE_ENV=production. Its signed value is
@@ -257,6 +267,89 @@ paths:
           $ref: "#/components/responses/WrongRole"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /events/{id}/reschedule:
+    post:
+      tags: [events]
+      operationId: rescheduleEvent
+      summary: Move the start of an own event
+      description: |
+        Order of checks: guard (401/403), id is a uuid (else 404), body (400), then
+        one transaction with the event lock that also checks ownership (404), then
+        the state under the lock: stored `cancelled` is 409 `event_cancelled`, an
+        ended event 409 `event_passed`, a started one 409 `event_started`. The same
+        instant as the stored start (any offset) is a no-op: 200 with the unchanged
+        event, nothing written. Otherwise `starts_at` is the new instant,
+        `schedule_version` goes up by one, `duration_minutes` is kept (so `ends_at`
+        moves too), pending `reminder` rows of older versions are deleted, and one
+        `reschedule` outbox row is written for every waiting person and every
+        registered person not checked in (no ticket code in the text). Other body
+        fields are ignored.
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RescheduleBody"
+      responses:
+        "200":
+          description: The event after the change (or unchanged for the same time).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerEvent"
+        "400":
+          $ref: "#/components/responses/InvalidStartsAt"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/WrongRole"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/EventNotChangeable"
+
+  /events/{id}/cancel:
+    post:
+      tags: [events]
+      operationId: cancelEvent
+      summary: Cancel an own event
+      description: |
+        No body (ignored). Order of checks: guard (401/403), id is a uuid (else
+        404), then one transaction with the event lock that also checks ownership
+        (404). An event that is already cancelled answers 200 with the same event
+        and nothing is written (also when it has started or ended since). Otherwise
+        an ended event is 409 `event_passed` and a started one 409 `event_started`.
+        Else the event gets `status` `cancelled` and `cancelled_at`; every waiting
+        registration and every registered one not checked in becomes `cancelled`
+        with the same `cancelled_at` and gets one `event_cancelled` outbox row (no
+        ticket code in the text); checked-in people are left as they are and get no
+        email; nobody is promoted; pending `reminder` rows of the event are deleted.
+        A cancelled event cannot be reopened.
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: The cancelled event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerEvent"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/WrongRole"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          # Only `event_passed` and `event_started` here; a cancelled event is a 200.
+          $ref: "#/components/responses/EventNotChangeable"
 
   /public/events:
     get:
@@ -1163,6 +1256,16 @@ components:
         attendee_name:
           type: string
           description: The current name of the registration's person.
+    RescheduleBody:
+      type: object
+      required: [starts_at]
+      description: Other fields are ignored and change nothing.
+      properties:
+        starts_at:
+          type: string
+          format: date-time
+          description: ISO 8601 with a date, a time and `Z` or an offset; strictly after the server's now.
+          example: "2030-01-01T10:00:00Z"
     Error:
       type: object
       required: [error]
@@ -1349,6 +1452,39 @@ components:
                 error: already_checked_in
                 checked_in_at: "2030-01-01T10:02:03.456Z"
                 attendee_name: Ann
+    InvalidStartsAt:
+      description: |
+        Bad reschedule body: not an object, `starts_at` missing or not a string, not
+        an ISO 8601 timestamp with `Z` or an offset, an impossible date or time, or
+        not strictly after now. Answered before any database query, also for a
+        closed or foreign event; nothing is written.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: invalid_input
+    EventNotChangeable:
+      description: |
+        The event cannot be changed; checked under the event lock, nothing is
+        written. `event_cancelled`: the event was cancelled (wins over the others).
+        `event_passed`: `starts_at + duration_minutes` is reached. `event_started`:
+        the event has started and not ended. On cancel only `event_passed` and
+        `event_started` occur: cancelling a cancelled event answers 200.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            cancelled:
+              value:
+                error: event_cancelled
+            passed:
+              value:
+                error: event_passed
+            started:
+              value:
+                error: event_started
     InvalidEvent:
       description: |
         Bad body: not an object; a field missing or of the wrong type; a title empty

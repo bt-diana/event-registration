@@ -178,7 +178,7 @@ Register and cancel both run in one transaction that starts with `SELECT ... FRO
 Different events do not block each other. The `users` row is only read, never locked, so it cannot deadlock with the event lock.
 
 ### 3.2 B5 single reminder: unique constraint, not timing (test first)
-The worker inserts `kind = 'reminder'` rows with `schedule_version = events.schedule_version`, `event_starts_at = events.starts_at` and `ON CONFLICT (registration_id, kind, schedule_version) DO NOTHING`. It reads the event columns in the same `INSERT ... SELECT` statement, so version and time cannot come from different moments. `to_email` is taken from `users.email` through `registrations.user_id`. Running the worker 10 times, or two workers at once, leaves one row per registered person per schedule version. Only `registered` people get a reminder.
+The worker inserts `kind = 'reminder'` rows with `schedule_version = events.schedule_version`, `event_starts_at = events.starts_at` and `ON CONFLICT (registration_id, kind, schedule_version) DO NOTHING`. It reads the event columns in the same `INSERT ... SELECT` statement, so version and time cannot come from different moments. The statement takes `FOR SHARE OF e`, so it waits for a reschedule or cancel that holds the event lock and then reads the new row (`email-reminders.md` ER72). `to_email` is taken from `users.email` through `registrations.user_id`. Running the worker 10 times, or two workers at once, leaves one row per registered person per schedule version. Only `registered` people get a reminder.
 
 ### 3.3 B6 single check-in: conditional UPDATE (test first)
 ```sql
@@ -198,16 +198,16 @@ The attendee is the signed-in account, so the second registration has the same `
 Same locked transaction as 3.1: set `status = 'cancelled'`, `cancelled_at = now()` on the row; if it was `registered`, take `SELECT ... WHERE event_id = $1 AND status = 'waitlisted' ORDER BY queue_no LIMIT 1`, set it to `registered`, insert one `promotion` outbox row (`to_email` from that person's `users.email`). Cancelling a `waitlisted` row frees no seat and promotes nobody. A checked-in registration cannot be cancelled: rejected with 409 (the CHECK would also fail).
 
 ### 3.6 B8 reschedule
-The lock query carries the ownership check (3.8). If `$new` equals the current `starts_at`: a no-op, no version bump, nothing written. Otherwise `UPDATE events SET starts_at = $new, schedule_version = schedule_version + 1`, then in the same transaction insert one `reschedule` outbox row per `registered` and `waitlisted` person with the new `schedule_version` and `event_starts_at = $new`. Old `reminder` rows keep the old version, so a new reminder for the new version does not conflict with them, even when the event returns to an earlier time (A -> B -> A -> B). Only active events can be rescheduled.
+The lock query carries the ownership check (3.8). If `$new` equals the current `starts_at`: a no-op, no version bump, nothing written. Otherwise `UPDATE events SET starts_at = $new, schedule_version = schedule_version + 1`, then in the same transaction delete the `pending` `reminder` rows of the event with a lower `schedule_version` (a reminder with the old time is never sent; `sent` and `error_sending` rows stay) and insert one `reschedule` outbox row per `waitlisted` person and per `registered` person with `checked_in_at` NULL (checked-in people already came and get none), with the new `schedule_version` and `event_starts_at = $new`. Old `reminder` rows keep the old version, so a new reminder for the new version does not conflict with them, even when the event returns to an earlier time (A -> B -> A -> B). Only active events that have not started can be rescheduled: a cancelled event is 409 `event_cancelled`, an ended one 409 `event_passed`, a started one 409 `event_started`, checked under the lock in this order before the same-time check (`email-reminders.md` ER64-ER71). The reminder worker takes `FOR SHARE OF e` on the events it reads (3.2), so it cannot write an old-version reminder behind this delete (ER72).
 
 ### 3.7 B9 cancel the whole event (test first: no)
-One transaction, starting with `SELECT ... FROM events WHERE id = $1 AND organizer_id = $organizer FOR UPDATE` (same lock as 3.1, plus the ownership check of 3.8). If `status` is already `cancelled`, do nothing. If `starts_at <= now()` (checked here, under the lock): rejected with 409, nothing written; an event that has already started cannot be cancelled. Otherwise: `UPDATE events SET status = 'cancelled', cancelled_at = now()`. Then for every `registered` (not checked in) and `waitlisted` registration: insert one `event_cancelled` outbox row with the current `schedule_version` and `event_starts_at = events.starts_at`, and set `status = 'cancelled'`, `cancelled_at = now()`. Registrations already checked in stay as they are (the CHECK allows `checked_in_at` only on `registered` rows) and get no email; this is now rare, because cancelling is only possible before the start, so only someone who checked in early is left. Cancelling twice writes nothing new (the no-op check, and the outbox unique key as a second guard). A cancelled event cannot be re-opened.
+One transaction, starting with `SELECT ... FROM events WHERE id = $1 AND organizer_id = $organizer FOR UPDATE` (same lock as 3.1, plus the ownership check of 3.8). If `status` is already `cancelled`, do nothing and answer 200 with the event (a double click or a retry is not an error; this is checked first, so it holds also when the event has started or ended since). If the event has ended: 409 `event_passed`; else if `starts_at <= now()`: 409 `event_started` (both checked here, under the lock, nothing written); an event that has already started cannot be cancelled. Otherwise: `UPDATE events SET status = 'cancelled', cancelled_at = now()`. Then for every `registered` (not checked in) and `waitlisted` registration: insert one `event_cancelled` outbox row with the current `schedule_version` and `event_starts_at = events.starts_at`, and set `status = 'cancelled'`, `cancelled_at = now()` (the same instant as the event's), and delete the `pending` `reminder` rows of the event of every version (`sent` and `error_sending` rows and pending rows of other kinds stay). Nobody is promoted. Registrations already checked in stay as they are (the CHECK allows `checked_in_at` only on `registered` rows) and get no email; this is now rare, because cancelling is only possible before the start, so only someone who checked in early is left. Cancelling twice writes nothing new (the no-op check, and the outbox unique key as a second guard). A cancelled event cannot be re-opened.
 
 Rules for a cancelled event (app rules, each reads `events.status` under the same `FOR UPDATE` lock, so none can race with the cancel):
 - Register: rejected with 409 (3.1 transaction).
 - Cancel a registration: a no-op, the people are already cancelled (checked-in people still get 409, see 3.5). It promotes nobody.
 - Reschedule and capacity change: rejected (3.6, 3.9).
-- Reminders: the worker only selects events with `status = 'active'` (3.2). The outbox unique key still prevents duplicates.
+- Reminders: the worker only selects events with `status = 'active'` (3.2) and takes `FOR SHARE OF e`, so it waits for a running cancel and then sees it. The outbox unique key still prevents duplicates.
 - Check-in: rejected. The conditional UPDATE in 3.3 is joined to the event and has `e.status = 'active'`.
 
 ### 3.8 Organizer ownership: the event row decides (test first: no)
@@ -223,10 +223,11 @@ Same locked transaction as 3.6/3.7: `SELECT ... FROM events WHERE id = $1 AND or
 ### 3.10 Derived event status `passed` (M2, test first: no)
 `passed` is never stored: no worker, no CHECK change. The API status is computed at read time from the stored columns: `cancelled` if `events.status = 'cancelled'`, else `passed` if `now() >= starts_at + duration_minutes * interval '1 minute'`, else `active`. Cancelled wins over passed. In this file, "active" and "cancelled" in rules 3.1-3.9 always mean the stored column; the wording still holds. Effects on later milestones (behaviour not changed here, to be decided in their specs):
 - 3.2 reminders: no effect, the 24-hour window (`now() < starts_at`) already excludes ended events.
-- 3.7 cancel event: no effect, `starts_at <= now()` already rejects started events, which includes passed ones (and events in progress).
+- 3.7 cancel event: started events are rejected; a passed one answers 409 `event_passed`, one in progress 409 `event_started` (`email-reminders.md` ER64).
 - 3.1 register: a passed event is still stored `active`, so the lock rules would accept a registration. M3 should decide whether to reject it (suggested: 409, as for cancelled).
 - 3.3 check-in: the conditional UPDATE needs stored `active`, so a passed event still allows check-in. M5 should decide (suggested: allow, late arrivals are real).
-- 3.6 reschedule and 3.9 capacity: a passed event is stored `active`, so they would be accepted. M4 and M7 should decide (suggested: reject, as for cancelled). A reschedule would also need to keep `duration_minutes`, so the end moves with the start.
+- 3.6 reschedule (decided in M7, `email-reminders.md` ER64): a passed event is 409 `event_passed` and a started one 409 `event_started`, after the cancelled check (409 `event_cancelled`). A reschedule keeps `duration_minutes`, so the end moves with the start.
+- 3.9 capacity (decided as the contract for M4, `email-reminders.md` ER82): a cancelled event is 409 `event_cancelled`, a passed one 409 `event_passed`, in the same order as ER64.
 
 ## 4. Behaviour map
 
@@ -240,7 +241,7 @@ Same locked transaction as 3.6/3.7: `SELECT ... FROM events WHERE id = $1 AND or
 | B6 | `checked_in_at` and the conditional UPDATE joined to the event's `organizer_id` (3.3) |
 | B7 | `count` of `checked_in_at IS NOT NULL`, joined to the event's `organizer_id` |
 | B8 | `events.starts_at`, `events.schedule_version`, outbox `schedule_version`, `reschedule` rows (3.6) |
-| B9 | `events.status`, `events.cancelled_at`, registrations set to `cancelled`, outbox `event_cancelled`, event lock, 409 once `starts_at <= now()` (3.7) |
+| B9 | `events.status`, `events.cancelled_at`, registrations set to `cancelled`, outbox `event_cancelled`, pending reminders deleted, event lock, 409 `event_started` / `event_passed` once `starts_at <= now()` (3.7) |
 | B10 | `events.capacity`, count under the event lock, `queue_no` order, outbox `promotion` (3.9) |
 | Event status `passed` (M2) | `events.starts_at` + `events.duration_minutes`, computed at read time, nothing stored (3.10) |
 | Event description (`event-description.md` DS1, DS2) | `events.description`, `NOT NULL DEFAULT ''`, `CHECK (char_length(description) <= 2000)` |
@@ -266,7 +267,7 @@ No sessions table (signed cookie), no roles or permissions table (an organizer o
 11. A cancelled event cannot be re-opened.
 12. Login is a signed cookie via `cookie-parser`; passwords use `crypto.scrypt` with a random salt, no new library. Both attendees and organizers sign up themselves; no seed script.
 13. `events.schedule_version` (+1 per reschedule) is in the outbox unique key instead of `event_starts_at`, so a reschedule loop A -> B -> A -> B emails and reminds every time. Rescheduling to the same time is a no-op. `outbox.event_starts_at` stays as an informational copy.
-14. An event that has already started (`starts_at <= now()`) cannot be cancelled: 409. Already checked-in people are left alone by a cancel.
+14. An event that has already started (`starts_at <= now()`) cannot be cancelled: 409 `event_started` (or `event_passed` once it has ended). Already checked-in people are left alone by a cancel and get no email. A second cancel answers 200 and writes nothing (`email-reminders.md` ER76).
 15. Raising capacity promotes the first waitlisted people by `queue_no`, each with a `promotion` email.
 16. The login cookie lasts 7 days. This is a default, the user can change it.
 

@@ -1,12 +1,14 @@
 import { Router, type Request, type Response } from "express";
 import type pg from "pg";
 import { requireOrganizer } from "../auth/middleware.js";
+import { cancelEvent, rescheduleEvent, type ManageResult } from "./manage.js";
 import { deriveStatus, endsAt, MINUTE_MS, type StoredStatus } from "./status.js";
 
 // docs/specs/events.md (M2): POST /events, GET /events, GET /events/:id for the
 // owner, and GET /public/events/:id for anyone. The optional description is
 // docs/specs/event-description.md (DS1-DS13). GET /public/events is
-// docs/specs/events-public-list.md (PL1-PL11).
+// docs/specs/events-public-list.md (PL1-PL11). POST /events/:id/reschedule and
+// POST /events/:id/cancel are docs/specs/email-reminders.md ER61-ER87 (M7).
 
 const MAX_TITLE = 200;
 const MAX_DESCRIPTION = 2000;
@@ -15,7 +17,7 @@ const MAX_CAPACITY = 100000;
 const MIN_DURATION = 1;
 const MAX_DURATION = 1440;
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ISO 8601 extended format with a date, a time and Z or an offset:
 // 2030-01-01T10:00Z, 2030-01-01T10:00:00Z, 2030-01-01T10:00:00.250+02:00.
@@ -23,7 +25,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_TIMESTAMP =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(?:Z|([+-])(\d{2}):(\d{2}))$/;
 
-type EventRow = {
+export type EventRow = {
   id: string;
   title: string;
   description: string;
@@ -50,7 +52,7 @@ const COLUMNS = `e.id, e.title, e.description, e.starts_at, e.duration_minutes, 
   e.schedule_version, e.cancelled_at, e.created_at`;
 
 // One query for read and list, no lock: seats are a snapshot (events.md section 3).
-const SELECT_WITH_COUNT = `SELECT ${COLUMNS},
+export const SELECT_WITH_COUNT = `SELECT ${COLUMNS},
     count(r.id) FILTER (WHERE r.status = 'registered') AS registered
   FROM events e LEFT JOIN registrations r ON r.event_id = e.id`;
 
@@ -74,7 +76,7 @@ function daysInMonth(year: number, month: number): number {
 
 // The instant an ISO 8601 timestamp names, or null when it is not one (no
 // offset, impossible date or time, other formats).
-function parseTimestamp(text: string): Date | null {
+export function parseTimestamp(text: string): Date | null {
   const match = ISO_TIMESTAMP.exec(text);
   if (!match) return null;
   const [, y, mo, d, h, mi, s, fraction, sign, oh, om] = match;
@@ -154,7 +156,7 @@ function derive(row: EventRow, now: Date) {
 }
 
 // Organizer event: the real numbers for every status (E10). No organizer_id.
-function organizerShape(row: EventRow, now: Date) {
+export function organizerShape(row: EventRow, now: Date) {
   const d = derive(row, now);
   return {
     id: row.id,
@@ -206,6 +208,15 @@ function publicListItem(row: EventRow, now: Date) {
 
 const PUBLIC_LIST_LIMIT = 100;
 
+// ER63: the new start of a reschedule body, or null for a bad body. The same
+// parser and the same "strictly after now" rule as E2; other fields are ignored.
+function parseReschedule(body: unknown, now: Date): Date | null {
+  const b = fields(body);
+  if (!b || typeof b.starts_at !== "string") return null;
+  const startsAt = parseTimestamp(b.starts_at);
+  return startsAt && startsAt.getTime() > now.getTime() ? startsAt : null;
+}
+
 export function eventsRouter(pool: pg.Pool): Router {
   const router = Router();
 
@@ -244,6 +255,37 @@ export function eventsRouter(pool: pg.Pool): Router {
     if (rows.length === 0) return fail(res, 404, "not_found");
     res.status(200).json(organizerShape(rows[0], now));
   });
+
+  // ER61-ER64, ER86: guard, uuid (404), body (400), then the locked work.
+  router.post("/events/:id/reschedule", requireOrganizer, async (req: Request, res: Response) => {
+    const id = req.params.id;
+    if (typeof id !== "string" || !UUID.test(id)) return fail(res, 404, "not_found");
+    const now = new Date();
+    const startsAt = parseReschedule(req.body, now);
+    if (!startsAt) return fail(res, 400, "invalid_input");
+    const result = await rescheduleEvent(pool, req.organizer!.id, id, startsAt, now);
+    await answerManaged(res, req.organizer!.id, result, now);
+  });
+
+  // The body is ignored. A second cancel answers 200 (ER76).
+  router.post("/events/:id/cancel", requireOrganizer, async (req: Request, res: Response) => {
+    const id = req.params.id;
+    if (typeof id !== "string" || !UUID.test(id)) return fail(res, 404, "not_found");
+    const now = new Date();
+    const result = await cancelEvent(pool, req.organizer!.id, id, now);
+    await answerManaged(res, req.organizer!.id, result, now);
+  });
+
+  // The organizer event from the committed state, with the request's `now`.
+  async function answerManaged(res: Response, organizerId: string, result: ManageResult, now: Date): Promise<void> {
+    if (result.kind === "not_found") return fail(res, 404, "not_found");
+    if (result.kind === "refused") return fail(res, 409, result.error);
+    const { rows } = await pool.query<EventRow>(
+      `${SELECT_WITH_COUNT} WHERE e.id = $1 AND e.organizer_id = $2 GROUP BY e.id`,
+      [result.eventId, organizerId],
+    );
+    res.status(200).json(organizerShape(rows[0], now));
+  }
 
   // No guard, no query parameters (PL1, PL8). One `now` per request, passed to
   // the query so the filter and the derived fields agree (PL2). The path has no

@@ -116,7 +116,7 @@ describe("ER61: guards", () => {
     expectError(await reschedule(api, eventId, { starts_at: B.toISOString() }), 401, "not_logged_in");
     expectError(await reschedule(api, "abc", { starts_at: "nope" }), 401, "not_logged_in");
     expectError(await reschedule(api, eventId, { starts_at: B.toISOString() }, person.cookie), 403, "wrong_role");
-    expectError(await reschedule(api, "abc", "x", person.cookie), 403, "wrong_role");
+    expectError(await reschedule(api, "abc", { starts_at: "nope" }, person.cookie), 403, "wrong_role");
 
     expect(await allTables(db.pool)).toEqual(before);
   });

@@ -9,6 +9,10 @@ import type pg from "pg";
 // rows of every status, so a sent or error_sending reminder blocks a second
 // one (ER31). $1 is the injected clock; neither Date.now() nor SQL now() is
 // used for the window (ER26). No timer, no transport, nothing printed.
+// FOR SHARE OF e (ER72): a worker that meets an event locked by a reschedule or
+// a cancel waits for it and then re-reads the row (new version, start and
+// status), so it never writes an old-version reminder behind the delete of
+// ER71 or ER79. Still one statement (ER27).
 const ENQUEUE_SQL = `INSERT INTO outbox (registration_id, kind, schedule_version, event_starts_at, to_email, subject, body)
 SELECT r.id, 'reminder', e.schedule_version, e.starts_at, u.email,
        'Reminder: ' || e.title || ' starts soon',
@@ -21,6 +25,7 @@ SELECT r.id, 'reminder', e.schedule_version, e.starts_at, u.email,
    AND e.status = 'active'
    AND e.starts_at - interval '24 hours' <= $1::timestamptz
    AND $1::timestamptz < e.starts_at
+   FOR SHARE OF e
 ON CONFLICT (registration_id, kind, schedule_version) DO NOTHING`;
 
 // Returns the number of rows inserted.
