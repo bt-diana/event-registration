@@ -59,7 +59,7 @@ Copy `api/.env.example` to `api/.env` (the API reads it from there; it is git-ig
 | `DATABASE_URL` | `postgres://postgres:<your password>@localhost:5433/events` |
 | `COOKIE_SECRET` | At least 32 random characters: `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` |
 | `EMAIL_API_KEY` | Your Resend API key |
-| `MAIL_FROM` | `onboarding@resend.dev` (without a verified domain Resend delivers only to your own account address) |
+| `MAIL_FROM` | An address on your verified Resend domain. `onboarding@resend.dev` also works, but then Resend delivers only to your own account address |
 
 `PORT` (3000) and `EMAIL_JOB_INTERVAL_MS` (10000 in the example) can stay as they are. All variables are described under "Environment" below.
 
@@ -167,7 +167,7 @@ cd api && npm run email:preview -- <folder>   # writes the five emails as html f
 
 The API reads `api/.env` when `DATABASE_URL` or `COOKIE_SECRET` is not already set.
 
-**Resend free tier:** without a verified domain Resend delivers only to the address of the account owner; emails to any other address end as `error_sending` after 3 tries (with the provider's reason in `send_error`, addresses replaced). Note that starting the API with a real key sends every `pending` outbox row of the dev database.
+**Resend and the sending domain:** the domain is verified, so with `MAIL_FROM` on it mail reaches any address. Without a verified domain (for example `onboarding@resend.dev`) Resend delivers only to the address of the account owner; emails to any other address end as `error_sending` after 3 tries (with the provider's reason in `send_error`, addresses replaced). Note that starting the API with a real key sends every `pending` outbox row of the dev database.
 
 ## API
 
