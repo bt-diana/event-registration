@@ -18,6 +18,11 @@ const MAX_NAME = 100;
 const MIN_PASSWORD = 8;
 const MAX_PASSWORD = 128;
 
+// PostgreSQL text cannot hold NUL, so a NUL must never reach a query.
+function hasNul(text: string): boolean {
+  return text.includes("\0");
+}
+
 // Characters as code points, the same way JSON Schema counts them.
 function length(text: string): number {
   return [...text].length;
@@ -42,8 +47,8 @@ function parseSignup(body: unknown): { email: string; name: string; password: st
   }
   const cleanEmail = normaliseEmail(email);
   const cleanName = name.trim();
-  if (length(cleanEmail) > MAX_EMAIL || !EMAIL.test(cleanEmail)) return null;
-  if (length(cleanName) < 1 || length(cleanName) > MAX_NAME) return null;
+  if (length(cleanEmail) > MAX_EMAIL || !EMAIL.test(cleanEmail) || hasNul(cleanEmail)) return null;
+  if (length(cleanName) < 1 || length(cleanName) > MAX_NAME || hasNul(cleanName)) return null;
   if (length(password) < MIN_PASSWORD || length(password) > MAX_PASSWORD) return null;
   return { email: cleanEmail, name: cleanName, password };
 }
@@ -71,6 +76,18 @@ function answer(role: Role, row: Account): { role: Role } & Account {
 
 async function loadAccount(pool: pg.Pool, table: string, id: string): Promise<Account | undefined> {
   const { rows } = await pool.query<Account>(`SELECT id, email, name FROM ${table} WHERE id = $1`, [id]);
+  return rows[0];
+}
+
+async function findByEmail(
+  pool: pg.Pool,
+  table: string,
+  email: string,
+): Promise<(Account & { password_hash: string }) | undefined> {
+  const { rows } = await pool.query<Account & { password_hash: string }>(
+    `SELECT id, email, name, password_hash FROM ${table} WHERE email = lower($1)`,
+    [email],
+  );
   return rows[0];
 }
 
@@ -110,11 +127,8 @@ export function authRouter(pool: pg.Pool): Router {
     router.post(`${base}/login`, async (req: Request, res: Response) => {
       const input = parseLogin(req.body);
       if (!input) return fail(res, 400, "invalid_input");
-      const { rows } = await pool.query<Account & { password_hash: string }>(
-        `SELECT id, email, name, password_hash FROM ${table} WHERE email = lower($1)`,
-        [input.email],
-      );
-      const row = rows[0];
+      // A NUL email matches no account: no query, the same 401 as any bad login.
+      const row = hasNul(input.email) ? undefined : await findByEmail(pool, table, input.email);
       // An unknown email still runs one scrypt, so both failures take about as long.
       const ok = await verifyPassword(input.password, row?.password_hash ?? DUMMY_HASH);
       if (!row || !ok) return fail(res, 401, "invalid_credentials");

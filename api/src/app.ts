@@ -37,13 +37,21 @@ export function createApp(options: AppOptions = {}) {
   return app;
 }
 
-// Bad JSON is the caller's mistake (400). Anything else is a 500. The request
-// body is never logged, so a password cannot end up in the log.
+// Errors from the JSON parser are the caller's mistake. Bad JSON and a body
+// over the size limit (far over every field limit, for example a too long
+// password) answer 400 like any other invalid input (A7); other parser errors
+// keep their 4xx status (for example 415 for an unsupported charset). Anything
+// else is a 500. The request body is never logged, so a password cannot end up
+// in the log.
 function errorHandler(error: unknown, _req: Request, res: Response, next: NextFunction): void {
   if (res.headersSent) return next(error);
-  const type = (error as { type?: unknown } | null)?.type;
-  if (type === "entity.parse.failed") {
+  const { type, status } = (error ?? {}) as { type?: unknown; status?: unknown };
+  if (type === "entity.parse.failed" || type === "entity.too.large") {
     res.status(400).json({ error: "invalid_input" });
+    return;
+  }
+  if (typeof type === "string" && typeof status === "number" && status >= 400 && status <= 499) {
+    res.status(status).json({ error: "invalid_input" });
     return;
   }
   console.error(error instanceof Error ? error.stack : "unknown error");
