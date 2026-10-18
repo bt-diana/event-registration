@@ -21,7 +21,7 @@ Order of work for the event registration service. One row = one step = one commi
 | M6 | Outbox sender and reminder worker | `email-reminders.md` | B5 | B5 |
 | M7 | Reschedule and event cancel | `email-reminders.md` (extend) | B8, B9 | |
 | M8 | Live updates | `checkin.md` (extend) | B7 | |
-| M9 | Web app | `web.md` | all | |
+| M9 | Web app | `auth-web.md`, `web.md` | all | session and guards |
 | M10 | Review and README | | all | |
 
 ## Steps
@@ -31,7 +31,7 @@ Specs are not written all at once. The first step of each milestone writes (or e
 ### M1. Accounts (`api/`)
 1. Spec: `auth.md` (done).
 2. Test, then code: password hashing (scrypt, random salt) and the signed cookie (7 days).
-3. Test, then code: attendee sign-up, login, logout, "who am I". Same for organizers.
+3. Test, then code: attendee sign-up, login, logout, "who am I". Same for organizers. Also `GET /auth/me` and `role` in the answers (`auth.md` A17-A19), which the web app needs.
 4. Auth middleware that puts `user` or `organizer` on the request. Tests: no cookie gives 401, an attendee cookie cannot use organizer routes.
 
 ### M2. Events
@@ -71,8 +71,8 @@ Specs are not written all at once. The first step of each milestone writes (or e
 26. Server-sent events for the arrivals counter, with a test that a check-in reaches a connected client. Polling stays as the fallback in the web app.
 
 ### M9. Web (`web/`)
-27. Spec: `web.md` (screens, states, which API route each one uses).
-28. App shell, API client, TanStack Query, sign-up and login for both roles.
+27. Spec: `auth-web.md` (done: login and sign-up screens, session, guards) and `web.md` (the other screens, states, which API route each one uses).
+28. Test, then code: `react-router` (approved), app shell, API client, TanStack Query `me`, guards, sign-up and login pages for both roles (`auth-web.md`, W-A1 to W-A20).
 29. Public event page and registration form (states: loading, error, full, already registered).
 30. Ticket page: code, status, place on the list, cancel button.
 31. Organizer: events list, create, reschedule, capacity, cancel event.
