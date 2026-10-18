@@ -8,6 +8,7 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import {
   OLGA,
+  backLinks,
   bodyOf,
   callsTo,
   deferred,
@@ -510,7 +511,7 @@ describe("W-R35: the camera is released (tests first)", () => {
 
   it("on a route change", async () => {
     const { tracks } = await withCamera();
-    fireEvent.click(main().getByRole("link", { name: "Back to registrations" }));
+    fireEvent.click(main().getByRole("link", { name: "Registrations" }));
     await waitFor(() => expect(location()).toMatch(/^\/registrations(\?|$)/));
     for (const track of tracks) expect(track.stop).toHaveBeenCalled();
     expect(scannerStop).toHaveBeenCalled();
@@ -738,11 +739,14 @@ describe("checkin-web.md W-C11: a check-in is counted once (test first)", () => 
   });
 });
 
-describe("design-alignment.md DA46: Back to registrations above the h1 in every state (test first)", () => {
+describe("design-alignment.md DA46: the Registrations back link above the h1 in every state (test first)", () => {
   function backLink(): HTMLElement {
-    const links = main().getAllByRole("link", { name: /^Back to/ });
+    const links = backLinks();
     expect(links).toHaveLength(1);
-    return main().getByRole("link", { name: "Back to registrations" });
+    const link = main().getByRole("link", { name: "Registrations" });
+    expect(links[0]).toBe(link);
+    expect(link.textContent).toBe("← Registrations");
+    return link;
   }
 
   function beforeHeading(link: HTMLElement) {

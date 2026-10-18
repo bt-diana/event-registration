@@ -1,6 +1,15 @@
 // Tests first (events-web.md): W-E17. Then W-E15, W-E16, W-E18, W-E20, W-E21 (public view).
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { ANN, OLGA, callsTo, deferred, json, mockFetch, renderApp } from "../auth/test-helpers";
+import {
+  ANN,
+  OLGA,
+  backLinks,
+  callsTo,
+  deferred,
+  json,
+  mockFetch,
+  renderApp,
+} from "../auth/test-helpers";
 import { formatDateTime } from "./format";
 import { EVENT_ID, publicEvent, type SamplePublicEvent } from "./test-helpers";
 
@@ -142,7 +151,7 @@ describe("W-E20 and W-E21: public view structure", () => {
     expect(main().getAllByRole("heading", { level: 1 }).length).toBe(1);
     expect(main().getByText("Open").textContent).toBe("Open");
     expect(main().queryAllByRole("link").map((link) => link.textContent)).toEqual([
-      "← Back to events",
+      "← Events",
       "Log in to register",
     ]);
   });
@@ -204,17 +213,17 @@ describe("W-E18: not found, loading and errors", () => {
 });
 
 describe("design-alignment.md DA39: the load error has a back link (test first)", () => {
-  it("logged out, the public view fails: Back to events goes to /, Retry stays", async () => {
+  it("logged out, the public view fails: the Events back link goes to /, Retry stays", async () => {
     mockFetch({
       "GET /auth/me": () => json(401, { error: "not_logged_in" }),
       [PUBLIC]: () => json(500, { error: "internal" }),
     });
     renderApp(`/event/${EVENT_ID}`);
     const heading = await screen.findByRole("heading", { level: 1, name: "Could not load this event" });
-    const back = main().getByRole("link", { name: "Back to events" });
+    const back = main().getByRole("link", { name: "Events" });
     expect(back.getAttribute("href")).toBe("/");
     expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(main().getAllByRole("link", { name: /^Back to/ })).toHaveLength(1);
+    expect(backLinks()).toEqual([back]);
     expect(main().getByRole("button", { name: "Retry" })).toBeTruthy();
   });
 });
@@ -223,11 +232,12 @@ describe("design-alignment.md DA38, DA40: back links of the public view", () => 
   it.each<[string, Partial<SamplePublicEvent>]>([
     ["open", {}],
     ["cancelled", { status: "cancelled", seats_left: 0 }],
-  ])("%s event: Back to events goes to /, above the eyebrow", async (_label, overrides) => {
+  ])("%s event: the Events back link goes to /, above the eyebrow", async (_label, overrides) => {
     await show(publicEvent(overrides));
-    const links = main().getAllByRole("link", { name: /^Back to/ });
+    const links = backLinks();
     expect(links).toHaveLength(1);
-    expect(links[0].textContent).toContain("Back to events");
+    expect(links[0]).toBe(main().getByRole("link", { name: "Events" }));
+    expect(links[0].textContent).toBe("← Events");
     expect(links[0].getAttribute("href")).toBe("/");
     const eyebrow = main().getByText("Event");
     expect(links[0].compareDocumentPosition(eyebrow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -245,7 +255,10 @@ describe("design-alignment.md DA38, DA40: back links of the public view", () => 
     });
     renderApp(`/event/${EVENT_ID}`);
     await screen.findByRole("heading", { level: 1, name: "Event not found" });
-    expect(main().getByRole("link", { name: "Go home" }).getAttribute("href")).toBe("/");
-    expect(main().queryAllByRole("link", { name: /^Back to/ })).toHaveLength(0);
+    // DA40, DA50: Go home has the back-link class but no arrow, so it is not a back link.
+    const home = main().getByRole("link", { name: "Go home" });
+    expect(home.getAttribute("href")).toBe("/");
+    expect(home.textContent).toBe("Go home");
+    expect(backLinks()).toHaveLength(0);
   });
 });

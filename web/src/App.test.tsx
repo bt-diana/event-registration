@@ -1,5 +1,13 @@
 import { screen, within } from "@testing-library/react";
-import { ANN, OLGA, json, mockFetch, renderApp } from "./auth/test-helpers";
+import {
+  ANN,
+  OLGA,
+  arrowLinksIn,
+  backLinks,
+  json,
+  mockFetch,
+  renderApp,
+} from "./auth/test-helpers";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -97,10 +105,6 @@ describe("App", () => {
 });
 
 describe("design-alignment.md DA47: no back link on top-level and auth screens", () => {
-  function backLinks() {
-    return within(screen.getByRole("main")).queryAllByRole("link", { name: /^Back to/ });
-  }
-
   it.each(["/", "/login", "/signup", "/organizer/login", "/organizer/signup"])(
     "%s, logged out",
     async (path) => {
@@ -136,5 +140,17 @@ describe("design-alignment.md DA47: no back link on top-level and auth screens",
     renderApp("/organizer");
     await screen.findByRole("heading", { level: 1, name: "Could not check your login" });
     expect(backLinks()).toHaveLength(0);
+  });
+});
+
+describe("design-alignment.md DA49, DA50: one back link in main, none in the header", () => {
+  it("create form: one back link in main with the D75 text, no arrow link in the header", async () => {
+    mockFetch({ "GET /auth/me": () => json(200, OLGA) });
+    renderApp("/organizer/events/new");
+    await screen.findByRole("heading", { level: 1, name: "Create event" });
+    const links = backLinks();
+    expect(links).toHaveLength(1);
+    expect(links[0].textContent).toBe("← Events");
+    expect(arrowLinksIn(screen.getByRole("banner"))).toHaveLength(0);
   });
 });

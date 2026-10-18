@@ -1,5 +1,5 @@
 // Shared helpers for the web tests: a fresh QueryClient, a MemoryRouter and a mock fetch.
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, useLocation } from "react-router";
 import type { ReactNode } from "react";
@@ -85,4 +85,19 @@ export function renderWith(ui: ReactNode, path: string) {
 
 export function renderApp(path: string) {
   return renderWith(<App />, path);
+}
+
+// design-alignment.md DA50: a back link is an `a.back-link` whose text starts with the
+// arrow ("Go home" has the class but no arrow, so it is not one). Default scope: `main`.
+export function backLinks(container: HTMLElement = screen.getByRole("main")): HTMLAnchorElement[] {
+  return Array.from(container.querySelectorAll<HTMLAnchorElement>("a.back-link")).filter((link) =>
+    (link.textContent ?? "").startsWith("←"),
+  );
+}
+
+// DA49: no back link in the header. The header has no `.back-link`, so any arrow link counts.
+export function arrowLinksIn(container: HTMLElement): HTMLAnchorElement[] {
+  return Array.from(container.querySelectorAll<HTMLAnchorElement>("a")).filter((link) =>
+    (link.textContent ?? "").includes("←"),
+  );
 }

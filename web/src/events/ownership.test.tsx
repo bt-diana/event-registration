@@ -1,8 +1,9 @@
 // Tests first (events-web.md): W-E2, W-E10, W-E11, W-E13, W-E14.
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import {
   ANN,
   OLGA,
+  backLinks,
   callsTo,
   deferred,
   json,
@@ -18,6 +19,10 @@ afterEach(() => {
 const LOGGED_OUT = () => json(401, { error: "not_logged_in" });
 const NOT_FOUND = () => json(404, { error: "not_found" });
 const OWN = `GET /events/${EVENT_ID}`;
+
+function main() {
+  return within(screen.getByRole("main"));
+}
 const PUBLIC = `GET /public/events/${EVENT_ID}`;
 
 function location(): string | null {
@@ -59,9 +64,8 @@ describe("W-E10 and W-E11: one link, the view follows the viewer", () => {
     expect(screen.getByText("Registered")).toBeTruthy();
     expect(screen.getByText("Seats left")).toBeTruthy();
     expect(screen.getByText("22")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Back to events" }).getAttribute("href")).toBe(
-      "/organizer",
-    );
+    expect(main().getByRole("link", { name: "Events" }).getAttribute("href")).toBe("/organizer");
+    expect(backLinks()).toHaveLength(1);
     expect(callsTo(fetch, OWN)).toBe(1);
     expect(callsTo(fetch, PUBLIC)).toBe(0);
   });
@@ -79,7 +83,8 @@ describe("W-E10 and W-E11: one link, the view follows the viewer", () => {
     expect(screen.getByText("25 of 25 seats left")).toBeTruthy();
     expect(screen.queryByText("Registered")).toBeNull();
     // The public view's back link goes to the public list, never to /organizer (DA38).
-    expect(screen.getByRole("link", { name: "Back to events" }).getAttribute("href")).toBe("/");
+    expect(main().getByRole("link", { name: "Events" }).getAttribute("href")).toBe("/");
+    expect(backLinks()).toHaveLength(1);
     expect(screen.queryByText("Event not found")).toBeNull();
     expect(screen.queryByText(/someone else|another organizer|not yours/i)).toBeNull();
     expect(callsTo(fetch, OWN)).toBe(1);
@@ -113,7 +118,8 @@ describe("W-E10 and W-E11: one link, the view follows the viewer", () => {
     expect(screen.getByText("Event")).toBeTruthy();
     expect(screen.getByText("Open")).toBeTruthy();
     // The public view's back link goes to the public list, never to /organizer (DA38).
-    expect(screen.getByRole("link", { name: "Back to events" }).getAttribute("href")).toBe("/");
+    expect(main().getByRole("link", { name: "Events" }).getAttribute("href")).toBe("/");
+    expect(backLinks()).toHaveLength(1);
     expect(callsTo(fetch, OWN)).toBe(0);
     expect(callsTo(fetch, PUBLIC)).toBe(1);
   });

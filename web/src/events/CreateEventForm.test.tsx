@@ -1,6 +1,15 @@
 // Tests first (events-web.md): W-E4, W-E6, W-E7.
-import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { OLGA, bodyOf, callsTo, deferred, json, mockFetch, renderApp } from "../auth/test-helpers";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import {
+  OLGA,
+  backLinks,
+  bodyOf,
+  callsTo,
+  deferred,
+  json,
+  mockFetch,
+  renderApp,
+} from "../auth/test-helpers";
 import { EVENT_ID, organizerEvent } from "./test-helpers";
 
 afterEach(() => {
@@ -291,13 +300,16 @@ describe("W-E9 and W-E20: network error or 5xx on create", () => {
 });
 
 describe("W-E20 and W-E21: page structure", () => {
-  it("has one h1 and a Back to events link", async () => {
+  // D75: the back link reads "← Events", accessible name exactly "Events" (DA36, DA50).
+  it("has one h1 and the Events back link above it", async () => {
     mockFetch({ "GET /auth/me": () => json(200, OLGA) });
     renderApp(PATH);
-    expect(await screen.findByRole("heading", { level: 1, name: "Create event" })).toBeTruthy();
+    const heading = await screen.findByRole("heading", { level: 1, name: "Create event" });
     expect(screen.getAllByRole("heading", { level: 1 }).length).toBe(1);
-    expect(screen.getByRole("link", { name: "Back to events" }).getAttribute("href")).toBe(
-      "/organizer",
-    );
+    const main = within(screen.getByRole("main"));
+    const back = main.getByRole("link", { name: "Events" });
+    expect(back.getAttribute("href")).toBe("/organizer");
+    expect(backLinks()).toEqual([back]);
+    expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

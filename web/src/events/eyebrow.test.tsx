@@ -50,8 +50,9 @@ describe("RE1: no role eyebrow in page content", () => {
     renderApp("/organizer/events/new");
     expect(await screen.findByRole("heading", { level: 1, name: "Create event" })).toBeTruthy();
     expectNoRoleWord();
-    const back = main().getByRole("link", { name: "Back to events" }).textContent ?? "";
-    expect(mainText().startsWith(`${back}Create event`)).toBe(true);
+    // D75: the back link text is "← Events" (name "Events").
+    expect(main().getByRole("link", { name: "Events" }).textContent).toBe("← Events");
+    expect(mainText().startsWith("← EventsCreate event")).toBe(true);
   });
 
   it("organizer event view: no Organizer eyebrow", async () => {

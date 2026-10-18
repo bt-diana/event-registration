@@ -1,6 +1,6 @@
 // events-web.md W-E10 (organizer view), W-E12, W-E20, W-E21 (organizer view links).
 import { act, fireEvent, screen, within } from "@testing-library/react";
-import { OLGA, callsTo, deferred, json, mockFetch, renderApp } from "../auth/test-helpers";
+import { OLGA, backLinks, callsTo, deferred, json, mockFetch, renderApp } from "../auth/test-helpers";
 import { formatDateTime } from "./format";
 import { EVENT_ID, organizerEvent } from "./test-helpers";
 
@@ -67,7 +67,7 @@ describe("W-E10: organizer view", () => {
 });
 
 describe("W-E20 and W-E21: organizer view structure and links", () => {
-  it("has one h1, Back to events and the share link as text", async () => {
+  it("has one h1, the Events back link and the share link as text", async () => {
     mockFetch({
       "GET /auth/me": () => json(200, OLGA),
       [OWN]: () => json(200, organizerEvent()),
@@ -76,9 +76,10 @@ describe("W-E20 and W-E21: organizer view structure and links", () => {
     await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
 
     expect(main().getAllByRole("heading", { level: 1 }).length).toBe(1);
-    expect(main().getByRole("link", { name: "Back to events" }).getAttribute("href")).toBe(
-      "/organizer",
-    );
+    const back = main().getByRole("link", { name: "Events" });
+    expect(back.getAttribute("href")).toBe("/organizer");
+    expect(back.textContent).toBe("← Events");
+    expect(backLinks()).toEqual([back]);
     const share = main().getByRole("link", { name: `/event/${EVENT_ID}` });
     expect(share.getAttribute("href")).toBe(`/event/${EVENT_ID}`);
     expect(main().getAllByRole("link").length).toBe(3);
@@ -146,17 +147,17 @@ describe("W-E12: loading and load errors", () => {
 });
 
 describe("design-alignment.md DA39: the load error has a back link (test first)", () => {
-  it("organizer, the owner view fails: Back to events goes to /organizer, Retry stays", async () => {
+  it("organizer, the owner view fails: the Events back link goes to /organizer, Retry stays", async () => {
     mockFetch({
       "GET /auth/me": () => json(200, OLGA),
       [OWN]: () => json(500, { error: "internal" }),
     });
     renderApp(`/event/${EVENT_ID}`);
     const heading = await screen.findByRole("heading", { level: 1, name: "Could not load this event" });
-    const back = main().getByRole("link", { name: "Back to events" });
+    const back = main().getByRole("link", { name: "Events" });
     expect(back.getAttribute("href")).toBe("/organizer");
     expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(main().getAllByRole("link", { name: /^Back to/ })).toHaveLength(1);
+    expect(backLinks()).toEqual([back]);
     expect(main().getByRole("button", { name: "Retry" })).toBeTruthy();
   });
 });

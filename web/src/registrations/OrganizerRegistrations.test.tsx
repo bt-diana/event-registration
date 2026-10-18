@@ -6,7 +6,16 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { useNavigate } from "react-router";
 import { App } from "../App";
-import { OLGA, callsTo, deferred, json, mockFetch, renderApp, renderWith } from "../auth/test-helpers";
+import {
+  OLGA,
+  backLinks,
+  callsTo,
+  deferred,
+  json,
+  mockFetch,
+  renderApp,
+  renderWith,
+} from "../auth/test-helpers";
 import { formatDateTime } from "../events/format";
 import { EVENT_ID, organizerEvent } from "../events/test-helpers";
 import {
@@ -93,7 +102,7 @@ function goToScan() {
 
 // Scan screen link back to /registrations.
 function goToList() {
-  fireEvent.click(main().getByRole("link", { name: "Back to registrations" }));
+  fireEvent.click(main().getByRole("link", { name: "Registrations" }));
 }
 
 function cellsOf(row: HTMLElement): string[] {
@@ -566,11 +575,13 @@ describe("checkin-web.md W-C10: a failed return request of the list", () => {
   });
 });
 
-describe("design-alignment.md DA44: Back to events on the registrations page", () => {
+describe("design-alignment.md DA44: the Events back link on the registrations page", () => {
   function expectBackToEvents() {
-    const links = main().getAllByRole("link", { name: /^Back to/ });
+    const links = backLinks();
     expect(links).toHaveLength(1);
-    const link = main().getByRole("link", { name: "Back to events" });
+    const link = main().getByRole("link", { name: "Events" });
+    expect(links[0]).toBe(link);
+    expect(link.textContent).toBe("← Events");
     expect(link.getAttribute("href")).toBe("/organizer");
     const heading = main().getByRole("heading", { level: 1, name: "Registrations" });
     expect(link.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

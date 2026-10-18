@@ -4,7 +4,16 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { App } from "../App";
-import { ANN, OLGA, callsTo, deferred, json, mockFetch, renderApp } from "../auth/test-helpers";
+import {
+  ANN,
+  OLGA,
+  backLinks,
+  callsTo,
+  deferred,
+  json,
+  mockFetch,
+  renderApp,
+} from "../auth/test-helpers";
 import { formatDateTime } from "../events/format";
 import { EVENT_ID, publicEvent, type SamplePublicEvent } from "../events/test-helpers";
 import { drawQr } from "./qr";
@@ -297,19 +306,16 @@ describe("W-R27: no network for the QR", () => {
 });
 
 describe("design-alignment.md DA40-DA43: the ticket page back link", () => {
-  function backLinks() {
-    return main().queryAllByRole("link", { name: /^Back to/ });
-  }
-
   it.each<[string, SampleRegistration]>([
     ["registered", registration()],
     ["waitlisted", registration({ status: "waitlisted", waitlist_position: 3 })],
     ["cancelled", registration({ status: "cancelled" })],
     ["checked in", registration({ checked_in_at: "2030-01-01T09:55:00.000Z" })],
-  ])("%s: Back to event goes to the event, above the h1", async (_case, mine) => {
+  ])("%s: the Event back link goes to the event, above the h1", async (_case, mine) => {
     await ticketPage(ok(publicEvent()), ok(mine));
     expect(backLinks()).toHaveLength(1);
-    const link = main().getByRole("link", { name: "Back to event" });
+    const link = main().getByRole("link", { name: "Event" });
+    expect(link.textContent).toBe("← Event");
     expect(link.getAttribute("href")).toBe(`/event/${EVENT_ID}`);
     const heading = main().getByRole("heading", { level: 1, name: "Your ticket" });
     expect(link.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -321,7 +327,7 @@ describe("design-alignment.md DA40-DA43: the ticket page back link", () => {
     await ticketPage(() => json(500, { error: "internal" }), ok(registration()));
     expect(main().getByRole("alert").textContent).toBe("Could not load your ticket");
     expect(backLinks()).toHaveLength(1);
-    expect(main().getByRole("link", { name: "Back to event" }).getAttribute("href")).toBe(
+    expect(main().getByRole("link", { name: "Event" }).getAttribute("href")).toBe(
       `/event/${EVENT_ID}`,
     );
     expect(main().getByRole("button", { name: "Retry" })).toBeTruthy();
