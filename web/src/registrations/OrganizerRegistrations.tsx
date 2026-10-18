@@ -87,12 +87,18 @@ export function OrganizerRegistrations() {
     <section className="list-page registrations-page" data-role="organizer">
       <div className="list-head">
         <h1>Registrations</h1>
-        <Link
-          to={`/registrations/scan?event=${encodeURIComponent(chosen.id)}`}
-          className="button-link"
-        >
-          Check in attendees
-        </Link>
+        {/* design-alignment.md DA13: the chosen event's page, no request of its own. */}
+        <div className="list-head-actions">
+          <Link to={`/event/${encodeURIComponent(chosen.id)}`} className="text-link">
+            Open event page
+          </Link>
+          <Link
+            to={`/registrations/scan?event=${encodeURIComponent(chosen.id)}`}
+            className="button-link"
+          >
+            Check in attendees
+          </Link>
+        </div>
       </div>
       <EventSelect events={events.data} value={chosen.id} onChange={choose} />
       {/* The list's own 404 text is the page's one "Event not found" (W-C9). */}

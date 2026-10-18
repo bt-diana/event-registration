@@ -322,10 +322,11 @@ function CameraArea({
           <p className="scan-camera-text">Point the camera at the ticket QR code.</p>
         </>
       );
+    // The four camera problems are alerts (design-alignment.md DA18).
     case "other":
       return (
         <>
-          <p role="status" className="scan-camera-text">
+          <p role="alert" className="scan-camera-text">
             {CAMERA_TEXT.other}
           </p>
           <button type="button" className="button-secondary scan-start" onClick={onStart}>
@@ -335,7 +336,7 @@ function CameraArea({
       );
     default:
       return (
-        <p role="status" className="scan-camera-text">
+        <p role="alert" className="scan-camera-text">
           {CAMERA_TEXT[camera]}
         </p>
       );

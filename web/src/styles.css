@@ -489,6 +489,23 @@ a:hover {
   margin-bottom: 24px;
 }
 
+/* "Open event page" and "Check in attendees" (design-alignment.md DA13). */
+.list-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+}
+
+/* A plain 15px 600 accent link, at least 44 px high. */
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
 .table-card {
   background: var(--surface);
   border: 1px solid var(--border);
