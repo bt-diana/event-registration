@@ -192,7 +192,7 @@ describe("W-R21: the other states", () => {
     screenAt("/registrations", { [EVENTS]: () => events.promise, [FIRST]: () => list.promise });
     expect((await main().findByRole("status")).textContent).toBe("Loading...");
     await act(async () => events.resolve(json(200, EVENT_LIST)));
-    expect(main().getByLabelText("Event")).toBeTruthy();
+    expect(await main().findByLabelText("Event")).toBeTruthy();
     expect(main().getByRole("status").textContent).toBe("Loading...");
     await act(async () => list.resolve(json(200, { registrations: [OLGA_ROW] })));
     expect(await main().findByText("Olga Test")).toBeTruthy();

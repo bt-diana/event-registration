@@ -757,6 +757,42 @@ a:hover {
   image-rendering: pixelated;
 }
 
+/* Organizer registrations and scan screens (W-R20, W-R29): the event selector. */
+.field select {
+  width: 100%;
+  height: 48px;
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 16px;
+}
+
+.field select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.event-select {
+  max-width: 440px;
+  margin-bottom: 24px;
+}
+
+.table-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.table-code {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
 .ticket-qr-hint {
   margin: 8px 0 0;
   color: var(--text-muted);

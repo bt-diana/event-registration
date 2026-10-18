@@ -9,12 +9,27 @@ import {
   publicEventKey,
   statusOf,
 } from "../events/queries";
-import { getMyRegistration, register, type Registration } from "./api";
+import { getMyRegistration, listEventRegistrations, register, type Registration } from "./api";
 
 // Keyed by the account, so a second account in the same tab never sees the first
 // one's ticket (W-R23).
 export const registrationKey = (meId: string, eventId: string) =>
   ["registration", meId, eventId] as const;
+
+export const eventRegistrationsKey = (eventId: string) =>
+  ["event-registrations", eventId] as const;
+
+// The organizer list of one event (W-R20); runs once an event is chosen. A 401/403
+// re-checks me and the guard decides (W-R13).
+export function useEventRegistrations(eventId: string | null) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: eventRegistrationsKey(eventId ?? ""),
+    queryFn: () => authCheckedCall(queryClient, () => listEventRegistrations(eventId ?? "")),
+    enabled: eventId !== null,
+    ...QUERY_OPTIONS,
+  });
+}
 
 // The caller's registration for one event; null means "not registered" (W-R3).
 // Runs only for a logged-in attendee, so logged-out viewers and organizers make no
