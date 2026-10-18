@@ -25,3 +25,16 @@ Started 18-10 20:44 +06.
 **What Claude did.** The `spec-writer` agent wrote `docs/specs/header-events-link.md` (HB1-HB10): the link is first in the right group of the header, hidden while `me` loads, `aria-current="page"` on an exact match, outlined style `button-link-secondary`. Test first: HB2 (route per role), HB3 (pending, 401, 5xx), HB5 (exact match). Five open questions with recommendations. Added the line to `ROADMAP.md` and the link to `README.md`. Used Agent, Bash.
 
 **Decision.** None.
+
+## Step 3: the link always opens `/`
+
+**Prompt** (20:50 +06, text cleaned)
+
+> the link should just open / route
+
+**What Claude did.** Changed `docs/specs/header-events-link.md`: `href` is `/` for everyone (HB2), the button is shown while `me` loads and does not read `me` (HB3), `aria-current` only on `/` (HB5), the role map `EVENTS_LINK` removed. An organizer reaches `/organizer` through the existing W-L8 redirect. Open questions went from five to four. Updated the line in `ROADMAP.md`. Used Read, Bash.
+
+**Decision.**
+
+### D59: the header link always opens `/`
+20:50:49 +0600. Replaces the per-role target of D58 (`/organizer` for organizers). Reason: the user asked for the link to just open `/`.
