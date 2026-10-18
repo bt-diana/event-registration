@@ -49,3 +49,18 @@ Started 18-10 18:00 +06.
 
 ### D43: QR code and scanning are in the scope of the registration web spec
 18:18:08 +0600. The user wants the ticket to show a QR code for check-in and the organizer to scan it from their view. Reason: check-in by camera, not only by typing the code. The libraries and the check-in API are not decided yet (questions 9 and 10).
+
+## Step 5: card lists in the registration mock-ups
+
+**Prompt** (18:20 +06, text cleaned)
+
+> instead of a table, let's use the view like at https://claude.ai/artifact/Ca1zKGzeKDGuXHhn7J5L76#artboard-c784a0d983e3
+> update the registration mock-ups
+
+then:
+
+> leave the list of registered users as it was
+
+**What Claude did.** Could not map the artboard id to a file; used the card list of the new public events list board (`PubList`) as the model. The attendee list `/registrations/me` (board `RegLists`) is now a list of cards: title link, status badge, start, ticket code. After the second message the organizer list of registered people (`RegOrg`, and the organizer part of `RegLists`) is a table again, as before. Also removed the role eyebrow from the registration boards (RE1 in the spec). Updated S3 and S4 in `docs/specs/registration-web.md`. Used Artifact, Read, Edit, Bash.
+
+**Decision.** None.
