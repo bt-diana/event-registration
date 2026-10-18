@@ -899,6 +899,11 @@ a:hover {
   margin-top: 0;
 }
 
+/* The badge line box is already 24 px tall: a small margin keeps the code close to it. */
+.ticket-flat .ticket-code-block {
+  margin-top: 4px;
+}
+
 .ticket-page .ticket-code {
   font-size: 30px;
 }
