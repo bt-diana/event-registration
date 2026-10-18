@@ -14,7 +14,8 @@ import {
 
 // docs/specs/checkin.md (M5): POST /checkin, the check-in of a ticket at the
 // door (B6, C1-C14, C19), and GET /events/:id/registrations, the organizer
-// registrations list the arrivals counter is counted from (C1, C15-C19).
+// registrations list (C1, C15-C19). docs/specs/arrivals.md: GET
+// /events/:id/arrivals, the counts the arrivals counter reads (AR1-AR15).
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
