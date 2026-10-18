@@ -571,3 +571,160 @@ describe("HB9: accessibility", () => {
     await waitFor(() => expect(currentLocation()).toBe("/"));
   });
 });
+
+// Tests first (header-responsive.md, D65): HR1, HR2, HR3, HR4, HR6. Then HR5.
+const ROLE_LABEL: Record<"attendee" | "organizer", string> = {
+  attendee: "Attendee",
+  organizer: "Organizer",
+};
+const LOGGED_IN: ["attendee" | "organizer", () => Response][] = [
+  ["attendee", () => json(200, ANN)],
+  ["organizer", () => json(200, OLGA)],
+];
+
+// The account block of a logged-in person: the parent of the Main nav.
+function accountBlock(): HTMLElement {
+  const block = header().getByRole("navigation", { name: "Main" }).parentElement;
+  if (!block) throw new Error("no account block");
+  return block;
+}
+
+function accountInfo(): HTMLElement {
+  const info = accountBlock().querySelector<HTMLElement>(":scope > .account-info");
+  if (!info) throw new Error("no .account-info");
+  return info;
+}
+
+function focusables(): string[] {
+  return Array.from(
+    screen.getByRole("banner").querySelectorAll<HTMLElement>("a[href], button"),
+  ).map((element) => element.textContent ?? "");
+}
+
+describe("HR1: account block order: nav link, account info, Log out", () => {
+  it.each(LOGGED_IN)("%s: DOM order and Tab order", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    const children = Array.from(accountBlock().children);
+    expect(children).toHaveLength(3);
+    expect(children[0]).toBe(header().getByRole("navigation", { name: "Main" }));
+    expect(children[1].classList.contains("account-info")).toBe(true);
+    expect(children[2]).toBe(header().getByRole("button", { name: "Log out" }));
+    const link = within(header().getByRole("navigation", { name: "Main" })).getByRole("link");
+    expect(focusables()).toEqual([LOGO, link.textContent, "Log out"]);
+  });
+});
+
+describe("HR2: name and role are the only children of .account-info", () => {
+  it.each(LOGGED_IN)("%s: name first, then the role label", async (state, me) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    await meShown(state);
+    const children = Array.from(accountInfo().children);
+    expect(children).toHaveLength(2);
+    const [name, role] = children;
+    expect(name.textContent).toBe(state === "attendee" ? ANN.name : OLGA.name);
+    expect(role.textContent).toBe(ROLE_LABEL[state]);
+    expect(accountInfo().textContent).toBe(name.textContent + ROLE_LABEL[state]);
+    expect(["A", "BUTTON"]).not.toContain(role.tagName);
+    expect(role.getAttribute("role")).toBeNull();
+    expect(within(accountInfo()).queryByRole("link")).toBeNull();
+    expect(within(accountInfo()).queryByRole("button")).toBeNull();
+  });
+});
+
+describe("HR3: the full name in the text and in title", () => {
+  const LONG_NAME = `${"Alexandra ".repeat(7)}Konstantin`;
+  const LONG_WORD = "Konstantinopoulou".repeat(3).slice(0, 40);
+
+  it.each([
+    ["80 characters", LONG_NAME],
+    ["one word of 40 characters", LONG_WORD],
+    ["a short name", "Ann"],
+  ])("%s", async (_case, name) => {
+    mockFetch({ [ME]: () => json(200, { ...ANN, name }), ...SCREENS });
+    renderApp("/event/1");
+    await header().findByRole("button", { name: "Log out" });
+    const nameElement = accountInfo().children[0];
+    expect(nameElement.getAttribute("title")).toBe(name);
+    expect(nameElement.textContent).toBe(name);
+  });
+
+  it("the test names have the lengths of the spec", () => {
+    expect(LONG_NAME).toHaveLength(80);
+    expect(LONG_WORD).toHaveLength(40);
+    expect(LONG_WORD).not.toContain(" ");
+  });
+});
+
+describe("HR4: the log-out error after Log out, outside .account-info", () => {
+  it("failed log out: the alert follows the button and is not in .account-info", async () => {
+    mockFetch({
+      [ME]: () => json(200, ANN),
+      "POST /auth/users/logout": () => {
+        throw new TypeError("Failed to fetch");
+      },
+    });
+    renderApp("/");
+    fireEvent.click(await header().findByRole("button", { name: "Log out" }));
+    const alert = await header().findByRole("alert");
+    expect(alert.textContent).toBe("Could not log out. Try again.");
+    const button = header().getByRole("button", { name: "Log out" });
+    expect(button.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(accountInfo().contains(alert)).toBe(false);
+    expect(alert.closest(".account-info")).toBeNull();
+    expect(accountInfo().children[0].textContent).toBe("Ann");
+  });
+
+  it("pending log out: Logging out..., disabled, still after .account-info", async () => {
+    const answer = deferred<Response>();
+    mockFetch({ [ME]: () => json(200, ANN), "POST /auth/users/logout": () => answer.promise });
+    renderApp("/");
+    fireEvent.click(await header().findByRole("button", { name: "Log out" }));
+    const button = (await header().findByRole("button", {
+      name: "Logging out...",
+    })) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(accountBlock().children[2]).toBe(button);
+    expect(accountInfo().children[0].textContent).toBe("Ann");
+    await act(async () => {
+      answer.resolve(json(204));
+    });
+    expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
+  });
+});
+
+describe("HR6: no menu button", () => {
+  type MeCase = [string, () => Response | Promise<Response>, string[], string | null];
+  const CASES: MeCase[] = [
+    ["pending", () => deferred<Response>().promise, [], null],
+    ["logged out", loggedOut, [], "Account"],
+    ["5xx", () => json(500, { error: "internal" }), [], "Account"],
+    [
+      "network error",
+      () => {
+        throw new TypeError("Failed to fetch");
+      },
+      [],
+      "Account",
+    ],
+    ["attendee", () => json(200, ANN), ["Log out"], "Main"],
+    ["organizer", () => json(200, OLGA), ["Log out"], "Main"],
+  ];
+
+  it.each(CASES)("%s: buttons, aria-expanded and landmarks", async (state, me, buttons, nav) => {
+    mockFetch({ [ME]: me, ...SCREENS });
+    renderApp("/event/1");
+    if (state === "attendee") await meShown("attendee");
+    else if (state === "organizer") await meShown("organizer");
+    else if (state !== "pending") await meShown("logged out");
+    expect(screen.getAllByRole("banner")).toHaveLength(1);
+    expect(header().queryAllByRole("button").map((button) => button.textContent)).toEqual(buttons);
+    expect(screen.getByRole("banner").querySelectorAll("button")).toHaveLength(buttons.length);
+    expect(document.querySelector("[aria-expanded]")).toBeNull();
+    const navs = header().queryAllByRole("navigation");
+    expect(navs.map((element) => element.getAttribute("aria-label"))).toEqual(nav ? [nav] : []);
+    expect(logoLink().getAttribute("href")).toBe("/");
+  });
+});
