@@ -38,3 +38,24 @@ Started 18-10 20:44 +06.
 
 ### D59: the header link always opens `/`
 20:50:49 +0600. Replaces the per-role target of D58 (`/organizer` for organizers). Reason: the user asked for the link to just open `/`.
+
+## Step 4: organizers stay on `/`, login and logo open `/organizer`
+
+**Prompt** (20:53 +06, text cleaned)
+
+> leave orgs on / when clicking the new button
+> open /organizer by default when accessing the app from the login page
+> open /organizer when clicking the logo
+
+**What Claude did.** Checked the code: after login an organizer already goes to `HOME` (`/organizer`) and the organizer logo already links to `/organizer` (W-E22); only the redirect from `/` (W-L8) had to change. The `spec-writer` agent changed `events-public-list-web.md` (W-L7, W-L8, W-L9, assumptions, sections 2-7) and `header-events-link.md` (HB5-HB7, assumptions, manual check, questions: three left). The built redirect in `PublicEventsList.tsx` and its W-L8 test are not changed yet; they need a tests-first step. Updated `ROADMAP.md`. Used Bash, Grep, Agent.
+
+**Decision.**
+
+### D60: an organizer who opens `/` stays there and sees the public list
+20:53:38 +0600. Replaces the redirect of W-L8 (`events-public-list-web.md`). Reason: the user asked to leave organizers on `/` when they click the new button.
+
+### D61: after login the organizer opens `/organizer` by default
+20:53:38 +0600. Already the behaviour (`HOME` in `guards.tsx`); written down as a rule. Reason: the user asked for it.
+
+### D62: the logo opens `/organizer` for an organizer
+20:53:38 +0600. Already the behaviour (W-E22); only the new button is fixed to `/`. Reason: the user asked for it.
