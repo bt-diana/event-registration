@@ -47,3 +47,11 @@ Reason: the user kept the same package as the web ticket page over a pure-JS lib
 
 ### D78: no design canvas boards for the emails
 23:16 +0600. Reason: the user said the design is not needed; the emails follow `docs/brand.md` and the spec.
+
+## Step 5: build the templates and the QR
+
+**Prompt.** Same as step 4.
+
+**What Claude did.** The `code-writer` agent made four commits: `6bb34ff` build (`qr-creator` 1.0.0, `canvas` ^3.2.3, prebuilt binary, no native build), `b76b2b9` tests first, `0c17730` code (`templates.ts`, `qr.ts`, `message.ts`, transport and sender changes, `npm run email:preview`), `baa28ff` README, ROADMAP and DATABASE notes (34a and 34b marked done). I re-ran typecheck, lint and tests in `api/`: all green, 37 files, 631 passed, 2 todo. Choices the agent made on its own: `qr.ts` sets `globalThis.self` while qr-creator loads and `HTMLCanvasElement` while drawing, then restores both; the cancelled email's preheader is its first sentence (the intro is over 90 characters); the sender replaces html, text and body with `[content]` in error reasons (ET24); an unknown kind throws, so it is a failed try; the first test that builds a QR loads node-canvas slowly, so four test files build it in `beforeAll` with a 30 s limit. Not done: opening the preview files in a browser and one real delivery. Used Agent, Bash.
+
+**Decision.** None.
