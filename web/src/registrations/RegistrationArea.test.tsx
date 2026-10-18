@@ -620,13 +620,17 @@ describe("W-R23: the registration is cached per account", () => {
 // answer stored by the ticket page; registering again stays on the event page. No cancel
 // control on the event page.
 describe("W-CR9: the event page after a cancel on the ticket page", () => {
-  it("the cached cancelled answer: Registration cancelled and Register again", async () => {
+  // A waiting ticket on a full event, so the ticket page draws no QR (jsdom has no canvas).
+  it("the cached cancelled answer: Registration cancelled and Join waiting list", async () => {
     const reread = deferred<Response>();
     let n = 0;
     mockFetch({
       [ME]: () => json(200, ANN),
-      [PUBLIC]: () => json(200, publicEvent()),
-      [MY_REGISTRATION]: () => (n++ === 0 ? json(200, registration()) : reread.promise),
+      [PUBLIC]: () => json(200, publicEvent(FULL)),
+      [MY_REGISTRATION]: () =>
+        n++ === 0
+          ? json(200, registration({ status: "waitlisted", waitlist_position: 1 }))
+          : reread.promise,
       [`POST /events/${EVENT_ID}/registrations/me/cancel`]: () =>
         json(200, registration({ status: "cancelled" })),
     });
@@ -639,7 +643,7 @@ describe("W-CR9: the event page after a cancel on the ticket page", () => {
     expect(
       await main().findByRole("heading", { level: 2, name: "Registration cancelled" }),
     ).toBeTruthy();
-    expect(registerControls().map((b) => b.textContent)).toEqual(["Register again"]);
+    expect(registerControls().map((b) => b.textContent)).toEqual(["Join waiting list"]);
     expect(main().queryByRole("button", { name: "Cancel registration" })).toBeNull();
   });
 });

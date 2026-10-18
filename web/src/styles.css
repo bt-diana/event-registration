@@ -1196,6 +1196,44 @@ p.schedule-message[role="status"] {
   font-size: 15px;
 }
 
+/* The cancel section of the ticket page (cancel-registration-web.md W-CR2, W-CR12): under
+   the ticket, a 1 px border confirm box with 16 px padding and radius 8, buttons side by
+   side (stacked up to 520 px). No danger colour: secondary to open, primary to confirm. */
+.cancel-registration {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.cancel-message {
+  margin: 0;
+  align-self: stretch;
+}
+
+p.cancel-message[role="status"] {
+  font-weight: 600;
+}
+
+.cancel-message:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cancel-confirm {
+  align-self: stretch;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.cancel-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 /* Phone header (header-responsive.md D69, HR18, HR20, HR36, HR37), header only. Closed: one
    row, the logo left and the Menu button right; the drawer is off-screen and visibility: hidden,
    so its items are not on the screen, not in the Tab order and not in the accessibility tree.
@@ -1585,9 +1623,15 @@ p.schedule-message[role="status"] {
   /* DA28, DA33: buttons and button links inside a card are full width, 48 px. */
   .scan-start,
   .scan-next,
-  .registration-button {
+  .registration-button,
+  .cancel-registration-button {
     width: 100%;
     min-width: 0;
+  }
+
+  /* W-CR12: the confirm buttons stacked, full width. */
+  .cancel-confirm-actions {
+    flex-direction: column;
   }
 
   .card .button-link,

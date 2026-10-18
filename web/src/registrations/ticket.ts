@@ -82,6 +82,21 @@ export function showQr(
   );
 }
 
+// cancel-registration-web.md W-CR1: the ticket page shows "Cancel registration" only for a
+// registered or waiting ticket that is not checked in, on an active event that has not
+// started (the server's has_started, no browser clock). Otherwise nothing at all.
+export function canCancel(
+  registration: Pick<Registration, "status" | "checked_in_at">,
+  event: Pick<PublicEvent, "status" | "has_started">,
+): boolean {
+  return (
+    (registration.status === "registered" || registration.status === "waitlisted") &&
+    registration.checked_in_at === null &&
+    event.status === "active" &&
+    !event.has_started
+  );
+}
+
 // W-R18: the registration status on a row of the attendee list. The waiting place is in
 // the badge text; a cancelled row has no place (W-R40). A checked-in registered row reads
 // "Checked in" (W-R42).

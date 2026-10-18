@@ -141,3 +141,37 @@ export async function checkIn(ticketCode: string): Promise<CheckInResult> {
   }
   throw new ApiError(response.status);
 }
+
+// The answer of POST /events/{id}/registrations/me/cancel (cancel-registration-web.md
+// W-CR8, cancel-registration.md). A 200 (also a repeat) gives the cancelled registration.
+export type CancelConflict =
+  | "already_checked_in"
+  | "event_started"
+  | "event_passed"
+  | "event_cancelled";
+
+export type CancelResult =
+  | { outcome: "cancelled"; registration: Registration }
+  | { outcome: CancelConflict };
+
+const CANCEL_CONFLICTS = [
+  "already_checked_in",
+  "event_started",
+  "event_passed",
+  "event_cancelled",
+] as const;
+
+// POST with no body. A 200 and the four known 409 codes are results; anything else throws
+// ApiError (401, 403, 404, 5xx, an unknown 409; a network error is ApiError(0)).
+export async function cancelRegistration(eventId: string): Promise<CancelResult> {
+  const response = await request(`${path(eventId)}/me/cancel`, { method: "POST" });
+  if (response.ok) {
+    return { outcome: "cancelled", registration: (await response.json()) as Registration };
+  }
+  if (response.status === 409) {
+    const body = (await response.json().catch(() => ({}))) as { error?: unknown };
+    const conflict = CANCEL_CONFLICTS.find((code) => code === body.error);
+    if (conflict) return { outcome: conflict };
+  }
+  throw new ApiError(response.status);
+}

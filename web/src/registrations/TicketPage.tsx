@@ -1,13 +1,17 @@
 // The ticket page /registrations/me?event={id} (registration-web.md W-R11-W-R13).
-// Inside the attendee entry (W-R15). Both reads start together; no button here.
+// Inside the attendee entry (W-R15). Both reads start together. The one button is
+// "Cancel registration" (cancel-registration-web.md W-CR1-W-CR7; it supersedes W-R11 "no
+// button on this page"); registering again stays on the event page.
 // The QR of the ticket code is shown here only (W-R25). Only the registration status is
 // shown, no ticket heading and no event status; the ticket sits in the card (W-R38).
 // One exception (email-reminders-web.md W-EM30): a cancelled event adds the line "This
 // event has been cancelled.", from the public event already read. No role eyebrow (RE1).
 import { Link } from "react-router";
+import { useMe } from "../auth/session";
 import { BackLink, EventNotFound, Detail } from "../events/EventParts";
 import { formatDateTime } from "../events/format";
 import { isAuthError, statusOf, usePublicEvent } from "../events/queries";
+import { CancelRegistration } from "./CancelRegistration";
 import { QrCode } from "./QrCode";
 import { Badge } from "../events/StatusBadge";
 import { useMyRegistration } from "./queries";
@@ -15,6 +19,7 @@ import { showQr, ticketLabel } from "./ticket";
 import { TicketPanel } from "./TicketPanel";
 
 export function TicketPage({ eventId }: { eventId: string }) {
+  const me = useMe();
   const event = usePublicEvent(eventId);
   const mine = useMyRegistration(eventId, true);
   // DA41, DA42 (question 18): the event of the URL, so the error state has it too.
@@ -95,6 +100,13 @@ export function TicketPage({ eventId }: { eventId: string }) {
       <TicketPanel registration={mine.data} flat>
         {showQr(mine.data, event.data) && <QrCode code={mine.data.ticket_code} />}
       </TicketPanel>
+      {/* W-CR10: keyed by the account, so one account's message never shows for another. */}
+      <CancelRegistration
+        key={me.data?.id ?? ""}
+        registration={mine.data}
+        event={event.data}
+        eventId={eventId}
+      />
     </section>
   );
 }

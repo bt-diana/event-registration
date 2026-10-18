@@ -10,11 +10,13 @@ import {
   statusOf,
 } from "../events/queries";
 import {
+  cancelRegistration,
   checkIn,
   getMyRegistration,
   listEventRegistrations,
   listMyRegistrations,
   register,
+  type CancelResult,
   type CheckInResult,
   type Registration,
 } from "./api";
@@ -129,6 +131,51 @@ export function useCheckIn() {
       if (result.outcome !== "checked_in") return;
       await queryClient.cancelQueries({ queryKey: EVENT_ARRIVALS_KEY });
       void queryClient.invalidateQueries({ queryKey: EVENT_ARRIVALS_KEY });
+    },
+  });
+}
+
+// POST /events/{id}/registrations/me/cancel from the ticket page (cancel-registration-web.md
+// W-CR4-W-CR8). The mutation variable is the account id at click time, so the answer is
+// stored under the account that clicked (W-CR10). The section shows the texts itself.
+export function useCancelRegistration(eventId: string) {
+  const queryClient = useQueryClient();
+  const exact = (queryKey: readonly unknown[]) =>
+    void queryClient.invalidateQueries({ queryKey, exact: true });
+  return useMutation<CancelResult, Error, string>({
+    mutationFn: () => cancelRegistration(eventId),
+    onSuccess: (result, meId) => {
+      switch (result.outcome) {
+        case "cancelled":
+          // W-CR5, W-CR6: no extra GET. The other keys are only marked stale, so they are
+          // read on their next mount and the ticket page sends nothing now (W-CR11).
+          queryClient.setQueryData(registrationKey(meId, eventId), result.registration);
+          for (const queryKey of [myRegistrationsKey(meId), publicEventKey(eventId), PUBLIC_EVENTS_KEY]) {
+            void queryClient.invalidateQueries({ queryKey, exact: true, refetchType: "none" });
+          }
+          return;
+        // W-CR7: the page corrects itself from the server's answer.
+        case "already_checked_in":
+          exact(registrationKey(meId, eventId));
+          return;
+        case "event_started":
+        case "event_passed":
+          exact(publicEventKey(eventId));
+          return;
+        case "event_cancelled":
+          exact(publicEventKey(eventId));
+          exact(registrationKey(meId, eventId));
+          return;
+      }
+    },
+    onError: (error, meId) => {
+      // 401/403: me is read again and the guard decides (W-R13).
+      onApiError(queryClient, error);
+      // 404: the page shows "You have no ticket" or "Event not found" (W-R12).
+      if (statusOf(error) === 404) {
+        exact(registrationKey(meId, eventId));
+        exact(publicEventKey(eventId));
+      }
     },
   });
 }
