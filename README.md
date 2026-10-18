@@ -113,6 +113,17 @@ The demo runs on Render: https://event-registration-web-rmbi.onrender.com. The w
 
 **Known limit.** `onrender.com` is on the public suffix list, so the two `*.onrender.com` origins are different sites and the session cookie is a third-party cookie for the web. Browsers that block third-party cookies (Safari, Chrome with that setting on) do not keep the login. A custom domain with the web and the API on sibling subdomains of one domain (for example `app.example.com` and `api.example.com`) fixes it; nothing in the code needs to change for that. `SameSite=None` also drops the `Lax` defence from `auth.md`: the exact `CORS_ORIGIN` check and `HttpOnly` remain, and CSRF protection is out of scope.
 
+**What to put in `VITE_API_URL` for a built version.** The public URL of the API service, origin only: `https://<api>.onrender.com`. No path, no trailing slash. It must be set in the Static Site environment before the build; to build locally against that API put the same line in `web/.env` (copy `web/.env.example`). Empty means relative calls (the dev proxy). To check a deployed build, open the Network tab: the requests must go to the API address, not to the web address. If they go to the web address, the variable was not set at build time.
+
+**Deploy checklist.**
+
+1. Create the Render Postgres and copy its Internal Database URL into the API as `DATABASE_URL`.
+2. Run `npm run db:migrate` once against that database (the API does not apply migrations).
+3. Set the API variables (`COOKIE_SECRET`, `EMAIL_API_KEY`, `MAIL_FROM`, `NODE_ENV=production`) and deploy the API; copy its URL.
+4. Set `VITE_API_URL` to that URL on the Static Site and deploy it; copy the web URL.
+5. Set `CORS_ORIGIN` to the web URL on the API and redeploy the API.
+6. Add a rewrite of `/*` to `/index.html` on the Static Site, so a reload on a page such as `/events/:id` does not give a 404 `[TODO: confirm on Render]`.
+
 ### Demo logins
 
 Migration `005_seed_test_data.sql` adds test data: one organizer, five events on 20-24 October 2026 (the TypeScript Workshop on 21 October is full with two people waiting), eight attendees and their registrations. The addresses are placeholders with no mailbox, and no emails are sent for them. Every demo account uses the password `demo1234`.
@@ -268,6 +279,7 @@ api/                 backend (Express, TypeScript)
   test/              Vitest tests (auth/, db/, events/, registrations/, checkin/, email/)
   scripts/           preview-emails.ts (npm run email:preview)
 web/                 frontend (React, Vite, TypeScript)
+  .env.example       VITE_API_URL (copy to web/.env for a build against another API)
   src/main.tsx       QueryClientProvider, BrowserRouter, styles.css
   src/App.tsx        header and routes
   src/auth/          api.ts (fetch wrapper, VITE_API_URL base), session.ts (useMe and the login, sign-up and
