@@ -241,6 +241,47 @@ describe("W-R30: camera states (tests first: denied, no camera, insecure)", () =
   });
 });
 
+describe("design-alignment.md DA18: camera problems are alerts (test first)", () => {
+  it.each<[string, () => void, string]>([
+    [
+      "blocked",
+      () =>
+        setMediaDevices({
+          getUserMedia: () => Promise.reject(new DOMException("no", "NotAllowedError")),
+        }),
+      "Camera access is blocked. Allow the camera in your browser settings, or enter the code below.",
+    ],
+    [
+      "no camera",
+      () =>
+        setMediaDevices({
+          getUserMedia: () => Promise.reject(new DOMException("no", "NotFoundError")),
+        }),
+      "No camera found. Enter the code below.",
+    ],
+    [
+      "insecure",
+      () => setMediaDevices(undefined),
+      "The camera needs a secure connection (https or localhost). Enter the code below.",
+    ],
+    [
+      "other",
+      () =>
+        setMediaDevices({
+          getUserMedia: () => Promise.reject(new DOMException("busy", "NotReadableError")),
+        }),
+      "Could not start the camera.",
+    ],
+  ])("%s: the text has role alert", async (_case, setUp, text) => {
+    setUp();
+    await scanScreen();
+    fireEvent.click(main().getByRole("button", { name: "Start camera" }));
+    const problem = await main().findByText(text);
+    expect(problem.getAttribute("role")).toBe("alert");
+    expect(main().getByRole("alert").textContent).toBe(text);
+  });
+});
+
 describe("W-R31: decoded text is checked before any request (tests first)", () => {
   it("a URL: This is not a ticket code., no request, scanning goes on", async () => {
     const { fetch } = await withCamera();

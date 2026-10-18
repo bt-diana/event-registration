@@ -290,6 +290,53 @@ describe("W-R21: the other states", () => {
   });
 });
 
+describe("design-alignment.md DA13: the Open event page link (test first)", () => {
+  function eventLink(): HTMLElement {
+    return main().getByRole("link", { name: "Open event page" });
+  }
+
+  it("goes to the public page of the chosen event and follows the selector", async () => {
+    const fetch = screenAt("/registrations", {
+      [EVENTS]: ok(EVENT_LIST),
+      [FIRST]: rows(OLGA_ROW),
+      [SECOND]: rows(IVAN_ROW),
+    });
+    await main().findByText("Olga Test");
+    expect(eventLink().getAttribute("href")).toBe(`/event/${EVENT_ID}`);
+    fireEvent.change(main().getByLabelText("Event"), { target: { value: SECOND_EVENT_ID } });
+    await main().findByText("Ivan Test");
+    expect(eventLink().getAttribute("href")).toBe(`/event/${SECOND_EVENT_ID}`);
+    // The link sends no request of its own.
+    expect(fetch.mock.calls.filter(([input]) => String(input).startsWith("/event/"))).toEqual([]);
+  });
+
+  it("sits next to Check in attendees", async () => {
+    screenAt("/registrations", { [EVENTS]: ok(EVENT_LIST), [FIRST]: rows(OLGA_ROW) });
+    await main().findByText("Olga Test");
+    const checkIn = main().getByRole("link", { name: "Check in attendees" });
+    expect(eventLink().parentElement).toBe(checkIn.parentElement);
+  });
+
+  it("is not shown without events", async () => {
+    screenAt("/registrations", { [EVENTS]: ok({ events: [] }) });
+    await main().findByText("You have no events yet.");
+    expect(main().queryByRole("link", { name: "Open event page" })).toBeNull();
+  });
+
+  it("is not shown while the events load", async () => {
+    const events = deferred<Response>();
+    screenAt("/registrations", { [EVENTS]: () => events.promise });
+    expect((await main().findByRole("status")).textContent).toBe("Loading...");
+    expect(main().queryByRole("link", { name: "Open event page" })).toBeNull();
+  });
+
+  it("is not shown when the events fail", async () => {
+    screenAt("/registrations", { [EVENTS]: () => json(500, { error: "internal" }) });
+    expect((await main().findByRole("alert")).textContent).toBe("Could not load registrations");
+    expect(main().queryByRole("link", { name: "Open event page" })).toBeNull();
+  });
+});
+
 describe("W-R22: one h1, a real table", () => {
   it("has one h1 and the table has column headers", async () => {
     screenAt("/registrations", { [EVENTS]: ok(EVENT_LIST), [FIRST]: rows(OLGA_ROW) });
