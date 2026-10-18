@@ -85,3 +85,13 @@ A running event still accepts registrations until it ends (same as `registration
 **What Claude did.** Read `event-description.md` (API only; it says the web part goes into `events-web.md`). Updated `events-web.md`: the create form has an optional "Description" textarea (W-E4, W-E5, field table, `validateDescription`, canvas boards), and new W-E23 shows the description as plain text with line breaks under the title on the organizer and public views, nothing when empty, not on the list. Mockup: description textarea with a "too long" error on the create board; description text on the organizer and public event boards. Used Read, Bash, Artifact (publish).
 
 **Decision.** None.
+
+## Step 8: implementation (web steps 11 and 12)
+
+**Prompt** (cleaned)
+
+> start implementation
+
+**What Claude did.** Sent the `code-writer` agent to build the description API (`event-description.md`). It stopped without changes: another session was writing M3 code in `api/` (same files: `events/routes.ts`, `openapi.yaml`). So the description API is waiting. Sent a second `code-writer` run for the web screens in `web/` (steps 11 and 12, tests first): commits `5b08cc1` (tests), `8981092` (role eyebrow tests), `26d245b` (events list and create form), `e703432` (event page, organizer and public views). 265 web tests, typecheck and lint pass; `verify.sh` and the real-API manual check were not run. The web accepts a missing `description` until the API step lands. Used Agent, Bash.
+
+**Decision.** None.
