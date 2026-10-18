@@ -103,3 +103,11 @@ Started 18-10 21:10 +06.
 **What Claude did.** Compared PubListPhone and RegScan with `styles.css` (Read). Moved the one `@media (max-width: 520px)` block (it only had the event card rules; the header has its own 640 px block) to the end of the file, so it wins over the scan and registration rules written after it, and added: `.page` padding 16 px (D71); `.page > * { min-width: 0 }` so a 640 px table scrolls in its card and not the page (DA21, DA29); `h1` 30 px and 16 px under the list and scan headings (DA23); `.card` padding 20 px (DA24); 12 px between event cards (DA25); `min-width: 0` on fields (DA27); full-width "Start camera", "Scan next", "Try again", "Register" and button links in cards, stacked result buttons with an 8 px gap (DA28, DA33); stacked `.list-head` (DA30); full-width event selector (DA29, DA32); ticket code 24 px (DA31). Outside the block: `overflow-wrap: anywhere` on `h1`, table cells and the scan result name (DA26). DA34 already holds (`.details` needs 424 px of content width for two columns; at 390 px the card content is 318 px). DA32's order "back link, then `h1`" comes with spec step 11 (DA46). Web tests: all pass except `Header.test.tsx` (another agent's tests-first drawer commit `2c29224`, its code is not in yet); typecheck and lint pass (Bash). **Hand check at 320 and 390 px: not done**, this agent has no browser; every DA21-DA34 row still needs it.
 
 **Decision.** None.
+
+## Step 11: build the spec, step 9 (brand.md; canvas not updated)
+
+**Prompt** (same as step 2)
+
+**What Claude did.** `docs/brand.md`: a "Ticket code" row in the type table (monospace stack, 600, 0.12em, the sizes of DA10 and DA31), the phone page padding (D71) and the phone values of section 2, the shared "Error box" next to the form error box, and the "Not decided yet" list brought up to date (Edit through a short script, Bash). The design canvas (section 8: redraws and new phone boards) was **not** updated: this agent has no tool to edit the claude.ai artifact, so it is left for an agent that has one.
+
+**Decision.** None.

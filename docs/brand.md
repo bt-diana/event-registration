@@ -36,12 +36,14 @@ Plain and calm, a tool for forms and lists. One card on a light gray-green groun
 | Eyebrow (role name) | Public Sans | 13px, 600, uppercase, letter spacing 0.08em, accent colour |
 | Hint, links, nav | Public Sans | 15px (nav and links 600) |
 | Field error | Public Sans | 14px, error colour |
+| Ticket code | `ui-monospace, Menlo, monospace` | 600, letter spacing 0.12em; 30px on the ticket page (24px up to 520px), 20px in the event page panel, 24px in the scan result, 18px in the typed-code field (`design-alignment.md` DA10) |
 
 Both from Google Fonts. Fallback: `system-ui, sans-serif`.
 
 ## Layout and shape
 
-- Page: header on top, then the content centred, padding `64px 16px`. Only a fluid width, so it works at phone width.
+- Page: header on top, then the content centred, padding `64px 16px` (`16px` on all sides up to 520px, D71). Only a fluid width, so it works at phone width.
+- Phone (up to 520px, `design-alignment.md` section 2): `h1` 30px, card padding 20px, 12px between event cards, buttons in a card full width, only tables scroll sideways.
 - Header (`specs/header-responsive.md`, D65, D66): white, 1px bottom border, padding `8px 40px` (`8px 16px` up to 640px), not sticky. The logo links to `/`. Logged out: Log in, Sign up, For organizers (For attendees on `/organizer` pages). Logged in, three groups in this order: the nav link ("My events" / "My registrations"), the account info (name 15px 400 `text`, one line with an ellipsis, then the role label), Log out (link look). Over 640px: one row, no menu button, a 1px `border` divider 28px high between the nav link and the account info. Up to 640px: one row with the logo and a Menu button on the right (44 x 44px, 1px `border`, radius 8px, three-bar icon in `text`, border in the role accent when open, `aria-label="Menu"`). The button opens a panel in the page flow under that row (1px `border` line on top, padding `8px 0`) with the items stacked, each at least 44px high: the nav link, a 1px `border` horizontal line, the account info left and Log out right; logged out, the three links one under the other. The log-out error is its own row below. Nav link and Log out hover in the role accent.
 - Card: white, 1px border, radius 12px, padding 32px, max width 440px (520px for message pages).
 - Spacing: 20px between fields, 24px between the intro and the form, 8px between label and input groups.
@@ -54,6 +56,7 @@ Both from Google Fonts. Fallback: `system-ui, sans-serif`.
 - **Primary button:** 48px high, full width in a form, accent background, white 16px 600 text, radius 8. Disabled and relabelled while a request is pending (`auth-web.md` W-A12).
 - **Secondary button:** same size, white background, 1px `border-input`, dark text.
 - **Form error box:** above the form, padding `12px 14px`, `error-tint` background, 1px `error` border, radius 8, `role="alert"`.
+- **Error box** (screens: load errors, camera problems, scan refusals, registration errors; `design-alignment.md` section 3): padding `10px 12px`, `error-tint` background, 2px `error` border, radius 8, `error-text-on-tint` text. Retry next to it is the secondary button.
 - **Links:** accent colour, 600 when they are actions ("Sign up", "I organize events"). The switch to the other role is a link under a divider.
 - **Eyebrow:** the role name ("Attendee", "Organizer") above the title in the role accent, only on the login and sign-up forms. Pages for logged-in people have no role eyebrow; the role is in the header (`role-eyebrow.md` RE1) and the `h1` is the first line. The public event page uses "Event". "Wrong account" uses the dark error colour.
 
@@ -91,5 +94,4 @@ Table (events list): white card with 1px border and radius 12, header cells 14px
 ## Not decided yet
 
 - Dark theme (out of scope in `auth-web.md`).
-- The ticket and check-in screens.
-- The design canvas is still missing organizer sign-up, the loading and error states board, and the phone view.
+- The design canvas is still missing organizer sign-up, the loading and error states board, and phone boards for every page except the public list and the scan screen (the phone values above are derived, `design-alignment.md` question 11).
