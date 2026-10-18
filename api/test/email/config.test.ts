@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readMailConfig } from "../../src/email/config.js";
 
 // The mail settings (email-reminders.md ER44-ER46, D59), tests first. Plain
@@ -28,17 +28,14 @@ describe("ER44: readMailConfig reads the two settings (tests first)", () => {
   });
 
   it("reads only the object it gets, not process.env", () => {
-    const saved = { key: process.env.EMAIL_API_KEY, from: process.env.MAIL_FROM };
-    process.env.EMAIL_API_KEY = "from-process-env";
-    process.env.MAIL_FROM = "process@example.com";
+    // vi.stubEnv replaces the values and restores them; the test never reads them.
+    vi.stubEnv("EMAIL_API_KEY", "from-process-env");
+    vi.stubEnv("MAIL_FROM", "process@example.com");
     try {
       expect(() => readMailConfig({})).toThrow(/EMAIL_API_KEY/);
       expect(readMailConfig({ EMAIL_API_KEY: KEY, MAIL_FROM: FROM })).toEqual({ apiKey: KEY, from: FROM });
     } finally {
-      if (saved.key === undefined) delete process.env.EMAIL_API_KEY;
-      else process.env.EMAIL_API_KEY = saved.key;
-      if (saved.from === undefined) delete process.env.MAIL_FROM;
-      else process.env.MAIL_FROM = saved.from;
+      vi.unstubAllEnvs();
     }
   });
 });
