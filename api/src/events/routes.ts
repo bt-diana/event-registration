@@ -5,7 +5,8 @@ import { deriveStatus, endsAt, MINUTE_MS, type StoredStatus } from "./status.js"
 
 // docs/specs/events.md (M2): POST /events, GET /events, GET /events/:id for the
 // owner, and GET /public/events/:id for anyone. The optional description is
-// docs/specs/event-description.md (DS1-DS13).
+// docs/specs/event-description.md (DS1-DS13). GET /public/events is
+// docs/specs/events-public-list.md (PL1-PL11).
 
 const MAX_TITLE = 200;
 const MAX_DESCRIPTION = 2000;
@@ -194,6 +195,17 @@ function publicShape(row: EventRow, now: Date) {
   };
 }
 
+// Public list item: the public shape without description, the ten keys picked
+// (events-public-list.md PL5). Every listed event is active, so seats_left and
+// full come from the normal rule.
+function publicListItem(row: EventRow, now: Date) {
+  const { id, title, starts_at, ends_at, duration_minutes, capacity, status, has_started, seats_left, full } =
+    publicShape(row, now);
+  return { id, title, starts_at, ends_at, duration_minutes, capacity, status, has_started, seats_left, full };
+}
+
+const PUBLIC_LIST_LIMIT = 100;
+
 export function eventsRouter(pool: pg.Pool): Router {
   const router = Router();
 
@@ -231,6 +243,20 @@ export function eventsRouter(pool: pg.Pool): Router {
     );
     if (rows.length === 0) return fail(res, 404, "not_found");
     res.status(200).json(organizerShape(rows[0], now));
+  });
+
+  // No guard, no query parameters (PL1, PL8). One `now` per request, passed to
+  // the query so the filter and the derived fields agree (PL2). The path has no
+  // param, so it never matches /public/events/:id (PL11).
+  router.get("/public/events", async (_req: Request, res: Response) => {
+    const now = new Date();
+    const { rows } = await pool.query<EventRow>(
+      `${SELECT_WITH_COUNT}
+       WHERE e.status <> 'cancelled' AND e.starts_at + make_interval(mins => e.duration_minutes) > $1
+       GROUP BY e.id ORDER BY e.starts_at ASC, e.id ASC LIMIT ${PUBLIC_LIST_LIMIT}`,
+      [now],
+    );
+    res.status(200).json({ events: rows.map((row) => publicListItem(row, now)) });
   });
 
   // No guard: the cookie is ignored (E11).

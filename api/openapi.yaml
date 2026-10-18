@@ -17,6 +17,10 @@ info:
     An event has an optional plain-text `description` (docs/specs/event-description.md):
     sent on create, answered in both event shapes, `""` when there is none.
 
+    The public list (docs/specs/events-public-list.md): `GET /public/events` lists
+    the events that are not cancelled and not ended, soonest first, at most 100,
+    without `description`.
+
     The two registration routes (milestone M3, docs/specs/registration.md): a
     logged-in attendee registers for an event and reads their own registration.
     Registering runs in one transaction that locks the event row, so seats are never
@@ -230,6 +234,44 @@ paths:
           $ref: "#/components/responses/WrongRole"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /public/events:
+    get:
+      tags: [public]
+      operationId: listPublicEvents
+      summary: The events that can still be joined
+      description: |
+        No login; the cookie is ignored, so every caller gets the same answer
+        (docs/specs/events-public-list.md). Lists only events that are not cancelled
+        and not ended (`now < starts_at + duration_minutes` on the server clock, one
+        `now` per request): upcoming and running events, full ones too. Ordered by
+        `starts_at`, then `id`. At most 100 events, no pagination; any query string
+        is ignored. No event qualifies: `{ "events": [] }`. A cancelled or passed
+        event is still answered by `GET /public/events/{id}`.
+      security: []
+      responses:
+        "200":
+          description: The listed events, possibly none.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events]
+                additionalProperties: false
+                properties:
+                  events:
+                    type: array
+                    maxItems: 100
+                    items:
+                      $ref: "#/components/schemas/PublicListItem"
+        "500":
+          description: Database failure.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: internal
 
   /public/events/{id}:
     get:
@@ -534,6 +576,44 @@ components:
         full:
           type: boolean
           description: True when `seats_left` is 0 and `status` is `active` (a closed event is not full).
+    PublicListItem:
+      type: object
+      required: [id, title, starts_at, ends_at, duration_minutes, capacity, status, has_started, seats_left, full]
+      additionalProperties: false
+      description: |
+        One item of `GET /public/events`: the public event without `description`.
+        Exactly these keys. No organizer, no registrations.
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+          description: UTC, for example `2030-01-01T10:00:00.000Z`.
+        ends_at:
+          type: string
+          format: date-time
+          description: "`starts_at` plus `duration_minutes`, UTC."
+        duration_minutes:
+          type: integer
+        capacity:
+          type: integer
+        status:
+          type: string
+          enum: [active]
+          description: Always `active` (cancelled and passed events are not listed).
+        has_started:
+          type: boolean
+          description: "`starts_at <= now`; true while the event runs."
+        seats_left:
+          type: integer
+          description: "`capacity` minus the registered count, never below 0."
+        full:
+          type: boolean
+          description: True when `seats_left` is 0. A full event is listed (its waiting list is open).
     Registration:
       type: object
       required: [id, event_id, status, ticket_code, waitlist_position, checked_in_at, created_at]
