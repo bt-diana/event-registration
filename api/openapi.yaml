@@ -1,0 +1,309 @@
+openapi: 3.0.3
+info:
+  title: Event registration API - accounts and login
+  version: 0.1.0
+  description: |
+    Hand-written description of the auth routes (milestone M1, docs/specs/auth.md).
+    All bodies are JSON. Errors use the body { "error": "<code>" }; the status is
+    fixed by the spec, the codes may be refined.
+
+    Login is one signed cookie named `session` (cookie-parser), valid 7 days,
+    httpOnly, sameSite=lax, secure only when NODE_ENV=production. Its signed value is
+    `<role>.<id>.<expiresAtMs>`; the server checks the expiry itself. Logout only
+    clears the cookie in the browser: a copy stays valid until it expires (no
+    sessions table). sameSite=lax is the only CSRF defence.
+servers:
+  - url: http://localhost:3000
+tags:
+  - name: attendees
+    description: Routes under /auth/users (role `user`).
+  - name: organizers
+    description: Routes under /auth/organizers (role `organizer`).
+  - name: session
+    description: Routes for either role.
+
+paths:
+  /auth/users/signup:
+    post:
+      tags: [attendees]
+      operationId: signupUser
+      summary: Create an attendee account and log in
+      security: []
+      requestBody:
+        $ref: "#/components/requestBodies/Signup"
+      responses:
+        "201":
+          $ref: "#/components/responses/AccountWithCookie"
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "409":
+          $ref: "#/components/responses/EmailTaken"
+  /auth/users/login:
+    post:
+      tags: [attendees]
+      operationId: loginUser
+      summary: Log in as an attendee
+      security: []
+      requestBody:
+        $ref: "#/components/requestBodies/Login"
+      responses:
+        "200":
+          $ref: "#/components/responses/AccountWithCookie"
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "401":
+          $ref: "#/components/responses/InvalidCredentials"
+  /auth/users/logout:
+    post:
+      tags: [attendees]
+      operationId: logoutUser
+      summary: Clear the login cookie
+      description: Answers 204 also when nobody is logged in.
+      security: []
+      responses:
+        "204":
+          $ref: "#/components/responses/LoggedOut"
+  /auth/users/me:
+    get:
+      tags: [attendees]
+      operationId: meUser
+      summary: The logged-in attendee, read from the database
+      security:
+        - session: []
+      responses:
+        "200":
+          $ref: "#/components/responses/Account"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/WrongRole"
+
+  /auth/organizers/signup:
+    post:
+      tags: [organizers]
+      operationId: signupOrganizer
+      summary: Create an organizer account and log in
+      security: []
+      requestBody:
+        $ref: "#/components/requestBodies/Signup"
+      responses:
+        "201":
+          $ref: "#/components/responses/AccountWithCookie"
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "409":
+          $ref: "#/components/responses/EmailTaken"
+  /auth/organizers/login:
+    post:
+      tags: [organizers]
+      operationId: loginOrganizer
+      summary: Log in as an organizer
+      security: []
+      requestBody:
+        $ref: "#/components/requestBodies/Login"
+      responses:
+        "200":
+          $ref: "#/components/responses/AccountWithCookie"
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "401":
+          $ref: "#/components/responses/InvalidCredentials"
+  /auth/organizers/logout:
+    post:
+      tags: [organizers]
+      operationId: logoutOrganizer
+      summary: Clear the login cookie
+      description: Answers 204 also when nobody is logged in.
+      security: []
+      responses:
+        "204":
+          $ref: "#/components/responses/LoggedOut"
+  /auth/organizers/me:
+    get:
+      tags: [organizers]
+      operationId: meOrganizer
+      summary: The logged-in organizer, read from the database
+      security:
+        - session: []
+      responses:
+        "200":
+          $ref: "#/components/responses/Account"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/WrongRole"
+
+  /auth/me:
+    get:
+      tags: [session]
+      operationId: me
+      summary: The logged-in account of either role
+      description: |
+        The role comes from the cookie and the row is loaded from the matching table
+        (users or organizers). Never answers 403 and never sets a cookie.
+      security:
+        - session: []
+      responses:
+        "200":
+          $ref: "#/components/responses/Account"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: session
+      description: |
+        Signed cookie set by signup and login. Value `<role>.<id>.<expiresAtMs>`,
+        signed with COOKIE_SECRET. A changed cookie, one signed with another secret,
+        or one past its 7 days counts as no login.
+
+  headers:
+    SetSessionCookie:
+      description: |
+        `session=s%3A<role>.<id>.<expiresAtMs>.<signature>; Max-Age=604800; Path=/;
+        Expires=<7 days>; HttpOnly; SameSite=Lax` (plus `Secure` when NODE_ENV=production).
+        Logging in as the other role replaces the cookie.
+      schema:
+        type: string
+    ClearSessionCookie:
+      description: "`session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`"
+      schema:
+        type: string
+
+  schemas:
+    Account:
+      type: object
+      required: [role, id, email, name]
+      additionalProperties: false
+      properties:
+        role:
+          type: string
+          enum: [user, organizer]
+          description: The cookie role, not the path word (`user` for /auth/users).
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          description: Stored trimmed and lowercased.
+        name:
+          type: string
+    SignupBody:
+      type: object
+      required: [email, name, password]
+      properties:
+        email:
+          type: string
+          description: |
+            Trimmed and lowercased before the check. Then: one `@`, text on both sides,
+            no spaces, at most 254 characters. A format check only; nothing is sent.
+          example: ann@mail.com
+        name:
+          type: string
+          description: Trimmed, then 1 to 100 characters.
+          example: Ann
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: Not trimmed. Stored only as an scrypt hash with a random salt.
+          format: password
+    LoginBody:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          description: Trimmed and lowercased before the lookup.
+        password:
+          type: string
+          format: password
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: invalid_input
+
+  requestBodies:
+    Signup:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SignupBody"
+    Login:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/LoginBody"
+
+  responses:
+    Account:
+      description: The account.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Account"
+    AccountWithCookie:
+      description: The account; the login cookie is set (201 on signup, 200 on login).
+      headers:
+        Set-Cookie:
+          $ref: "#/components/headers/SetSessionCookie"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Account"
+    LoggedOut:
+      description: The cookie is cleared. No body.
+      headers:
+        Set-Cookie:
+          $ref: "#/components/headers/ClearSessionCookie"
+    InvalidInput:
+      description: |
+        Bad body: bad JSON, not an object, or a field missing or not a string. On signup
+        also an invalid email, an empty or too long name, or a password outside 8-128
+        characters. Nothing is created and no cookie is set.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: invalid_input
+    InvalidCredentials:
+      description: Unknown email or wrong password; both give the same answer and no cookie.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: invalid_credentials
+    EmailTaken:
+      description: The email (after trimming and lowercasing) already has an account of this role. Nothing is created.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: email_taken
+    NotLoggedIn:
+      description: No cookie, or a changed, foreign-signed or expired one.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: not_logged_in
+    WrongRole:
+      description: Logged in, but with the other role.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: wrong_role

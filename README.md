@@ -4,7 +4,7 @@ A small service for event registration. An organizer creates an event with a lim
 
 This is my solution for Task 9. I built it together with an AI agent.
 
-> **Draft.** Nothing is built yet. `[TODO]` marks what I fill in during and after the build. The "Project status" section must only say what really works.
+> **Draft.** Only the database schema and accounts and login (milestone M1, API only) are built so far. `[TODO]` marks what I fill in during and after the build. The "Project status" section must only say what really works.
 
 ## Features
 
@@ -20,11 +20,11 @@ This is my solution for Task 9. I built it together with an AI agent.
 
 | Part | Choice |
 |---|---|
-| Backend | Node.js, TypeScript, Express, `pg`, Vitest |
+| Backend | Node.js, TypeScript, Express 5, `pg`, `cookie-parser`, Vitest |
 | Frontend | React, Vite, TypeScript, TanStack Query, Vitest |
-| Database | PostgreSQL 16 |
+| Database | PostgreSQL 18 (Windows service, port 5433) |
 | Email | Stub. Every email is saved in an `outbox` table and printed to the console |
-| Accounts | None. The organizer pages use one shared key from an environment variable `[TODO: confirm]` |
+| Accounts | Attendees and organizers sign up with email and password. Passwords are stored as an `scrypt` hash with a random salt (`node:crypto`). Login is one signed `session` cookie that lasts 7 days; no sessions table |
 
 The backend and the frontend are separate apps. They talk over HTTP, and the live counter uses server-sent events. The reasons for these choices are in the decisions in `sessions/`. The task allows stubs for external services, so email is not sent for real.
 
@@ -42,7 +42,9 @@ The backend and the frontend are separate apps. They talk over HTTP, and the liv
 
 ```bash
 # 1. PostgreSQL runs as a Windows service.
-#    Copy .env.example to .env and set DATABASE_URL.
+#    Copy .env.example to .env and set DATABASE_URL and COOKIE_SECRET
+#    (at least 32 random characters; the API refuses to start without it).
+#    Never commit .env.
 
 # 2. Backend
 cd api
@@ -65,17 +67,49 @@ Open the organizer screen in one browser tab and the check-in screen in another.
 ### Run the tests
 
 ```bash
-cd api && npm test      # runs against the real database
+cd api && npm test      # runs against the real database (each test file uses a throw-away schema)
+cd api && npm run typecheck && npm run lint
 cd web && npm test      # unit tests
+cd web && npm run typecheck && npm run lint
 cd web && npm run e2e   # two-browser test [TODO: confirm]
 ```
 
+### Environment
+
+| Variable | Used for |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string (port 5433) |
+| `PORT` | API port, default 3000 |
+| `COOKIE_SECRET` | Signs the login cookie. At least 32 characters, or the API does not start |
+| `NODE_ENV` | `production` makes the cookie `Secure` |
+
+The API reads the repository `.env` when `DATABASE_URL` or `COOKIE_SECRET` is not already set.
+
+## API
+
+Described in [api/openapi.yaml](api/openapi.yaml) (OpenAPI 3.0.3, hand-written). The behaviours are in [docs/specs/auth.md](docs/specs/auth.md). All bodies are JSON; errors are `{ "error": "<code>" }`.
+
+| Route | Answer |
+|---|---|
+| `POST /auth/users/signup`, `POST /auth/organizers/signup` | 201 `{ role, id, email, name }` and the cookie; 400 bad input; 409 email taken |
+| `POST /auth/users/login`, `POST /auth/organizers/login` | 200 `{ role, id, email, name }` and the cookie; 400 bad input; 401 wrong email or password (same answer for both) |
+| `POST /auth/users/logout`, `POST /auth/organizers/logout` | 204, cookie cleared |
+| `GET /auth/users/me`, `GET /auth/organizers/me` | 200 `{ role, id, email, name }`; 401 not logged in; 403 logged in with the other role |
+| `GET /auth/me` | 200 `{ role, id, email, name }` for either role; 401 not logged in |
+
+Later routes use the middleware in `api/src/auth/middleware.ts`: `authenticate` puts `req.user` or `req.organizer` on the request, and `requireUser` / `requireOrganizer` answer 401 (no login) or 403 (other role).
+
 ## Project structure
 
-Planned. `[TODO: update after the build]`
+Partly planned. `[TODO: update after the build]`
 
 ```
 api/                 backend (Express, TypeScript)
+  openapi.yaml       the API description (auth routes so far)
+  src/app.ts         createApp: JSON, cookie-parser, authenticate, routes
+  src/auth/          password hashing, session cookie, middleware, auth routes
+  src/db/            pool, migrator, migrations (SQL)
+  test/              Vitest tests (auth/, db/)
 web/                 frontend (React, Vite, TypeScript)
 ROADMAP.md           the order of work, milestones and steps
 sessions/            the work log: one markdown file per session
@@ -119,10 +153,11 @@ All of these are automatic tests. `[TODO: fill the Status column with real resul
 
 `[TODO: fill in honestly after the build. Do not copy the plan here.]`
 
-- **Works:** `[TODO]`
+- **Works:** the database schema and migrator. Accounts and login (API only, M1): sign-up, login, logout and "me" for attendees and organizers, `GET /auth/me` for either role, the signed 7-day cookie (expiry checked on the server), and the `authenticate`, `requireUser` and `requireOrganizer` middleware. Behaviours A1-A19 of `docs/specs/auth.md` have tests in `api/test/auth/` and `api/test/app.test.ts`.
 - **Partly works:** `[TODO]`
-- **Does not work, or not done, and why:** `[TODO]`
-- **Known limits (expected, confirm after the build):** live updates use an in-process event stream, so only one server instance is supported. The reminder worker checks on a timer and uses the server clock. Email is a stub. There are no accounts.
+- **Does not work, or not done, and why:** events, registration, waiting list, check-in, emails, live updates and the web app are not built yet (milestones M2-M9 in `ROADMAP.md`).
+- **Known limits of the login:** logout only clears the cookie in the browser. A copy of the cookie stays valid until its 7 days end, because there is no sessions table (a test shows this). `sameSite=lax` is the only CSRF defence, which is not full protection (for example a hostile subdomain). No rate limiting, password reset or email verification.
+- **Known limits (expected, confirm after the build):** live updates use an in-process event stream, so only one server instance is supported. The reminder worker checks on a timer and uses the server clock. Email is a stub.
 - **Assumption:** the task does not say what happens to reminders after a reschedule. I assume one reminder per person per start time.
 
 ## How it was built
@@ -147,6 +182,8 @@ Why I chose this process is in decision D1 in [sessions/17-10-1532_research.md](
 - `sessions/*.md`: one file per session with its prompts and decisions (time, reason)
 - [ROADMAP.md](ROADMAP.md): the order of work, milestones and steps
 - [docs/specs/SPEC_TEMPLATE.md](docs/specs/SPEC_TEMPLATE.md): the template for feature specs (one spec per feature)
+- [docs/specs/DATABASE.md](docs/specs/DATABASE.md), [docs/specs/auth.md](docs/specs/auth.md), [docs/specs/auth-web.md](docs/specs/auth-web.md): the database schema, the accounts and login API, the login screens
+- [api/openapi.yaml](api/openapi.yaml): the API description (OpenAPI 3.0.3)
 - [docs/planning/build_plan.md](docs/planning/build_plan.md): the first build plan, out of date (Fastify, Docker); `ROADMAP.md` replaces it
 - [docs/research/sdd/summary.md](docs/research/sdd/summary.md): the research summary (the full report and sources are in the same folder)
 - [.claude/skills/audited-research/SKILL.md](.claude/skills/audited-research/SKILL.md): the skill I used for the research
@@ -171,7 +208,6 @@ I do not export the raw session files, only these markdown logs. The agent write
 
 - Send real emails instead of the outbox stub.
 - Add a message queue and a shared event stream, so more than one server instance works.
-- Add organizer accounts instead of one shared key.
 - Add a real ticket scanner (camera and QR code) next to code entry.
 - Send reminders in each participant's own time zone.
 
