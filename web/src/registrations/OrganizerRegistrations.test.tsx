@@ -256,3 +256,30 @@ describe("W-R22: one h1, a real table", () => {
     expect(main().getAllByRole("columnheader")).toHaveLength(6);
   });
 });
+
+// W-R21/W-R23: a login as another account replaces the cookie without a logout, so
+// the attendee names and emails of account A must never be shown to account B.
+describe("W-R23: the organizer list is keyed by the account", () => {
+  const OTTO = { ...OLGA, id: "2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f", email: "otto@mail.com", name: "Otto" };
+
+  it("after me changes to another organizer, no row of the first one is shown", async () => {
+    const second = deferred<Response>();
+    let n = 0;
+    const fetch = mockFetch({
+      [ME]: () => json(200, OLGA),
+      [EVENTS]: ok(EVENT_LIST),
+      [FIRST]: () => (n++ === 0 ? json(200, { registrations: [OLGA_ROW, IVAN_ROW] }) : second.promise),
+    });
+    const { queryClient } = renderApp("/registrations");
+    expect(await main().findByText("Olga Test")).toBeTruthy();
+    // Account B logs in (the login form only sets the me cache).
+    await act(async () => queryClient.setQueryData(["me"], OTTO));
+    await waitFor(() => expect(callsTo(fetch, FIRST)).toBe(2));
+    expect(screen.queryByText("Olga Test")).toBeNull();
+    expect(screen.queryByText("olga@example.com")).toBeNull();
+    expect(screen.queryByText("Ivan Test")).toBeNull();
+    await act(async () => second.resolve(json(200, { registrations: [] })));
+    expect(await main().findByText("No one has registered for this event yet.")).toBeTruthy();
+    expect(screen.queryByText("Olga Test")).toBeNull();
+  });
+});
