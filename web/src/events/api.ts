@@ -79,29 +79,41 @@ export async function createEvent(event: NewEvent): Promise<OrganizerEvent> {
 // A failed reschedule or cancel (email-reminders-web.md W-EM34): the status as ApiError,
 // plus `code`, the `error` string of the body ("" when the body is not JSON or has none),
 // so the 409 texts can tell event_cancelled, event_passed and event_started apart.
+// `registered` is the count a 409 capacity_below_registered carries (capacity-web.md
+// W-CP10): a whole number >= 0, else undefined.
 export class EventActionError extends ApiError {
   readonly code: string;
-  constructor(status: number, code: string) {
+  readonly registered?: number;
+  constructor(status: number, code: string, registered?: number) {
     super(status);
     this.name = "EventActionError";
     this.code = code;
+    this.registered = registered;
   }
 }
 
-async function errorCode(response: Response): Promise<string> {
+type ErrorBody = { code: string; registered?: number };
+
+async function errorBody(response: Response): Promise<ErrorBody> {
   try {
     const data: unknown = await response.json();
-    if (typeof data === "object" && data !== null && "error" in data) {
-      return typeof data.error === "string" ? data.error : "";
-    }
-    return "";
+    if (typeof data !== "object" || data === null) return { code: "" };
+    const code = "error" in data && typeof data.error === "string" ? data.error : "";
+    const registered =
+      "registered" in data && Number.isInteger(data.registered) && Number(data.registered) >= 0
+        ? Number(data.registered)
+        : undefined;
+    return { code, registered };
   } catch {
-    return "";
+    return { code: "" };
   }
 }
 
 async function actionAnswer(response: Response): Promise<OrganizerEvent> {
-  if (!response.ok) throw new EventActionError(response.status, await errorCode(response));
+  if (!response.ok) {
+    const { code, registered } = await errorBody(response);
+    throw new EventActionError(response.status, code, registered);
+  }
   return withDescription((await response.json()) as OrganizerEvent);
 }
 
@@ -119,6 +131,17 @@ export async function rescheduleEvent(id: string, startsAtIso: string): Promise<
 // POST /events/{id}/cancel (ER73-ER79): no body; answers the organizer event.
 export async function cancelEvent(id: string): Promise<OrganizerEvent> {
   const response = await request(`/events/${encodeURIComponent(id)}/cancel`, { method: "POST" });
+  return actionAnswer(response);
+}
+
+// POST /events/{id}/capacity (capacity.md CP1-CP24): the new capacity as a JSON number;
+// answers the organizer event with the new capacity, registered and seats_left.
+export async function setCapacity(id: string, capacity: number): Promise<OrganizerEvent> {
+  const response = await request(`/events/${encodeURIComponent(id)}/capacity`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ capacity }),
+  });
   return actionAnswer(response);
 }
 

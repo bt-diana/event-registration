@@ -18,6 +18,8 @@ import {
   listEvents,
   listPublicEvents,
   rescheduleEvent,
+  setCapacity,
+  EventActionError,
   type NewEvent,
   type OrganizerEvent,
 } from "./api";
@@ -112,11 +114,21 @@ function invalidateAfterChange(queryClient: QueryClient, id: string, cancelled: 
 }
 
 // A 401/403 re-checks me (W-E13); a 409 or 404 reads the event again, so the page shows
-// the real status or falls back to the public view (W-EM23, W-EM27).
-function onActionError(queryClient: QueryClient, id: string, error: unknown) {
+// the real status or falls back to the public view (W-EM23, W-EM27). With `conflicts`, a
+// 409 whose code is not in that list reads nothing again (capacity-web.md W-CP9).
+function onActionError(
+  queryClient: QueryClient,
+  id: string,
+  error: unknown,
+  conflicts?: readonly string[],
+) {
   onApiError(queryClient, error);
   const status = statusOf(error);
   if (status !== 409 && status !== 404) return;
+  if (status === 409 && conflicts) {
+    const code = error instanceof EventActionError ? error.code : "";
+    if (!conflicts.includes(code)) return;
+  }
   for (const queryKey of [eventKey(id), EVENTS_KEY, publicEventKey(id)]) {
     void queryClient.invalidateQueries({ queryKey, exact: true });
   }
@@ -153,6 +165,28 @@ export function useCancelEvent(id: string) {
       invalidateAfterChange(queryClient, id, true);
     },
     onError: (error) => onActionError(queryClient, id, error),
+  });
+}
+
+// The 409 codes of POST /events/{id}/capacity that read the event again (W-CP8, W-CP9).
+const CAPACITY_CONFLICTS = [
+  "capacity_below_registered",
+  "event_cancelled",
+  "event_passed",
+  "event_started",
+] as const;
+
+// POST /events/{id}/capacity (capacity-web.md W-CP6, W-CP7): the answer goes into the
+// event's entry; promoted people change status, so the same set as a cancel is invalidated.
+export function useSetCapacity(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation<OrganizerEvent, Error, number>({
+    mutationFn: (capacity) => setCapacity(id, capacity),
+    onSuccess: (answer) => {
+      queryClient.setQueryData(eventKey(id), answer);
+      invalidateAfterChange(queryClient, id, true);
+    },
+    onError: (error) => onActionError(queryClient, id, error, CAPACITY_CONFLICTS),
   });
 }
 

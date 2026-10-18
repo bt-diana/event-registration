@@ -1,10 +1,12 @@
 // /event/:id, no guard (W-E10, W-E11). One link for everyone: the owner sees the
 // organizer view, everybody else the public view. Waits for me before any event request.
 // The owner view is no longer read only (email-reminders-web.md M7 assumptions): while the
-// event is active and in the future it has the reschedule and cancel controls (W-EM16).
+// event is active and in the future it has the reschedule and cancel controls (W-EM16),
+// and the capacity form before them (capacity-web.md W-CP1).
 import { Link, useParams } from "react-router";
 import { useMe } from "../auth/session";
 import type { OrganizerEvent } from "./api";
+import { EventCapacity } from "./EventCapacity";
 import { EventSchedule } from "./EventSchedule";
 import { formatDateTime, formatDuration } from "./format";
 import { PublicEventView } from "./PublicEventPage";
@@ -40,8 +42,8 @@ function OwnerOrPublic({ id }: { id: string }) {
   return <OrganizerEventView event={query.data} />;
 }
 
-// Real numbers for every status (events.md E10). The M7 section sits between the
-// "Registrations" link and the share line (W-EM33).
+// Real numbers for every status (events.md E10). The capacity section (W-CP1) and then the
+// M7 section (W-EM33) sit between the "Registrations" link and the share line.
 function OrganizerEventView({ event }: { event: OrganizerEvent }) {
   const link = `/event/${event.id}`;
   return (
@@ -69,6 +71,7 @@ function OrganizerEventView({ event }: { event: OrganizerEvent }) {
         Registrations
       </Link>
       {/* Keyed by the event, so a message never carries over to another event's page. */}
+      <EventCapacity key={`capacity-${event.id}`} event={event} />
       <EventSchedule key={event.id} event={event} />
       <p className="share">
         Share link (same for everyone, others see the public view):{" "}

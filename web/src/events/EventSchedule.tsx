@@ -20,7 +20,8 @@ const TEXT = {
 };
 
 // 409 texts by the error code of the body (W-EM23, W-EM27); an unknown code is TEXT.failed.
-const RESCHEDULE_CONFLICT: Record<string, string> = {
+// Also the closed-event texts of the capacity form (capacity-web.md W-CP9).
+export const RESCHEDULE_CONFLICT: Record<string, string> = {
   event_cancelled: "This event is cancelled and cannot be changed.",
   event_passed: "This event has already ended and cannot be changed.",
   event_started: "This event has already started and cannot be changed.",
@@ -44,7 +45,8 @@ function conflictText(texts: Record<string, string>, error: unknown): string {
 }
 
 // W-EM16: only an active event that starts later than the browser clock at render time.
-function canChange(event: OrganizerEvent): boolean {
+// Also the rule of the capacity form (capacity-web.md W-CP1).
+export function canChange(event: OrganizerEvent): boolean {
   return event.status === "active" && Date.parse(event.starts_at) > Date.now();
 }
 

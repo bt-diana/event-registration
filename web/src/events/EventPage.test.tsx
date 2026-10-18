@@ -58,7 +58,8 @@ describe("W-E10: organizer view", () => {
 
   // email-reminders-web.md (M7 assumptions) supersedes "read only" for the owner view: an
   // active event in the future has the reschedule and cancel controls (W-EM16), nothing else.
-  it("has only the M7 buttons, and only for an active event in the future", async () => {
+  // capacity-web.md W-CP1 adds "Save capacity" before them.
+  it("has only the capacity and M7 buttons, and only for an active event in the future", async () => {
     mockFetch({
       "GET /auth/me": () => json(200, OLGA),
       [OWN]: () => json(200, organizerEvent()),
@@ -66,6 +67,7 @@ describe("W-E10: organizer view", () => {
     renderApp(`/event/${EVENT_ID}`);
     await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
     expect(main().queryAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Save capacity",
       "Reschedule",
       "Cancel event",
     ]);

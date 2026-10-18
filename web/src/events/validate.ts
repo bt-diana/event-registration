@@ -8,6 +8,9 @@ export const ERRORS = {
   start: "Choose a start in the future.",
   duration: "Enter whole minutes from 1 to 1440.",
   capacity: "Enter a whole number from 1 to 100000.",
+  // capacity-web.md W-CP3, W-CP8: the text holds the registered count.
+  capacityBelow: (registered: number) =>
+    `Capacity cannot be below ${registered} registered ${registered === 1 ? "person" : "people"}.`,
 };
 
 // Code points, as the API counts them.
@@ -44,4 +47,12 @@ export function validateDuration(value: string): string | null {
 
 export function validateCapacity(value: string): string | null {
   return wholeNumberIn(value, 1, 100000) ? null : ERRORS.capacity;
+}
+
+// W-CP3: not below the people already registered. A value that is not a whole number is
+// left to validateCapacity, which runs first.
+export function validateCapacityChange(value: string, registered: number): string | null {
+  const text = value.trim();
+  if (!/^[0-9]+$/.test(text)) return null;
+  return Number(text) < registered ? ERRORS.capacityBelow(registered) : null;
 }
