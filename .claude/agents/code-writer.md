@@ -14,5 +14,6 @@ You implement the event registration project (Task 9) by following `docs/specs/S
 - Stack: Node.js, TypeScript, Express, `pg`, Vitest in `api/`. React, Vite, TypeScript, TanStack Query, Vitest in `web/`. PostgreSQL through `docker compose`. Do not add libraries or tooling that are not in the spec. Ask first.
 - Do not call a step done before the tests, typecheck and linter pass.
 - If the spec is wrong or unclear, stop and say so. Do not change the spec yourself, and do not guess.
-- After each finished step, make one git commit with a short imperative message.
+- Work on a branch named `type/short-description` (lowercase, hyphens, same types as the commits, as in `.claude/CLAUDE.md`), one branch per step.
+- After each finished step, make one git commit that follows the Conventional Commits convention (`type(scope): description`, as in `.claude/CLAUDE.md`).
 - When you finish, say in a few lines what you changed, which commands you ran, and what is not done.

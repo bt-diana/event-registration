@@ -14,7 +14,8 @@ Read `docs/specs/SPEC.md` before you start. All specs are in `docs/specs/`. Deci
 
 ## History log (part of the task, please follow it)
 
-- After each finished step, make one git commit. Use a short message in the imperative, for example "Add waiting list promotion on cancel".
+- After each finished step, make one git commit. Follow the Conventional Commits convention: `type(scope): description`, with a type like `feat`, `fix`, `test`, `docs`, `refactor`, `build` or `chore`, a short scope when it helps, and a short imperative description in lowercase without a final period. For example `feat(api): promote first waiting person on cancel` or `test(api): add last-seat concurrency test`. Put a tests-first commit before the code commit that makes it pass.
+- Name branches `type/short-description` in lowercase with hyphens, using the same types as the commits, for example `feat/waiting-list`, `fix/double-checkin`, `test/last-seat` or `docs/readme`. Use one branch per step and merge it into `main` when the tests, typecheck and linter pass.
 - Each session has one file in `sessions/`, named `HHMM_short-name.md` (the start time, no date, because the task is finished in one day). Start it when the session starts. Write it as steps, in order. Each step has three parts: **Prompt** (with the time), **What Claude did** (short: what was done and which tools were used), and **Decision** (only if I made one, otherwise write "None"). Add each step to the file as soon as it is finished, not at the end of the session, so nothing is lost if the session stops.
 - A decision is written in its step: `### Dn: title`, the time with the UTC offset and no date (get it with `date +"%H:%M:%S %z"`) and a short reason. Use the next ID in the order of all session files. Do not rewrite old entries.
 - When you copy my prompts into the session file, fix spelling and grammar and keep the wording otherwise. Say that the text was cleaned.
