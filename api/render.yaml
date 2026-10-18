@@ -15,7 +15,10 @@ services:
     plan: free
     rootDir: api
     buildCommand: npm install --include=dev && npm run build
-    startCommand: npm start
+    # Applies the pending migrations, then starts the API. Safe on every start:
+    # with nothing to apply it prints "Nothing to apply". Includes the demo data
+    # of 005_seed_test_data.sql.
+    startCommand: npm run db:migrate && npm start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
