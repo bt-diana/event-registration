@@ -3,6 +3,7 @@ import { AuthForm } from "./auth/AuthForm";
 import { RedirectIfLoggedIn, RequireRole } from "./auth/guards";
 import { Header } from "./auth/Header";
 import { CreateEventForm } from "./events/CreateEventForm";
+import { EventPage } from "./events/EventPage";
 import { EventsList } from "./events/EventsList";
 
 // Public: no guard. A placeholder; there is no public list of events yet (events-web.md).
@@ -23,6 +24,8 @@ export function App() {
       <main className="page">
         <Routes>
           <Route path="/" element={<AttendeeHome />} />
+          {/* One link for everyone, no guard: the page picks its view from me (W-E10). */}
+          <Route path="/event/:id" element={<EventPage />} />
           <Route
             path="/login"
             element={

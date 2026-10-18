@@ -57,6 +57,12 @@ describe("W-A18: header", () => {
 });
 
 describe("W-E22: organizer look on every screen", () => {
+  // /event/1 is an unknown event: both views answer 404.
+  const EVENT_ROUTES = {
+    "GET /events/1": () => json(404, { error: "not_found" }),
+    "GET /public/events/1": () => json(404, { error: "not_found" }),
+  };
+
   function logo() {
     return header().getByRole("link", { name: "Event Registration" });
   }
@@ -81,7 +87,7 @@ describe("W-E22: organizer look on every screen", () => {
   });
 
   it.each(["/", "/event/1"])("organizer on %s: logo goes to /organizer with the organizer icon", async (path) => {
-    mockFetch({ "GET /auth/me": () => json(200, OLGA) });
+    mockFetch({ "GET /auth/me": () => json(200, OLGA), ...EVENT_ROUTES });
     renderApp(path);
     expect(await header().findByText("Olga")).toBeTruthy();
     expect(header().getByText("Organizer")).toBeTruthy();
@@ -91,7 +97,7 @@ describe("W-E22: organizer look on every screen", () => {
   });
 
   it.each(["/", "/event/1"])("attendee on %s: logo goes to / with the attendee icon", async (path) => {
-    mockFetch({ "GET /auth/me": () => json(200, ANN) });
+    mockFetch({ "GET /auth/me": () => json(200, ANN), ...EVENT_ROUTES });
     renderApp(path);
     expect(await header().findByText("Ann")).toBeTruthy();
     expect(logo().getAttribute("href")).toBe("/");
@@ -100,7 +106,7 @@ describe("W-E22: organizer look on every screen", () => {
   });
 
   it.each(["/", "/event/1"])("logged out on %s: logo goes to / with the attendee icon", async (path) => {
-    mockFetch({ "GET /auth/me": () => json(401, { error: "not_logged_in" }) });
+    mockFetch({ "GET /auth/me": () => json(401, { error: "not_logged_in" }), ...EVENT_ROUTES });
     renderApp(path);
     expect(await header().findByRole("link", { name: "Log in" })).toBeTruthy();
     expect(logo().getAttribute("href")).toBe("/");

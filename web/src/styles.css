@@ -474,3 +474,51 @@ a:hover {
   background: var(--badge-muted-tint);
   color: var(--badge-muted-text);
 }
+
+/* Event page (organizer and public view) */
+.event-status {
+  margin: 12px 0 24px;
+}
+
+/* The description is plain text; line breaks are kept (W-E23). */
+.event-description {
+  margin: 0 0 24px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px 24px;
+  margin: 0;
+}
+
+.details dt {
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.details dd {
+  margin: 2px 0 0;
+}
+
+.event-note {
+  margin: 24px 0 0;
+}
+
+.event-closed {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.share {
+  margin: 24px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}

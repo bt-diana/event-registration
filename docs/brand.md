@@ -80,6 +80,7 @@ Table (events list): white card with 1px border and radius 12, header cells 14px
 - **Textarea** (description): like the input, but `padding 12px 14px`, 5 rows, resizes vertically. Field order inside a field: label, input, error, hint.
 - **Button link** ("Create event" on the list): a link with the primary button look, 48px high, padding `0 20px`.
 - **Back link** ("Back to events"): a 15px 600 accent link with a left arrow, at least 44px high.
+- **Event page:** the badge under the `h1` (12px above, 24px below), then the description (plain text, `white-space: pre-wrap`), then the details `dl`. A closed public event shows "Capacity: N" and "Registration is closed." (15px `text-muted`) under the `dl`. The organizer view ends with the share link line: 15px `text-muted`, under a 1px `border` divider.
 
 ## Not decided yet
 
