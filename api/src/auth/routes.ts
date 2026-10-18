@@ -64,7 +64,22 @@ function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "23505";
 }
 
-// The four routes per role: signup, login, logout, me. One handler set for both.
+// Every account answer: { role, id, email, name }. Never password_hash.
+function answer(role: Role, row: Account): { role: Role } & Account {
+  return { role, id: row.id, email: row.email, name: row.name };
+}
+
+async function loadAccount(pool: pg.Pool, table: string, id: string): Promise<Account | undefined> {
+  const { rows } = await pool.query<Account>(`SELECT id, email, name FROM ${table} WHERE id = $1`, [id]);
+  return rows[0];
+}
+
+function tableFor(role: Role): string {
+  return ROLES.find((r) => r.role === role)!.table;
+}
+
+// The four routes per role (signup, login, logout, me), one handler set for
+// both, and GET /auth/me for either role.
 export function authRouter(pool: pg.Pool): Router {
   const router = Router();
 
@@ -89,7 +104,7 @@ export function authRouter(pool: pg.Pool): Router {
         throw error;
       }
       setSession(res, role, account.id);
-      res.status(201).json(account);
+      res.status(201).json(answer(role, account));
     });
 
     router.post(`${base}/login`, async (req: Request, res: Response) => {
@@ -104,7 +119,7 @@ export function authRouter(pool: pg.Pool): Router {
       const ok = await verifyPassword(input.password, row?.password_hash ?? DUMMY_HASH);
       if (!row || !ok) return fail(res, 401, "invalid_credentials");
       setSession(res, role, row.id);
-      res.status(200).json({ id: row.id, email: row.email, name: row.name });
+      res.status(200).json(answer(role, row));
     });
 
     router.post(`${base}/logout`, (_req: Request, res: Response) => {
@@ -112,17 +127,28 @@ export function authRouter(pool: pg.Pool): Router {
       res.status(204).end();
     });
 
+    // Role-specific: 403 for a cookie of the other role (A19).
     const guard = role === "user" ? requireUser : requireOrganizer;
     router.get(`${base}/me`, guard, async (req: Request, res: Response) => {
       const id = role === "user" ? req.user!.id : req.organizer!.id;
-      const { rows } = await pool.query<Account>(
-        `SELECT id, email, name FROM ${table} WHERE id = $1`,
-        [id],
-      );
-      if (!rows[0]) return fail(res, 401, "not_logged_in");
-      res.status(200).json(rows[0]);
+      const account = await loadAccount(pool, table, id);
+      if (!account) return fail(res, 401, "not_logged_in");
+      res.status(200).json(answer(role, account));
     });
   }
+
+  // Either role: the role comes from the cookie, the row from its table. Never 403.
+  router.get("/auth/me", async (req: Request, res: Response) => {
+    const session: { role: Role; id: string } | undefined = req.user
+      ? { role: "user", id: req.user.id }
+      : req.organizer
+        ? { role: "organizer", id: req.organizer.id }
+        : undefined;
+    if (!session) return fail(res, 401, "not_logged_in");
+    const account = await loadAccount(pool, tableFor(session.role), session.id);
+    if (!account) return fail(res, 401, "not_logged_in");
+    res.status(200).json(answer(session.role, account));
+  });
 
   return router;
 }
