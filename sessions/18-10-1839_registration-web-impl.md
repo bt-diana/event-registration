@@ -80,3 +80,20 @@ Started 18-10 18:39 +06.
 **What Claude did.** Gave the `spec-writer` agent the task. It wrote `docs/specs/checkin-web.md` (W-C1-W-C19): arrivals counter ("Arrived: 12 / 20 registered") counted from the organizer list, polled every 5 s, an "Arrival" column, stops and refetch after a check-in tested first. Claude marked roadmap step 27 done, reworded step 28 (the scan screen is already built from `registration-web.md`), and fixed W-R29 so it no longer says the event id goes to the check-in. Open questions 1-8 are not answered; the spec's recommended answers are: no counter on the event page, 5 s, refetch on tab focus, list polls, add the column. Pointer edits for W-R20 and W-R34 in `registration-web.md` are still to do. Used Agent (`spec-writer`), Bash.
 
 **Decision.** None.
+
+## Step 9: checkin-web spec reworked for the arrivals route
+
+**Prompt** (19:4x +06, text cleaned)
+
+> the new /checkin endpoint should serve the checking process
+> no need to poll the organizer list; after a new user is checked in, the organizer should stay on the checking page;
+> the list of registered users should be shown on the registrations page and the new API call should be performed on return; let's show the numbers on that page as well
+> I added a separate endpoint for the arrivals count: GET /events/:id/arrivals
+> update the spec
+
+**What Claude did.** Gave the `spec-writer` agent the decisions. It rewrote `docs/specs/checkin-web.md`: no polling (the interval and `arrivals.test.ts` are gone), the list and the arrivals counter are requested again on every return to `/registrations` (`staleTime: 0`, `refetchOnMount: "always"`), a successful check-in invalidates only `["event-arrivals"]` and the organizer stays on `/registrations/scan`, the counter uses `{ capacity, registered, arrived }` from `GET /events/:id/arrivals` and shows on both screens. It fixed the contradicting lines in `registration-web.md` (W-R20, W-R21, W-R23, the check-in call, out of scope). Open questions left: confirm "no polling", refetch on window focus (recommended no), keep the Arrival column, "Capacity: 25" vs "Seats: 25", empty page shows `0 / 0`, old rows visible during the refetch. Used Agent (`spec-writer`), Bash.
+
+**Decision.**
+
+### D50: no polling; list and arrivals counter reload on return to the registrations page
+19:45 +0600. The user wants the check-in to use `POST /checkin`, the organizer to stay on the check-in page after a check-in, no polling of the organizer list, and the list and the numbers (from the new `GET /events/:id/arrivals`) to be requested again when the organizer returns to `/registrations`. Reason: simpler than polling, and the data is fresh when it is looked at.
