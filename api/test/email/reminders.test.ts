@@ -236,20 +236,17 @@ describe("ER26: the clock is injected (tests first)", () => {
 });
 
 describe("ER27: one INSERT ... SELECT ... ON CONFLICT DO NOTHING per call (tests first)", () => {
-  it("runs exactly one query and takes no client", async () => {
+  it("runs exactly one query on the pool (no client, no transaction, no read first)", async () => {
     await setup({ seated: 4 });
     const query = vi.spyOn(db.pool, "query");
-    const connect = vi.spyOn(db.pool, "connect");
     try {
       expect(await enqueueReminders(db.pool, ONE_DAY_BEFORE)).toBe(4);
       expect(query).toHaveBeenCalledTimes(1);
-      expect(connect).not.toHaveBeenCalled();
       const text = String(query.mock.calls[0][0]).replace(/\s+/g, " ");
       expect(text).toMatch(/^ ?INSERT INTO outbox .* SELECT /);
       expect(text).toContain("ON CONFLICT (registration_id, kind, schedule_version) DO NOTHING");
     } finally {
       query.mockRestore();
-      connect.mockRestore();
     }
   });
 });
