@@ -182,3 +182,18 @@ Started 18-10 19:50 +06.
 
 ### D62: accept the recommendations of the open questions of `email-reminders.md` and `email-outbox.md`
 22:22:06 +0600. Batch size 5, keep `send_error`, database errors are not tries; `truncated` kept, all kinds by default, `invalid_status`, cap 200, code in `api/src/email/`, `registration_id` filter. Reason: the user said "implement" after the recommendations were listed.
+
+## Step 15: default worker period 1 h, local value 10 s
+
+**Prompt** (22:33 +06, text cleaned)
+
+> so, the email will be sent every 10 seconds?
+> let's also send an email when a person just registered for an event
+> also, set default worker interval to 1h; and set env variable to 10s
+
+**What Claude did.** Explained the 10 s timer (one reminder per person, not one email every 10 s). Found that the ticket email on registration is already built (B1, `ticket` outbox row), so the new sender sends it; no change. Changed the default of `EMAIL_JOB_INTERVAL_MS` in `docs/specs/email-reminders.md` (ER37 and the notes) to 3600000 and set `EMAIL_JOB_INTERVAL_MS=10000` in `.env.example` and in `.env` (appended one line; the file was not read). Told the running `code-writer` agent. Used Bash, SendMessage.
+
+**Decision.**
+
+### D63: the default period of the email job is 1 h; the local value is 10 s
+22:33:12 +0600. Code default 3600000 ms, `.env` and `.env.example` set 10000. Reason: the user asked for it. Effect: without the variable a ticket email can wait up to an hour.
