@@ -152,7 +152,6 @@ describe("W-R20: the registrations of the chosen event", () => {
       ["Name", "col"],
       ["Status", "col"],
       ["Arrival", "col"],
-      ["Ticket code", "col"],
       ["Registered", "col"],
       ["Emails", "col"],
     ]);

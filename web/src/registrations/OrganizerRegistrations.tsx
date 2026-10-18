@@ -109,7 +109,7 @@ export function OrganizerRegistrations() {
       <EventSelect events={events.data} value={chosen.id} onChange={choose} />
       {/* The list's own 404 text is the page's one "Event not found" (W-C9). */}
       {!listNotFound(list) && <ArrivalsCounter eventId={chosen.id} />}
-      <RegistrationsBody list={list} />
+      <RegistrationsBody list={list} eventId={chosen.id} />
     </section>
   );
 }
@@ -118,7 +118,7 @@ function listNotFound(list: List): boolean {
   return list.isError && statusOf(list.error) === 404;
 }
 
-function RegistrationsBody({ list }: { list: List }) {
+function RegistrationsBody({ list, eventId }: { list: List; eventId: string }) {
   if (list.isError && isAuthError(list.error)) return <Loading />;
   if (listNotFound(list)) {
     return (
@@ -156,13 +156,13 @@ function RegistrationsBody({ list }: { list: List }) {
               <th scope="col">Name</th>
               <th scope="col">Status</th>
               <th scope="col">Arrival</th>
-              <th scope="col">Ticket code</th>
               <th scope="col">Registered</th>
+              <th scope="col">Emails</th>
             </tr>
           </thead>
           <tbody>
             {data.map((registration) => (
-              <Row key={registration.id} registration={registration} />
+              <Row key={registration.id} registration={registration} eventId={eventId} />
             ))}
           </tbody>
         </table>
@@ -171,8 +171,16 @@ function RegistrationsBody({ list }: { list: List }) {
   );
 }
 
-function Row({ registration }: { registration: OrganizerRegistration }) {
+function Row({
+  registration,
+  eventId,
+}: {
+  registration: OrganizerRegistration;
+  eventId: string;
+}) {
   const label = ticketLabel(registration);
+  // email-reminders-web.md W-EM1: every row, the attendee's emails page; no request here.
+  const emails = `/registrations/${encodeURIComponent(registration.id)}/emails?event=${encodeURIComponent(eventId)}`;
   return (
     <tr>
       <td>{registration.attendee_name}</td>
@@ -183,8 +191,16 @@ function Row({ registration }: { registration: OrganizerRegistration }) {
       <td>
         <Arrival registration={registration} />
       </td>
-      <td className="table-code">{registration.ticket_code}</td>
       <td>{formatDateTime(registration.created_at)}</td>
+      <td>
+        <Link
+          to={emails}
+          className="text-link"
+          aria-label={`View emails of ${registration.attendee_name}`}
+        >
+          View emails
+        </Link>
+      </td>
     </tr>
   );
 }
