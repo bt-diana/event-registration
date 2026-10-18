@@ -213,11 +213,12 @@ export function ScanScreen({ submitCode }: Props) {
   if (events.isError) {
     return (
       <Shell>
-        <p role="alert" className="list-error">
+        {/* design-alignment.md DA14: the error box and a secondary Retry. */}
+        <p role="alert" className="error-box">
           Could not load events
         </p>
         <p className="intro">Check your connection and try again.</p>
-        <button type="button" className="button-primary" onClick={() => void events.refetch()}>
+        <button type="button" className="button-secondary" onClick={() => void events.refetch()}>
           Retry
         </button>
       </Shell>
@@ -248,12 +249,13 @@ export function ScanScreen({ submitCode }: Props) {
 
       <div className="scan-camera">
         <CameraArea camera={camera} videoRef={videoRef} onStart={() => void startCamera()} />
+        {/* DA19: inside the camera card, under the preview; scanning goes on. */}
+        {notTicket && (
+          <p role="alert" className="error-box">
+            This is not a ticket code.
+          </p>
+        )}
       </div>
-      {notTicket && (
-        <p role="alert" className="scan-not-ticket">
-          This is not a ticket code.
-        </p>
-      )}
 
       {(check.kind === "result" || check.kind === "failed") && (
         <ResultCard
@@ -322,11 +324,11 @@ function CameraArea({
           <p className="scan-camera-text">Point the camera at the ticket QR code.</p>
         </>
       );
-    // The four camera problems are alerts (design-alignment.md DA18).
+    // The four camera problems are alerts in the error box (design-alignment.md DA18).
     case "other":
       return (
         <>
-          <p role="alert" className="scan-camera-text">
+          <p role="alert" className="error-box">
             {CAMERA_TEXT.other}
           </p>
           <button type="button" className="button-secondary scan-start" onClick={onStart}>
@@ -336,7 +338,7 @@ function CameraArea({
       );
     default:
       return (
-        <p role="alert" className="scan-camera-text">
+        <p role="alert" className="error-box">
           {CAMERA_TEXT[camera]}
         </p>
       );
@@ -365,8 +367,9 @@ function ResultCard({
   onNext: () => void;
   onRetry: () => void;
 }) {
+  // DA20: Scan next is the primary button in every result; Try again is secondary.
   const next = (
-    <button type="button" className="button-secondary scan-next" onClick={onNext}>
+    <button type="button" className="button-primary scan-next" onClick={onNext}>
       Scan next
     </button>
   );
@@ -374,11 +377,11 @@ function ResultCard({
   if (check.kind === "failed") {
     return (
       <div role="alert" className="scan-result" data-tone="cancelled">
-        <h2 ref={headingRef} tabIndex={-1}>
+        <h2 ref={headingRef} tabIndex={-1} className="error-box">
           Something went wrong. Try again.
         </h2>
         <div className="scan-result-actions">
-          <button type="button" className="button-primary scan-next" onClick={onRetry}>
+          <button type="button" className="button-secondary scan-next" onClick={onRetry}>
             Try again
           </button>
           {next}
@@ -414,7 +417,7 @@ function ResultCard({
 
   return (
     <div role="alert" className="scan-result" data-tone="cancelled">
-      <h2 ref={headingRef} tabIndex={-1}>
+      <h2 ref={headingRef} tabIndex={-1} className="error-box">
         {REFUSED_TEXT[result.outcome]}
       </h2>
       {next}

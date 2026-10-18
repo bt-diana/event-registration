@@ -30,11 +30,12 @@ function Loading() {
 function LoadError({ onRetry }: { onRetry: () => void }) {
   return (
     <>
-      <p role="alert" className="list-error">
+      {/* design-alignment.md DA14: the error box and a secondary Retry. */}
+      <p role="alert" className="error-box status-gap">
         Could not load registrations
       </p>
       <p className="intro">Check your connection and try again.</p>
-      <button type="button" className="button-primary" onClick={onRetry}>
+      <button type="button" className="button-secondary" onClick={onRetry}>
         Retry
       </button>
     </>

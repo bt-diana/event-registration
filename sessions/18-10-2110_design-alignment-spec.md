@@ -50,3 +50,11 @@ Started 18-10 21:10 +06.
 
 ### D70: the "Back to events" link stays at the top of the organizer event page
 21:29:47 +0600. The link stays above the `h1` as built, the share line keeps its own divider; the OrgEvent board (link at the bottom) differs and is not followed. Reason: the user's choice.
+
+## Step 5: build the spec, step 4 (error box, DA14, DA19, DA20)
+
+**Prompt** (same as step 2)
+
+**What Claude did.** Compared RegOrg and RegScanStates with the code (Read). `styles.css`: `.registration-error` renamed to `.error-box` with the DA14 values (tint, 2 px `--error` border, radius 8, padding `10px 12px`, `--error-text-on-tint`), so the registration area uses the same box; `.scan-not-ticket` and the red border of a refused result card removed. `OrganizerRegistrations.tsx` ("Could not load registrations") and `ScanScreen.tsx` ("Could not load events"): error box and a secondary Retry. `ScanScreen.tsx`: the camera problems in the error box; "This is not a ticket code." inside the camera card under the preview; refused and failed results: the `h2` is the error box (same words, focus and `role` as built), Scan next primary, Try again secondary. No test changed. Web tests (700), typecheck and lint pass (Bash). The `docs/specs/design-alignment.md` edit in the working tree is the user's and was not committed.
+
+**Decision.** None.

@@ -759,12 +759,14 @@ a:hover {
   font-size: 15px;
 }
 
-.registration-error {
+/* The one error box (design-alignment.md section 3: DA14, DA18-DA20 and the
+   registration area): tint, 2 px error border, radius 8, padding 10px 12px. */
+.error-box {
   margin: 0;
-  padding: 12px 14px;
+  padding: 10px 12px;
   background: var(--error-tint);
   color: var(--error-text-on-tint);
-  border: 1px solid var(--error);
+  border: 2px solid var(--error);
   border-radius: 8px;
 }
 
@@ -1104,10 +1106,8 @@ a:hover {
   font-size: 15px;
 }
 
-.scan-not-ticket {
-  margin: 12px 0 0;
-  color: var(--error-text-on-tint);
-  font-weight: 600;
+.scan-camera .error-box {
+  align-self: stretch;
 }
 
 .scan-result {
@@ -1116,10 +1116,6 @@ a:hover {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-}
-
-.scan-result[data-tone="cancelled"] {
-  border-color: var(--error);
 }
 
 .scan-result h2 {
@@ -1134,6 +1130,14 @@ a:hover {
   font-family: var(--font-body);
   font-size: 18px;
   padding: 4px 14px;
+}
+
+/* A refused or failed result: the heading is the error box, in body text (DA20). */
+.scan-result h2.error-box {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .scan-result h2:focus-visible {

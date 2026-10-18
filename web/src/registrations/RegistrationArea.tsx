@@ -71,7 +71,7 @@ function AttendeeArea({ meId, event }: Props & { meId: string }) {
   if (mine.isError) {
     return (
       <div className="registration-area">
-        <p role="alert" className="registration-error">
+        <p role="alert" className="error-box">
           Could not load your registration
         </p>
         <button type="button" className="button-secondary" onClick={() => void mine.refetch()}>
@@ -116,12 +116,12 @@ function AttendeeArea({ meId, event }: Props & { meId: string }) {
         <p className="registration-hint">This event is full.</p>
       )}
       {errorStatus === 409 && !isClosed(publicStatus(event)) && (
-        <p role="alert" tabIndex={-1} ref={errorRef} className="registration-error">
+        <p role="alert" tabIndex={-1} ref={errorRef} className="error-box">
           Registration is closed.
         </p>
       )}
       {failed && (
-        <p role="alert" tabIndex={-1} ref={errorRef} className="registration-error">
+        <p role="alert" tabIndex={-1} ref={errorRef} className="error-box">
           Something went wrong. Try again.
         </p>
       )}
