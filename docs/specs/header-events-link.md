@@ -12,10 +12,10 @@ History: D58 and D59 added the "Watch all events" button, D62 gave the organizer
 
 | # | Behaviour | Test first? |
 |---|---|---|
-| HB1 | The header has exactly one logo link (role `link`, inside the `banner`), accessible name "Event Registration" (from its text; the icon has `alt=""`; no `aria-label`). It is a `Link`, not a `<button>`, and makes no request of its own. | |
+| HB1 | The header has exactly one logo link (role `link`, inside the `banner`, named "Event Registration"; the menu's "All events" link, `header-responsive.md` HR27, is a different link and is not a logo), accessible name "Event Registration" (from its text; the icon has `alt=""`; no `aria-label`). It is a `Link`, not a `<button>`, and makes no request of its own. | |
 | HB2 | The logo `href` is `/` in every state: logged out, attendee and organizer, on every route. It never depends on `me`. For an organizer it is no longer `/organizer`. | yes |
 | HB3 | The logo is shown at once with `href` `/`, also while `me` is pending, and stays the same element with the same `href` after `me` answers 200 (attendee or organizer), 401, a network error or 5xx. | yes |
-| HB4 | No "Watch all events" text anywhere: no link, no button, no `aria-label`, no title, on any route and in any state. | yes |
+| HB4 | No "Watch all events" text anywhere: no link, no button, no `aria-label`, no title, on any route and in any state. The logo is still the only link in the header ROW; the one exception is the "All events" link (a different text) inside the phone menu (D68, `header-responsive.md` HR27), which is hidden above 640 px. | yes |
 | HB5 | Current page: when the pathname is exactly `/`, the logo has `aria-current="page"` (no visual change); elsewhere it has no `aria-current`. `/event/1`, `/organizer` and `/organizer/events/new` do not count (exact match). Query string and hash are ignored. Holds for an organizer on `/` too. | yes |
 | HB6 | Clicking the logo from another screen goes to `/` (location changes; `GET /auth/me` count stays 1), for an organizer too: the location stays `/`, no redirect. Clicking it on `/` stays on the page and makes no request. | |
 | HB7 | An organizer who clicks the logo from `/organizer` stays on `/` and sees "Loading..." until `me`, then the public list in the organizer look, with one `GET /public/events` request (W-L8). The "My events" link (`href` `/organizer`) is still in the Main nav and opens `/organizer`. | |
