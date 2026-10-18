@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import cookieParser from "cookie-parser";
 import express from "express";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clearSession,
   readSession,
@@ -133,6 +133,81 @@ describe("session cookie (A2)", () => {
     expect(header).toBeDefined();
     expect(header).toMatch(/^session=;/);
     expect(header).toContain("Expires=Thu, 01 Jan 1970 00:00:00 GMT");
+  });
+});
+
+// api-base-url.md R5, R6: SameSite and Secure follow CORS_ORIGIN and NODE_ENV.
+describe("session cookie across sites (R5, R6)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  async function setParts(api: Running): Promise<string[]> {
+    const res = await setCookie(api, "user", randomUUID());
+    return sessionSetCookie(res)!.split(";").map((p) => p.trim());
+  }
+
+  async function clearParts(api: Running): Promise<string[]> {
+    const res = await fetch(`${api.url}/clear`, { method: "POST" });
+    return sessionSetCookie(res)!.split(";").map((p) => p.trim());
+  }
+
+  it("R5: CORS_ORIGIN set and production: SameSite=None and Secure, still httpOnly, 7 days, signed", async () => {
+    vi.stubEnv("CORS_ORIGIN", "https://web.example.com");
+    vi.stubEnv("NODE_ENV", "production");
+    const api = start();
+    const parts = await setParts(api);
+    expect(parts[0]).toMatch(/^session=s%3A/);
+    expect(parts).toContain("SameSite=None");
+    expect(parts).not.toContain("SameSite=Lax");
+    expect(parts).toContain("Secure");
+    expect(parts).toContain("HttpOnly");
+    expect(parts).toContain("Path=/");
+    expect(parts).toContain(`Max-Age=${SEVEN_DAYS_MS / 1000}`);
+  });
+
+  it("R5: clearSession uses the same options", async () => {
+    vi.stubEnv("CORS_ORIGIN", "https://web.example.com");
+    vi.stubEnv("NODE_ENV", "production");
+    const api = start();
+    const parts = await clearParts(api);
+    expect(parts[0]).toBe("session=");
+    expect(parts).toContain("SameSite=None");
+    expect(parts).toContain("Secure");
+    expect(parts).toContain("HttpOnly");
+    expect(parts).toContain("Path=/");
+  });
+
+  it("R6: CORS_ORIGIN set outside production: SameSite=Lax and not secure", async () => {
+    vi.stubEnv("CORS_ORIGIN", "https://web.example.com");
+    vi.stubEnv("NODE_ENV", "test");
+    const api = start();
+    for (const parts of [await setParts(api), await clearParts(api)]) {
+      expect(parts).toContain("SameSite=Lax");
+      expect(parts).not.toContain("Secure");
+      expect(parts).toContain("HttpOnly");
+    }
+  });
+
+  it("R6: CORS_ORIGIN unset in production: SameSite=Lax and Secure", async () => {
+    vi.stubEnv("CORS_ORIGIN", undefined);
+    vi.stubEnv("NODE_ENV", "production");
+    const api = start();
+    for (const parts of [await setParts(api), await clearParts(api)]) {
+      expect(parts).toContain("SameSite=Lax");
+      expect(parts).toContain("Secure");
+      expect(parts).toContain("HttpOnly");
+    }
+  });
+
+  it("R6: CORS_ORIGIN unset outside production: SameSite=Lax and not secure", async () => {
+    vi.stubEnv("CORS_ORIGIN", undefined);
+    vi.stubEnv("NODE_ENV", "test");
+    const api = start();
+    for (const parts of [await setParts(api), await clearParts(api)]) {
+      expect(parts).toContain("SameSite=Lax");
+      expect(parts).not.toContain("Secure");
+    }
   });
 });
 
