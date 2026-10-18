@@ -995,17 +995,38 @@ a:hover {
   image-rendering: pixelated;
 }
 
-/* Organizer registrations and scan screens (W-R20, W-R29): the event selector. */
+/* Organizer registrations and scan screens (W-R20, W-R29): the event selector.
+   Own chevron (design-alignment.md DA51-DA53, brand.md "Select"): the native arrow is
+   off and a 16 px chevron is the background, 12 px from the right edge. Right padding
+   36 px = 12 px inset + 16 px arrow + 8 px gap, so a long title is cut before it. */
 .field select {
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
   height: 48px;
-  padding: 0 12px;
-  background: var(--surface);
+  padding: 0 36px 0 12px;
+  background-color: var(--surface);
+  /* Stroke #101C1A is --text: a data URI cannot read a custom property or currentColor. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 6l4.5 4.5L12.5 6' fill='none' stroke='%23101C1A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px 16px;
   color: var(--text);
   border: 1px solid var(--border-input);
   border-radius: 8px;
   font-family: var(--font-body);
   font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* DA53: in forced colours the background image is dropped, so the system arrow is back. */
+@media (forced-colors: active) {
+  .field select {
+    -webkit-appearance: auto;
+    appearance: auto;
+  }
 }
 
 .field select:focus-visible {
