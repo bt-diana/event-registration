@@ -39,10 +39,10 @@ One document, kept short. The agent reads it before every step. Change it first 
 ## 3. Architecture decisions
 
 - **Apps:** `api/` (Express, TypeScript) and `web/` (React, Vite, TypeScript, TanStack Query). They talk over HTTP. `[TODO: confirm]`
-- **Database:** PostgreSQL 18, installed on Windows (port 5433), no Docker. The connection string is in `DATABASE_URL`. Three tables: `events`, `registrations` (one row is one ticket), `outbox`. Details in [DATABASE.md](DATABASE.md).
-- **Concurrency:** B4 uses `SELECT ... FOR UPDATE` on the event row, then count and insert. B5 uses `UNIQUE (registration_id, kind, event_starts_at)` on `outbox` with `ON CONFLICT DO NOTHING`. B6 uses a conditional `UPDATE ... WHERE checked_in_at IS NULL RETURNING`. B1 uses a partial unique index on `(event_id, email)`. See [DATABASE.md](DATABASE.md) section 3.
+- **Database:** PostgreSQL 18, installed on Windows (port 5433), no Docker. The connection string is in `DATABASE_URL`. Five tables: `organizers`, `users` (attendees), `events`, `registrations` (one row is one ticket), `outbox`. Details in [DATABASE.md](DATABASE.md).
+- **Concurrency:** B4 uses `SELECT ... FOR UPDATE` on the event row, then count and insert. B5 uses `UNIQUE (registration_id, kind, event_starts_at)` on `outbox` with `ON CONFLICT DO NOTHING`. B6 uses a conditional `UPDATE ... WHERE checked_in_at IS NULL RETURNING`. B1 uses a partial unique index on `(event_id, user_id)` (the user is found or created by email). See [DATABASE.md](DATABASE.md) section 3.
 - **Email:** `[TODO: stub, outbox table and console]`
-- **Organizer access:** `[TODO: shared key from an environment variable]`
+- **Organizer access:** organizers are rows in `organizers` with a login. Each event has an `organizer_id`, and an organizer can manage (cancel, reschedule, check in, see counters) only their own events; other organizers' events answer 404. Attendees have no login: a `users` row is found or created by email. Rules in [DATABASE.md](DATABASE.md) section 3.8. Password hashing and session method are open (DATABASE.md question 13).
 - **Live updates:** `[TODO: server-sent events with polling as a fallback]`
 - **API:** `[TODO: list of routes, one line each]`
 
@@ -52,7 +52,7 @@ What to create or change, and what to do in each. Updated as the build goes.
 
 | File | What to do | Behaviours |
 |---|---|---|
-| `api/src/db/migrations/001_init.sql` | Create `events`, `registrations`, `outbox` with the constraints and indexes in `DATABASE.md`. | B1-B9 |
+| `api/src/db/migrations/001_init.sql` | Create `organizers`, `users`, `events`, `registrations`, `outbox` (five tables) with the constraints and indexes in `DATABASE.md`. | B1-B9 |
 | `api/src/...` | `[TODO]` | |
 | `api/test/...` | `[TODO: tests for B4, B5, B6 first]` | B4, B5, B6 |
 | `web/src/...` | `[TODO]` | |

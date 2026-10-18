@@ -36,3 +36,20 @@ Build session, Claude Code. Times are Asia/Bishkek (UTC+06). The date is in the 
 **Time:** 14:41:14 +0600
 
 Without an event status, nothing stops registrations, reminders and the waiting list for an event that is off. A `status` column is the smallest change that fixes this. It is added to the spec as B9.
+
+## Step 4: users and organizers tables
+
+**Prompt** (about 14:45 +06, text cleaned)
+
+> let's add users and organizer tables
+> what does "no separate ticket" mean?
+
+**What Claude did.** Answered the question: "no separate ticket" in section 5 of `DATABASE.md` means a ticket is a `registrations` row (its `ticket_code` column), not its own table. Because users and organizers change B1 and the organizer access rule, Claude asked me two questions (AskUserQuestion). Then the `spec-writer` agent (Sonnet 5.5, medium) added `users` and `organizers` to `DATABASE.md`: `registrations.user_id` replaces the email, the B1 unique index is now `(event_id, user_id)`, `events.organizer_id` is NOT NULL, and every organizer action checks the owner (new section 3.8, another organizer's event answers 404). It updated the database, concurrency and organizer access lines and the migrations row in `SPEC.md`, and added open questions 13 to 18. Claude checked the diff and committed. Used AskUserQuestion, Agent, Bash.
+
+**Decision.**
+
+### D21: attendee accounts in `users`, organizers in their own table and owning their events
+
+**Time:** 14:47:24 +0600
+
+`users` holds attendees (no login); registrations point to a user. `organizers` is a separate table with a login, and each event has an `organizer_id`. This replaces the shared key from an environment variable. No password library or session method is chosen yet (question 13).
