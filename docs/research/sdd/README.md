@@ -1,6 +1,6 @@
 # Research: AI-driven development approaches
 
-The base of decision D1 in [sessions/1532_research.md](../../../sessions/1532_research.md). Start with `summary.md`. The full audited report is `report.md`, and every source is in `sources.csv`.
+The base of decision D1 in [sessions/17-10-1532_research.md](../../../sessions/17-10-1532_research.md). Start with `summary.md`. The full audited report is `report.md`, and every source is in `sources.csv`.
 
 The report and summary were written when all research files were in one folder, so they name some files without a path:
 

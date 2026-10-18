@@ -1,6 +1,6 @@
 # Session 14:06: init the project
 
-Build session, Claude Code. Times are Asia/Bishkek (UTC+06), with no dates. Prompts have spelling and grammar fixed (text cleaned) and the wording otherwise unchanged.
+Build session, Claude Code. Times are Asia/Bishkek (UTC+06). The date is in the file name. Prompts have spelling and grammar fixed (text cleaned) and the wording otherwise unchanged.
 
 ## Step 1: scaffold the repo
 

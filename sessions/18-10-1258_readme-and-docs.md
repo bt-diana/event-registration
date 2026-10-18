@@ -86,7 +86,7 @@ I added TanStack Query, because from my experience it is much easier to use a qu
 - The transcript file format is internal to Claude Code and can change, and I have not confirmed that every line has a timestamp. So the commits, the index and the decision times must also tell the story.
 - `CLAUDE.md` is advisory, so the agent may skip the logging rules. The transcript copy is a hook, which is deterministic. At the end I check `git log` against the session files to find gaps.
 
-(The first version had four places, and used a hook that copied the raw session files. Later steps in `1315_logging-system.md` simplified it: D15 removed the hook and the raw files.)
+(The first version had four places, and used a hook that copied the raw session files. Later steps in `18-10-1315_logging-system.md` simplified it: D15 removed the hook and the raw files.)
 
 ### D6: docs layout, keep the research and split it from the plan
 

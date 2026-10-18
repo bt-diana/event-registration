@@ -22,7 +22,7 @@ This is my solution for Task 9. I built it together with an AI agent.
 |---|---|
 | Backend | Node.js, TypeScript, Express, `pg`, Vitest |
 | Frontend | React, Vite, TypeScript, TanStack Query, Vitest |
-| Database | PostgreSQL 18 |
+| Database | PostgreSQL 16 |
 | Email | Stub. Every email is saved in an `outbox` table and printed to the console |
 | Accounts | None. The organizer pages use one shared key from an environment variable `[TODO: confirm]` |
 
@@ -35,14 +35,14 @@ The backend and the frontend are separate apps. They talk over HTTP, and the liv
 ### Prerequisites
 
 - Node.js 20 or newer
-- PostgreSQL 18, installed and running
-- Free ports: 3000 (API), 5173 (web) and 5433 (database)
+- Docker (for PostgreSQL)
+- Free ports: 3000 (API), 5173 (web) and 5432 (database)
 
 ### Run locally
 
 ```bash
-# 1. Create the database once, then copy .env.example to .env and set the password
-psql -p 5433 -U postgres -c "CREATE DATABASE events"
+# 1. Start PostgreSQL
+docker compose up -d
 
 # 2. Backend
 cd api
@@ -77,6 +77,7 @@ Planned. `[TODO: update after the build]`
 ```
 api/                 backend (Express, TypeScript)
 web/                 frontend (React, Vite, TypeScript)
+docker-compose.yml   PostgreSQL
 sessions/            the work log: one markdown file per session
 .claude/             agent rules (CLAUDE.md), agents and skills
 docs/
@@ -139,7 +140,7 @@ My process is a light version of spec-driven development:
 2. Tests first for the hard parts: the last seat, the single reminder and the single check-in.
 3. A verification hook that blocks "done" until the tests, typecheck and linter pass.
 
-Why I chose this process is in decision D1 in [sessions/1532_research.md](sessions/1532_research.md). The research is in `docs/research/sdd/`, and the skill I used for it is in `.claude/skills/audited-research/`.
+Why I chose this process is in decision D1 in [sessions/17-10-1532_research.md](sessions/17-10-1532_research.md). The research is in `docs/research/sdd/`, and the skill I used for it is in `.claude/skills/audited-research/`.
 
 ## Documentation
 

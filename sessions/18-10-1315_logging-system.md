@@ -1,6 +1,6 @@
 # Session 13:15: the logging system
 
-Chat session, before the build, continuing the README session. It was done in a Claude chat, so the steps below were written by hand. Each step has my prompt, what Claude did, and my decision if there was one. The prompts have spelling and grammar fixed and the wording otherwise unchanged. Times are Asia/Bishkek (UTC+06), taken from the chat's own message log. There are no dates, because the task is finished in one day (the research session `1532_research.md` was the day before). The system as it works now is described at the end.
+Chat session, before the build, continuing the README session. It was done in a Claude chat, so the steps below were written by hand. Each step has my prompt, what Claude did, and my decision if there was one. The prompts have spelling and grammar fixed and the wording otherwise unchanged. Times are Asia/Bishkek (UTC+06), taken from the chat's own message log. There are no dates, because the task is finished in one day (the research session `17-10-1532_research.md` was the day before). The system as it works now is described at the end.
 
 ## Step 1: how to log
 
@@ -10,7 +10,7 @@ Chat session, before the build, continuing the README session. It was done in a 
 
 **What Claude did.** Proposed a system with several places for the history (commits, decisions, prompts, session transcripts copied by a hook, a progress table). It checked Claude Code's documentation for where transcripts live, how long they are kept, and how hooks work. No files yet.
 
-**Decision.** None (D5 in `1258_readme-and-docs.md` came from this).
+**Decision.** None (D5 in `18-10-1258_readme-and-docs.md` came from this).
 
 ## Step 2: fewer files for the history
 
@@ -174,7 +174,7 @@ I removed `DECISIONS.md`. Each session has one file in `sessions/` with its prom
 
 **Time:** 13:40:10 and 13:42:33 +06
 
-Session files are named `HHMM_short-name.md` (the start time). Every prompt and decision has a time with the UTC offset, and no date, because the task is finished in one day. Each step in a session file has three parts in a row: the prompt, a short description of what Claude did (and which tools it used), and my decision if there was one. Where an exact time was not recorded (the earlier chat sessions), the file says so instead of guessing.
+Session files are named `DD-MM-HHMM_short-name.md` (the start date and time). Every prompt and decision has a time with the UTC offset, and no date, because the task is finished in one day. Each step in a session file has three parts in a row: the prompt, a short description of what Claude did (and which tools it used), and my decision if there was one. Where an exact time was not recorded (the earlier chat sessions), the file says so instead of guessing.
 
 ## Step 11: requirements check and models
 
@@ -210,13 +210,29 @@ My default session model is Sonnet 5.5 at medium effort, for research, spec writ
 
 I dropped the raw session files (`.jsonl`) and the hook that copied them. I find the markdown session files easier to read, and they already hold the prompts, what Claude did and my decisions. The cost is that the agent writes them, so it can forget a step. The commits are the second record, and at the end I compare `git log` with the session files to find gaps. This replaces the transcript part of D5 and D10.
 
+## Step 13: date in the file names
+
+**Prompt** (14:35 +06)
+
+> Add a date like 17-10-2130 to the session file names.
+
+**What Claude did.** Read the example as `DD-MM-HHMM` (day, month, start time) and renamed the three session files to `17-10-1532_research.md`, `18-10-1258_readme-and-docs.md` and `18-10-1315_logging-system.md`. It updated the links in the README and the research `README.md`, and the naming rule in `.claude/CLAUDE.md`.
+
+**Decision.**
+
+### D16: the date is part of the session file names
+
+**Time:** 14:35:38 +06
+
+Session files are named `DD-MM-HHMM_short-name.md`. The research session was the day before the others, so the files need a date to sort in the right order, and a long build can cross midnight. Times inside the files stay without dates. This replaces the file name part of D13.
+
 ## The system as it works now
 
 The task asks to see how the work went from start to end, with timestamps. The history is kept in two places, so that no single one has to be perfect.
 
 **1. Git commits.** One commit after every finished step, with a short message in the imperative. Commit times are the independent clock. The timeline is `git log --date=iso`.
 
-**2. `sessions/`.** One markdown file per session, named `HHMM_short-name.md` (the start time). Each step has my prompt (with the time), a short description of what Claude did and which tools it used, and my decision if there was one (`### Dn: title`, a time with the UTC offset, a short reason). IDs run across all session files. Old entries are not rewritten. There are no raw session files and no hook.
+**2. `sessions/`.** One markdown file per session, named `DD-MM-HHMM_short-name.md` (the start date and time). Each step has my prompt (with the time), a short description of what Claude did and which tools it used, and my decision if there was one (`### Dn: title`, a time with the UTC offset, a short reason). IDs run across all session files. Old entries are not rewritten. There are no raw session files and no hook.
 
 **The pieces.** `.claude/CLAUDE.md` tells the agent to commit after each step, to add the step to the session file as soon as it is finished, to take times from `date`, and to fix spelling and grammar only when copying my prompts. `.claude/agents/` has the two agents with their models.
 
