@@ -59,7 +59,7 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 | M7 | Reschedule and event cancel | `email-reminders.md` (extend) | `email-reminders-web.md` (extend) | B8, B9 | |
 | M8 | ~~Live updates~~ (dropped, D51) | | | | |
 | M9 | Review and README | | | all | |
-| M10 | Test data (seed) | `seed.md` | | | |
+| M10 | Test data (seed), done as migration `005_seed_test_data.sql` | | | | |
 
 ## Steps
 
@@ -140,9 +140,9 @@ Specs are not written all at once. The first steps of each milestone write (or e
 46. README: run instructions and the honest state (no live updates, reminder worker, no real email). Every behaviour has a test or a README note.
 
 ### M10. Test data (seed)
-47. API spec: `seed.md`: what the seed script creates (organizers, attendees, events in every state: open, full with a waiting list, started, ended, cancelled; registrations with tickets, some checked in), the command to run it, safe to run twice, development database only.
-48. Test, then code: the seed script in `api/` (uses the existing services and migrator, no new libraries). Test: a run fills the tables, a second run adds nothing, it refuses to run when `DATABASE_URL` is not the development database.
-49. README: how to run the seed and the demo logins.
+47. API spec: `seed.md`: what the seed script creates (organizers, attendees, events in every state: open, full with a waiting list, started, ended, cancelled; registrations with tickets, some checked in), the command to run it, safe to run twice, development database only. (done differently: no `seed.md` and no script; a migration was asked for instead)
+48. Test, then code: the seed script in `api/` (uses the existing services and migrator, no new libraries). Test: a run fills the tables, a second run adds nothing, it refuses to run when `DATABASE_URL` is not the development database. (done differently: migration `005_seed_test_data.sql` with one organizer, five events on 20-24 October 2026, eight attendees and registrations incl. a full event with two waiting; plain SQL, no emails sent; the migrator test lists were updated. Not done: the dev-only guard and the second-run test, a migration runs once and on every database)
+49. README: how to run the seed and the demo logins. (done: README section "Demo logins")
 
 ## Rules for every step
 
