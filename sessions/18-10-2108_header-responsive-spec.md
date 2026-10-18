@@ -85,3 +85,5 @@ Started 18-10 21:08 +06.
 
 ### D70: the drawer opens from the right edge
 21:42:32 +0600. Replaces "from the left" in D69. Reason: the user asked for it (the Menu button is on the right).
+
+**Result of steps 4-6 (D67-D70).** The `code-writer` agent built the drawer: tests first `2c29224` (87 failing), code `e28eb95` (right-hand drawer, header-bar click, "All events", Close menu, focus trap, backdrop, `inert`, scroll lock, reduced motion). Checked: web tests 784 passed, 4 todo (header suite 213); typecheck and lint pass. Not checked: the browser checks by hand (HR18-HR20, HR31-HR37). Known gaps: HR10 still says the Menu button has a 1 px border while the build has none; HR24 uses `fireEvent` because `user-event` is not installed. ID note: the design-alignment session also has a D70 (back link); in the header files and code, D70 means the drawer side. The next free ID is D72. Used Agent, SendMessage, Bash.
