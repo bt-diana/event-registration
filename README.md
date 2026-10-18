@@ -125,7 +125,7 @@ From [docs/specs/auth-web.md](docs/specs/auth-web.md) section 2, styled by [docs
 | `/organizer/login`, `/organizer/signup` | Logged out, or an attendee | Organizer login and sign-up form (`POST /auth/organizers/login`, `/signup`) |
 | `/organizer` | Organizers (guarded) | Organizer home (placeholder). Logged out: redirect to `/organizer/login?next=/organizer`. Attendee: a wrong-account message |
 
-At start the app calls `GET /auth/me` once (TanStack Query key `["me"]`); 401 means logged out. Login and sign-up put the answer into that cache, so no second call is made, and then go to a safe `?next=` path or the role's home. A person already logged in with the page's role is sent on from the login and sign-up pages. The header shows "Log in", "Sign up" and "For organizers" (or "For attendees" on `/organizer` pages) when logged out, and the name, the role and "Log out" when logged in.
+At start the app calls `GET /auth/me` once (TanStack Query key `["me"]`); 401 means logged out. Login and sign-up put the answer into that cache, so no second call is made, and then go to a safe `?next=` path or the role's home. A person already logged in with the page's role is sent on from the login and sign-up pages. The header shows "Log in", "Sign up" and "For organizers" (or "For attendees" on `/organizer` pages) when logged out, and the name, the role and "Log out" when logged in. A logged-in organizer keeps the organizer look on every screen, also on `/` and `/event/:id`: the logo links to `/organizer` and the logo and tab icon are the organizer ones (W-E22).
 
 ## Project structure
 

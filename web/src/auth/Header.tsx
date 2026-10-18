@@ -35,7 +35,9 @@ export function Header() {
   const { pathname } = useLocation();
   const me = useMe();
   const organizerPage = pathname.startsWith("/organizer");
-  const icon = organizerPage ? "/icon-organizer.svg" : "/icon-attendee.svg";
+  // A logged-in organizer keeps the organizer look on every screen, also on / and /event/:id (W-E22).
+  const organizerLook = me.data?.role === "organizer" || organizerPage;
+  const icon = organizerLook ? "/icon-organizer.svg" : "/icon-attendee.svg";
 
   // The tab icon follows the role of the page: green for attendees, purple for organizers.
   useEffect(() => {
@@ -44,7 +46,7 @@ export function Header() {
 
   return (
     <header className="site-header">
-      <Link to="/" className="logo">
+      <Link to={me.data?.role === "organizer" ? "/organizer" : "/"} className="logo">
         <img className="logo-icon" src={icon} alt="" width="32" height="32" />
         <span className="logo-text">Event Registration</span>
       </Link>
