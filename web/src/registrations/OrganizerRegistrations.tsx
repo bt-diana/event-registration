@@ -1,18 +1,23 @@
 // /registrations for an organizer (registration-web.md W-R20, W-R21). Inside the
 // organizer entry (W-R16). The organizer's events feed the selector; the chosen event's
 // registrations come from GET /events/{id}/registrations (checkin.md C15-C18), shown in
-// the API order. No role eyebrow (RE1).
+// the API order, with the "Arrival" column from checked_in_at (checkin-web.md W-C16).
+// The arrivals counter sits under the selector (W-C3). Both are read again on every
+// return to the page and never by themselves (W-C6, W-C7, W-C8). No role eyebrow (RE1).
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { formatDateTime } from "../events/format";
 import { isAuthError, statusOf, useEvents } from "../events/queries";
 import { Badge } from "../events/StatusBadge";
 import type { OrganizerRegistration } from "./api";
+import { ArrivalsCounter } from "./ArrivalsCounter";
 import { EventSelect, useChosenEvent } from "./EventSelect";
 import { useEventRegistrations } from "./queries";
 import { ticketLabel } from "./ticket";
 
 const NEW_EVENT = "/organizer/events/new";
+
+type List = ReturnType<typeof useEventRegistrations>;
 
 function Loading() {
   return (
@@ -90,16 +95,20 @@ export function OrganizerRegistrations() {
         </Link>
       </div>
       <EventSelect events={events.data} value={chosen.id} onChange={choose} />
+      {/* The list's own 404 text is the page's one "Event not found" (W-C9). */}
+      {!listNotFound(list) && <ArrivalsCounter eventId={chosen.id} />}
       <RegistrationsBody list={list} />
     </section>
   );
 }
 
-function RegistrationsBody({ list }: { list: ReturnType<typeof useEventRegistrations> }) {
-  if (list.isPending || (list.isError && (list.isFetching || isAuthError(list.error)))) {
-    return <Loading />;
-  }
-  if (list.isError && statusOf(list.error) === 404) {
+function listNotFound(list: List): boolean {
+  return list.isError && statusOf(list.error) === 404;
+}
+
+function RegistrationsBody({ list }: { list: List }) {
+  if (list.isError && isAuthError(list.error)) return <Loading />;
+  if (listNotFound(list)) {
     return (
       <>
         <p role="alert" className="list-error">
@@ -109,30 +118,46 @@ function RegistrationsBody({ list }: { list: ReturnType<typeof useEventRegistrat
       </>
     );
   }
-  if (list.isError) return <LoadError onRetry={() => void list.refetch()} />;
-  if (list.data.length === 0) {
-    return <p className="intro">No one has registered for this event yet.</p>;
+  const { data } = list;
+  if (data === undefined) {
+    if (list.isError && !list.isFetching) return <LoadError onRetry={() => void list.refetch()} />;
+    return <Loading />;
+  }
+  // A return shows the cached rows while the list is read again; a failed read keeps
+  // them with a note (checkin-web.md W-C10).
+  const note = list.isError && <p className="refresh-note">Could not refresh</p>;
+  if (data.length === 0) {
+    return (
+      <>
+        {note}
+        <p className="intro">No one has registered for this event yet.</p>
+      </>
+    );
   }
   return (
-    <div className="table-card">
-      <table className="table">
-        <thead>
-          <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Email</th>
-            <th scope="col">Status</th>
-            <th scope="col">Place</th>
-            <th scope="col">Ticket code</th>
-            <th scope="col">Registered</th>
-          </tr>
-        </thead>
-        <tbody>
-          {list.data.map((registration) => (
-            <Row key={registration.id} registration={registration} />
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {note}
+      <div className="table-card">
+        <table className="table">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Email</th>
+              <th scope="col">Status</th>
+              <th scope="col">Place</th>
+              <th scope="col">Arrival</th>
+              <th scope="col">Ticket code</th>
+              <th scope="col">Registered</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((registration) => (
+              <Row key={registration.id} registration={registration} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -147,8 +172,26 @@ function Row({ registration }: { registration: OrganizerRegistration }) {
         {label.checkedIn && <span className="table-note">{label.checkedIn}</span>}
       </td>
       <td>{registration.waitlist_position ?? ""}</td>
+      <td>
+        <Arrival registration={registration} />
+      </td>
       <td className="table-code">{registration.ticket_code}</td>
       <td>{formatDateTime(registration.created_at)}</td>
     </tr>
+  );
+}
+
+// W-C16: "Arrived" and the time, "Not yet", or nothing for the waiting list. Only from
+// the row, so it is as fresh as the list.
+function Arrival({ registration }: { registration: OrganizerRegistration }) {
+  if (registration.status === "waitlisted") return null;
+  if (registration.checked_in_at === null) return <>Not yet</>;
+  return (
+    <>
+      Arrived
+      <time className="table-note table-time" dateTime={registration.checked_in_at}>
+        {formatDateTime(registration.checked_in_at)}
+      </time>
+    </>
   );
 }

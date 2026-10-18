@@ -82,6 +82,12 @@ Table (events list): white card with 1px border and radius 12, header cells 14px
 - **Back link** ("Back to events"): a 15px 600 accent link with a left arrow, at least 44px high.
 - **Event page:** the badge under the `h1` (12px above, 24px below), then the description (plain text, `white-space: pre-wrap`), then the details `dl`. A closed public event shows "Capacity: N" and "Registration is closed." (15px `text-muted`) under the `dl`. The organizer view ends with the share link line: 15px `text-muted`, under a 1px `border` divider.
 
+## Arrivals counter (added from `specs/checkin-web.md`)
+
+- **Counter** (scan screen and registrations page, under the event selector): a white card, 1px `border`, radius 12, padding `12px 16px`, full width of the screen card. 16px: "Arrived:" in `text-muted`, then the two numbers and "registered" in the text colour at 600. "Capacity: N" on a second line, 14px `text-muted`. "Everyone has arrived." 15px under it. "Could not refresh" 14px `text-muted`. Loading and first-load error are plain 15px text, Retry is the secondary button (48px). No live region, no new colour.
+- **Arrival column** (organizer list): "Arrived" with the time under it (14px 600, like the "Checked in" note), "Not yet", or empty for the waiting list.
+- **List note:** "Could not refresh" above the table, 14px `text-muted`.
+
 ## Not decided yet
 
 - Dark theme (out of scope in `auth-web.md`).

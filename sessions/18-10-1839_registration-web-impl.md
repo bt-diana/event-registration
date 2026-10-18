@@ -111,3 +111,23 @@ Started 18-10 18:39 +06.
 
 ### D51: the arrivals counter is not live
 19:48:09 +0600. The user does not want live updates or polling. The counter reloads when the organizer returns to the page (D50). `SPEC_TEMPLATE.md` is only a template: its behaviours (B1-B10) are not requirements and must not be used to justify features. Reason: simpler, and the template was never the real spec.
+
+## Step 11: tests first for the arrivals counter and the Arrival column
+
+**Prompt** (19:53 +06, passed on by the coordinator, text cleaned)
+
+> go
+
+(Roadmap step 28 from `docs/specs/checkin-web.md` W-C1-W-C19 with the spec's recommended answers: no polling at all, no refetch on window focus, keep the Arrival column, "Capacity: 25", an empty event shows `0 / 0`, cached rows stay while the refetch runs.)
+
+**What Claude did.** Read `checkin-web.md`, `arrivals.md`, `registration-web.md` W-R20-W-R37, `api/openapi.yaml` and the web code (the `/events` proxy already covers `/events/:id/arrivals`, so `vite.config.ts` needs no change). Wrote the tests first (commit `d26c352`, red: 53 fail, there is no counter, no arrivals request and no Arrival column): `ArrivalsCounter.test.tsx` (W-C6 with fake timers: no request after 60 s, a hidden and visible tab, focus, offline and online; W-C8 one arrivals request per visit; W-C9 401, 403, 404 once; W-C11 one more arrivals request after a 200, no local +1, the path stays, only `["event-arrivals"]` invalidated, a 409 reads nothing, an older running request cannot win; W-C13 a failed refetch keeps the numbers with "Could not refresh", equal data changes no DOM, a new event shows "Loading arrivals..."; W-C15 account B; then W-C1, W-C2, W-C14 numbers as sent, W-C12, W-C10, W-C3-W-C5, W-C18), `OrganizerRegistrations.test.tsx` (W-C7 the list is sent again on every return and shows the new rows, W-C15 both queries by account, W-C16 the Arrival cells, the counter on an empty list, two requests on open, a return through history keeps the event, W-C10 the list note) and `ScanScreen.test.tsx` (the counter in every camera state, only the arrivals route, five reads give `12` and not `16`, no refetch for 409/404/400/500). Two helper edits (`eventArrivals`, `arrivals`, `wholeText` in `test-helpers.ts`, the arrivals route in `entries.test.tsx`) were swept into the parallel docs commit `9806b8b` by another session. Typecheck and lint pass. Used Read, Grep, Write, Edit, Bash.
+
+**Decision.** None.
+
+## Step 12: arrivals counter and Arrival column (roadmap step 28)
+
+**Prompt** (19:53 +06, same prompt as step 11)
+
+**What Claude did.** Built `web/src/registrations/arrivals.ts` (`getArrivals`, `useEventArrivals` with the key `["event-arrivals", me.id, eventId]`, enabled for a known organizer, `staleTime: 0`, `refetchOnMount: "always"`, `refetchOnReconnect: false`) and `ArrivalsCounter.tsx` ("Arrived: x / y registered", "Capacity: n", "Everyone has arrived.", "Loading arrivals...", "Could not load arrivals" + Retry, "Could not refresh", "Event not found", nothing on 401/403, no live region). `useEventRegistrations` got the same three options; `useCheckIn` cancels and then invalidates only `["event-arrivals"]` after a `checked_in` answer (the cancel is needed: on a first load `invalidateQueries` alone reuses the running request, so an answer read before the check-in could win). The scan screen shows the counter under the selector; the registrations page shows it under the selector (hidden when the list itself answers 404, so the page says "Event not found" once), keeps the cached rows on a failed return read with "Could not refresh", and has the "Arrival" column. Styles in `styles.css`, the counter look in `docs/brand.md`. Fixed the polling, SSE and M8 lines in `checkin.md` and `checkin-web.md` to match D50/D51, recorded the "go" answers in `checkin-web.md` section 7, and noted there the extra `refetchOnReconnect: false` (W-C6 forbids a reconnect refetch, which the library default would do with `staleTime: 0`). No proxy change (`/events` covers the route). Checked that the reconnect test and the "older request cannot win" test fail without those two lines. Updated `README.md` and `ROADMAP.md` (step 28 done). `bash scripts/verify.sh` passes (api 356, web 575 and 4 todo). Not done: the manual check against the real API and the design canvas board. Used Read, Write, Edit, Bash.
+
+**Decision.** None.

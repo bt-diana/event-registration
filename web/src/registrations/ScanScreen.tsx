@@ -10,6 +10,7 @@ import { formatDateTime } from "../events/format";
 import { isAuthError, onApiError, useEvents } from "../events/queries";
 import { Badge, type Tone } from "../events/StatusBadge";
 import type { CheckInResult } from "./api";
+import { ArrivalsCounter } from "./ArrivalsCounter";
 import { cameraState, type CameraProblem } from "./camera";
 import { EventSelect, useChosenEvent } from "./EventSelect";
 import { useCheckIn } from "./queries";
@@ -239,6 +240,8 @@ export function ScanScreen({ submitCode }: Props) {
   return (
     <Shell>
       <EventSelect events={events.data} value={chosen.id} onChange={changeEvent} />
+      {/* checkin-web.md W-C3: in every camera state; a 200 check-in reads it again (W-C11). */}
+      <ArrivalsCounter eventId={chosen.id} />
 
       <div className="scan-camera">
         <CameraArea camera={camera} videoRef={videoRef} onStart={() => void startCamera()} />

@@ -17,6 +17,7 @@ import {
   type CheckInResult,
   type Registration,
 } from "./api";
+import { EVENT_ARRIVALS_KEY } from "./arrivals";
 
 // Keyed by the account, so a second account in the same tab never sees the first
 // one's ticket (W-R23).
@@ -29,7 +30,9 @@ export const eventRegistrationsKey = (meId: string, eventId: string) =>
   ["event-registrations", meId, eventId] as const;
 
 // The organizer list of one event (W-R20); runs once me is a known organizer and an
-// event is chosen. A 401/403 re-checks me and the guard decides (W-R13).
+// event is chosen. A 401/403 re-checks me and the guard decides (W-R13). Read again on
+// every mount, also with a cached answer (checkin-web.md W-C7), and never by itself
+// (no interval, no focus or reconnect refetch, W-C6).
 export function useEventRegistrations(eventId: string | null) {
   const queryClient = useQueryClient();
   const me = useMe();
@@ -39,6 +42,9 @@ export function useEventRegistrations(eventId: string | null) {
     queryFn: () => authCheckedCall(queryClient, () => listEventRegistrations(eventId ?? "")),
     enabled: meId !== "" && eventId !== null,
     ...QUERY_OPTIONS,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: false,
   });
 }
 
@@ -81,10 +87,19 @@ export function useRegister(eventId: string) {
 }
 
 // POST /checkin (registration-web.md W-R33, W-R34). The scan screen handles errors
-// itself (a 401/403 re-checks me there); success invalidates nothing yet (the arrivals
-// counter is checkin-web.md).
+// itself (a 401/403 re-checks me there). Only a 200 (`checked_in`) reads the arrivals
+// again (checkin-web.md W-C11): the prefix, so the screen needs no event id; the list is
+// not touched and nothing navigates. A running arrivals request is cancelled first, so
+// an answer read before the check-in cannot win (also on a first load, where
+// invalidateQueries alone would reuse the running request).
 export function useCheckIn() {
+  const queryClient = useQueryClient();
   return useMutation<CheckInResult, Error, string>({
     mutationFn: (ticketCode) => checkIn(ticketCode),
+    onSuccess: async (result) => {
+      if (result.outcome !== "checked_in") return;
+      await queryClient.cancelQueries({ queryKey: EVENT_ARRIVALS_KEY });
+      void queryClient.invalidateQueries({ queryKey: EVENT_ARRIVALS_KEY });
+    },
   });
 }
