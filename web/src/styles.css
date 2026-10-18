@@ -106,9 +106,10 @@ body {
   text-decoration: underline;
 }
 
-/* The Menu (burger) button, shown only at 640 px and below (header-responsive.md HR6, HR10).
-   Icon only; its name "Menu" is the aria-label. */
-.nav-toggle {
+/* The Menu (burger) button and the Close menu button of the drawer, shown only at 640 px and
+   below (header-responsive.md HR6, HR10, HR30). Icon only; the names are the aria-labels. */
+.nav-toggle,
+.nav-close {
   display: none;
   align-items: center;
   justify-content: center;
@@ -117,22 +118,28 @@ body {
   padding: 0;
   background: var(--surface);
   color: var(--text);
-  border: 1px solid var(--border);
+  /* No border: the user removed it from the Menu and Close menu buttons (was HR10). */
+  border: 0;
   border-radius: 8px;
   cursor: pointer;
 }
 
-.nav-toggle[aria-expanded="true"] {
-  border-color: var(--accent);
-}
-
-.nav-toggle:focus-visible {
+.nav-toggle:focus-visible,
+.nav-close:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* The panel of the Menu button: the logged-in account block or the logged-out Account nav.
-   Above 640 px it is always shown as one row, whatever data-open says (HR19). */
+/* The backdrop and "All events" exist only with the phone drawer; above 640 px the logo is the
+   way to the list (HR19, HR27). */
+.nav-backdrop,
+.site-nav-all {
+  display: none;
+}
+
+/* The drawer of the Menu button: Close menu, All events, then the logged-in account block or
+   the logged-out Account nav. Above 640 px it is always shown as one row, whatever data-open
+   says, with no drawer behaviour (HR19). */
 .site-header-end {
   display: flex;
   flex-wrap: wrap;
@@ -1049,11 +1056,14 @@ a:hover {
   font-size: 15px;
 }
 
-/* Phone header (header-responsive.md D66, HR18, HR20), header only. Closed: one row, the logo
-   left and the Menu button right; the panel is display: none, so its items are not on the
-   screen, not in the Tab order and not in the accessibility tree. Open: the panel in the page
-   flow under that row, items stacked in the DOM order (no CSS order): the nav link, a line,
-   the account info left and Log out right, the log-out error; or the three logged-out links. */
+/* Phone header (header-responsive.md D69, HR18, HR20, HR36, HR37), header only. Closed: one
+   row, the logo left and the Menu button right; the drawer is off-screen and visibility: hidden,
+   so its items are not on the screen, not in the Tab order and not in the accessibility tree.
+   Open: a modal drawer slides in from the right edge, on the side of the Menu button (D70),
+   over a backdrop; items stacked in the DOM order (no CSS order): Close menu, All events, the nav link, a line, the account info left and Log
+   out right, the log-out error; or the three logged-out links. The visibility change waits
+   200 ms on close so the slide out is seen. The header has no transform, filter or contain, so
+   the fixed backdrop and drawer cover the viewport, the header row included. */
 @media (max-width: 640px) {
   .site-header {
     padding: 8px 16px;
@@ -1064,17 +1074,67 @@ a:hover {
     margin-left: auto;
   }
 
-  .site-header-end {
-    flex-basis: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    padding: 8px 0;
-    border-top: 1px solid var(--border);
+  /* Over the page and the header row, under the drawer; --text at 40% (HR18, HR32). */
+  .nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: color-mix(in srgb, var(--text) 40%, transparent);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 200ms ease,
+      visibility 0s linear 200ms;
   }
 
-  .site-header-end[data-open="false"] {
-    display: none;
+  .nav-toggle[aria-expanded="true"] ~ .nav-backdrop {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 200ms ease,
+      visibility 0s;
+  }
+
+  .site-header-end {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 11;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0;
+    width: min(320px, 85vw);
+    height: 100dvh;
+    padding: 8px 16px;
+    overflow-y: auto;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    visibility: hidden;
+    transition:
+      transform 200ms ease,
+      visibility 0s linear 200ms;
+  }
+
+  .site-header-end[data-open="true"] {
+    transform: translateX(0);
+    visibility: visible;
+    transition:
+      transform 200ms ease,
+      visibility 0s;
+  }
+
+  /* Close menu: the first row of the drawer, on the right (HR30). */
+  .nav-close {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-self: flex-end;
+  }
+
+  .site-nav-all {
+    display: flex;
   }
 
   .site-nav {
@@ -1104,6 +1164,16 @@ a:hover {
 
   .site-account button.button-secondary {
     margin-left: auto;
+  }
+}
+
+/* The drawer and the backdrop appear and disappear at once (HR36). */
+@media (prefers-reduced-motion: reduce) {
+  .nav-backdrop,
+  .nav-toggle[aria-expanded="true"] ~ .nav-backdrop,
+  .site-header-end,
+  .site-header-end[data-open="true"] {
+    transition: none;
   }
 }
 
