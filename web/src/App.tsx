@@ -1,7 +1,9 @@
 import { Route, Routes } from "react-router";
 import { AuthForm } from "./auth/AuthForm";
+import { RedirectIfLoggedIn, RequireRole } from "./auth/guards";
 import { Header } from "./auth/Header";
 
+// Public: no guard. The event screens come from web.md.
 function AttendeeHome() {
   return (
     <section className="card" data-role="user">
@@ -12,7 +14,7 @@ function AttendeeHome() {
   );
 }
 
-// Placeholder. The RequireRole("organizer") guard comes with the functionality step.
+// Placeholder for the organizer screens from web.md.
 function OrganizerHome() {
   return (
     <section className="card" data-role="organizer">
@@ -30,11 +32,46 @@ export function App() {
       <main className="page">
         <Routes>
           <Route path="/" element={<AttendeeHome />} />
-          <Route path="/login" element={<AuthForm role="user" mode="login" />} />
-          <Route path="/signup" element={<AuthForm role="user" mode="signup" />} />
-          <Route path="/organizer" element={<OrganizerHome />} />
-          <Route path="/organizer/login" element={<AuthForm role="organizer" mode="login" />} />
-          <Route path="/organizer/signup" element={<AuthForm role="organizer" mode="signup" />} />
+          <Route
+            path="/login"
+            element={
+              <RedirectIfLoggedIn role="user">
+                <AuthForm role="user" mode="login" />
+              </RedirectIfLoggedIn>
+            }
+          />
+          <Route
+            path="/signup"
+            element={
+              <RedirectIfLoggedIn role="user">
+                <AuthForm role="user" mode="signup" />
+              </RedirectIfLoggedIn>
+            }
+          />
+          <Route
+            path="/organizer"
+            element={
+              <RequireRole role="organizer">
+                <OrganizerHome />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/organizer/login"
+            element={
+              <RedirectIfLoggedIn role="organizer">
+                <AuthForm role="organizer" mode="login" />
+              </RedirectIfLoggedIn>
+            }
+          />
+          <Route
+            path="/organizer/signup"
+            element={
+              <RedirectIfLoggedIn role="organizer">
+                <AuthForm role="organizer" mode="signup" />
+              </RedirectIfLoggedIn>
+            }
+          />
         </Routes>
       </main>
     </>

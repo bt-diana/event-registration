@@ -27,7 +27,7 @@ Feature spec for the sign-up and login screens, the session in the web app and t
 | W-A15 | 400 shows "Some fields are not valid. Check them and try again." at form level (the API sends only `invalid_input`, no field names). Network error or 5xx shows "Something went wrong. Try again." at form level; the typed values are kept. | |
 | W-A16 | Focus: after a failed client check, focus goes to the first invalid field (in form order). After a 409, focus goes to the email field. After 400, 401, 5xx or network error, focus goes to the form-level error. | |
 | W-A17 | Accessibility: every input has a `<label>`; an invalid input has `aria-invalid="true"` and `aria-describedby` pointing to its error text; field and form errors have `role="alert"`; the password field has a show/hide button (`aria-pressed`, type toggles `password`/`text`). | |
-| W-A18 | Header, logged out: links "Log in", "Sign up" and "For organizers". Logged in: the name, the role and a "Log out" button. It is shown on every screen and reflects the `me` cache at once. | |
+| W-A18 | Header, logged out: links "Log in", "Sign up" and a role link that switches by page role: "For organizers" (to `/organizer/login`) on attendee pages, "For attendees" (to `/login`) on `/organizer...` pages. Logged in: the name, the role and a "Log out" button. It is shown on every screen and reflects the `me` cache at once. | |
 | W-A19 | Each page links to its neighbours: login to signup (same role), signup to login (same role), attendee pages to the organizer pages ("I organize events") and the reverse ("I am an attendee"). | |
 | W-A20 | The password is kept only in the input's state. It is never put in the URL, `localStorage`, `sessionStorage`, the query cache or the console. The cookie is `httpOnly`; the app never reads it. | |
 
@@ -51,7 +51,7 @@ Feature spec for the sign-up and login screens, the session in the web app and t
 | `/organizer/signup` | Logged out, or an attendee | Organizer sign-up form. Links: log in, "I am an attendee" (`/signup`). Calls `POST /auth/organizers/signup`. |
 | `/` | Everyone | Attendee home. A placeholder here; the event screens come from `web.md`. Public: no guard. |
 | `/organizer` | Organizers (guarded) | Organizer home. A placeholder here; the organizer screens come from `web.md`. Logged out: redirect to `/organizer/login?next=/organizer`. Attendee: wrong-account message (W-A6). |
-| Header (all screens) | Everyone | Logged out: "Log in", "Sign up", "For organizers". Logged in: name, role, "Log out" button (W-A18). |
+| Header (all screens) | Everyone | Logged out: "Log in", "Sign up", and "For organizers" (attendee pages) or "For attendees" (`/organizer...` pages). Logged in: name, role, "Log out" button (W-A18). |
 
 Fields (labels in this order; the same four pages share one form component with props `role` and `mode`):
 

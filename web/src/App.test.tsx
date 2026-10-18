@@ -1,24 +1,22 @@
-import { render, screen } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router";
-import { App } from "./App";
+import { screen } from "@testing-library/react";
+import { OLGA, json, mockFetch, renderApp } from "./auth/test-helpers";
 
-function renderApp(path: string) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[path]}>
-        <App />
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+function loggedOut() {
+  mockFetch({ "GET /auth/me": () => json(401, { error: "not_logged_in" }) });
 }
 
 describe("App", () => {
-  it("shows the logged-out header with its links", () => {
+  it("shows the logged-out header with its links", async () => {
+    loggedOut();
     renderApp("/");
     expect(screen.getByRole("link", { name: "Event Registration" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Log in" }).getAttribute("href")).toBe("/login");
+    expect((await screen.findByRole("link", { name: "Log in" })).getAttribute("href")).toBe(
+      "/login",
+    );
     expect(screen.getByRole("link", { name: "Sign up" }).getAttribute("href")).toBe("/signup");
     expect(screen.getByRole("link", { name: "For organizers" }).getAttribute("href")).toBe(
       "/organizer/login",
@@ -26,62 +24,59 @@ describe("App", () => {
   });
 
   it("shows the attendee home placeholder at /", () => {
+    loggedOut();
     renderApp("/");
     expect(screen.getByRole("heading", { level: 1, name: "Events" })).toBeTruthy();
   });
 
-  it("shows the organizer home placeholder at /organizer", () => {
+  it("shows the organizer home placeholder at /organizer to an organizer", async () => {
+    mockFetch({ "GET /auth/me": () => json(200, OLGA) });
     renderApp("/organizer");
-    expect(screen.getByRole("heading", { level: 1, name: "Organizer home" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Organizer home" })).toBeTruthy();
   });
 
-  it("shows the attendee login page at /login", () => {
+  it("shows the attendee login page at /login", async () => {
+    loggedOut();
     renderApp("/login");
-    expect(screen.getByRole("heading", { level: 1, name: "Log in" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Log in" })).toBeTruthy();
     expect(screen.getByText("Attendee")).toBeTruthy();
-    expect(screen.getByLabelText("Email")).toBeTruthy();
+    expect(screen.getByLabelText("Email").getAttribute("type")).toBe("email");
+    expect(screen.getByLabelText("Email").getAttribute("autocomplete")).toBe("email");
     expect(screen.queryByLabelText("Name")).toBeNull();
     expect(screen.getByLabelText("Password").getAttribute("autocomplete")).toBe(
       "current-password",
     );
-    expect(screen.getByRole("link", { name: "I organize events" }).getAttribute("href")).toBe(
-      "/organizer/login",
-    );
   });
 
-  it("shows the attendee sign-up page at /signup", () => {
+  it("shows the attendee sign-up page at /signup", async () => {
+    loggedOut();
     renderApp("/signup");
-    expect(screen.getByRole("heading", { level: 1, name: "Create an account" })).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Create an account" }),
+    ).toBeTruthy();
     expect(screen.getByLabelText("Email")).toBeTruthy();
-    expect(screen.getByLabelText("Name")).toBeTruthy();
+    expect(screen.getByLabelText("Name").getAttribute("autocomplete")).toBe("name");
     expect(screen.getByLabelText("Password").getAttribute("autocomplete")).toBe("new-password");
     expect(screen.getByText("8 to 128 characters")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "I organize events" }).getAttribute("href")).toBe(
-      "/organizer/signup",
-    );
   });
 
-  it("shows the organizer login page at /organizer/login", () => {
+  it("shows the organizer login page at /organizer/login", async () => {
+    loggedOut();
     renderApp("/organizer/login");
-    expect(screen.getByRole("heading", { level: 1, name: "Log in" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Log in" })).toBeTruthy();
     expect(screen.getByText("Organizer")).toBeTruthy();
     expect(screen.getByLabelText("Email")).toBeTruthy();
     expect(screen.getByLabelText("Password")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "I am an attendee" }).getAttribute("href")).toBe(
-      "/login",
-    );
   });
 
-  it("shows the organizer sign-up page at /organizer/signup", () => {
+  it("shows the organizer sign-up page at /organizer/signup", async () => {
+    loggedOut();
     renderApp("/organizer/signup");
     expect(
-      screen.getByRole("heading", { level: 1, name: "Create an organizer account" }),
+      await screen.findByRole("heading", { level: 1, name: "Create an organizer account" }),
     ).toBeTruthy();
     expect(screen.getByLabelText("Email")).toBeTruthy();
     expect(screen.getByLabelText("Name")).toBeTruthy();
     expect(screen.getByLabelText("Password")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "I am an attendee" }).getAttribute("href")).toBe(
-      "/signup",
-    );
   });
 });

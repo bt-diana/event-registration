@@ -95,7 +95,36 @@ body {
   text-decoration: underline;
 }
 
+.site-account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+}
+
+.account-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.account-role {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 /* Page and card */
+.status {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.eyebrow-error {
+  color: var(--error-text-on-tint);
+}
+
 .page {
   display: flex;
   justify-content: center;
