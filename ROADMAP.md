@@ -13,7 +13,7 @@ Order of work for the event registration service. One row = one step = one commi
 
 | # | Milestone | Behaviours | Tests first |
 |---|---|---|---|
-| M1 | Write the real spec | all | |
+| M1 | Feature specs, one per feature | all | |
 | M2 | Accounts and login | | auth basics |
 | M3 | Events (organizer) | | ownership |
 | M4 | Register and waiting list | B1, B2, B4 | B4 |
@@ -27,8 +27,8 @@ Order of work for the event registration service. One row = one step = one commi
 
 ## Steps
 
-### M1. Spec
-1. Copy `SPEC_TEMPLATE.md` to `SPEC.md` and fill the `[TODO]`s: goal, B9 and B10 as listed in `DATABASE.md`, out of scope, assumptions (one reminder per person per schedule version), UI states, API route list. Use the `spec-writer` agent. The template stays untouched.
+### M1. Feature specs
+1. There is no single `SPEC.md`. Each feature gets its own spec in `docs/specs/`, made from `SPEC_TEMPLATE.md` with the `spec-writer` agent, and written just before the milestone that builds it. `DATABASE.md` already exists. Planned: `auth.md` (M2), `events.md` (M3), `registration.md` (M4, M5), `checkin.md` (M6, M9), `email-reminders.md` (M7, M8), `web.md` (M10). Each lists only its own behaviours, UI states and routes. Do this as the first step of each milestone, not all at once. The template stays untouched.
 
 ### M2. Accounts (`api/`)
 2. Test, then code: password hashing (scrypt, random salt) and the signed cookie (7 days).
@@ -73,12 +73,13 @@ Order of work for the event registration service. One row = one step = one commi
 25. Component tests for the states above. Typecheck and lint clean.
 
 ### M11. Review and finish
-26. Review the diff against `SPEC.md` with the reviewer (correctness and requirements only). Fix what it finds.
+26. Review the diff against the feature specs with the reviewer (correctness and requirements only). Fix what it finds.
 27. Two-tab check by hand: check in on one tab, the counter moves on the other.
 28. README: run instructions and the honest state (SSE in one process, polling worker, no real email). Every behaviour has a test or a README note.
 
 ## Rules for every step
 
+- The feature spec exists before the feature is built.
 - Tests first for B4, B5 and B6.
 - Work on `main`, one Conventional Commit per finished step, tests-first commit before the code commit.
 - Add the step to the session file right after it is done.
