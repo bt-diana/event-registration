@@ -47,7 +47,8 @@ export function TicketPanel({
         </dl>
       )}
       {label.note && <p className="ticket-note">{label.note}</p>}
-      {label.checkedIn && <p className="ticket-checked-in">{label.checkedIn}</p>}
+      {/* W-R42: on the ticket page (flat) the badge already says "Checked in". */}
+      {!flat && label.checkedIn && <p className="ticket-checked-in">{label.checkedIn}</p>}
       {children}
       {viewTicketOf !== undefined && (
         <Link

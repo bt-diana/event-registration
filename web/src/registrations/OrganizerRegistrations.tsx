@@ -179,13 +179,16 @@ function Row({
   eventId: string;
 }) {
   const label = ticketLabel(registration);
+  // W-R42 leaves the organizer table as it is (W-R20): Status stays "Registered" and
+  // "Checked in" is the note next to it.
+  const badge = ticketLabel({ ...registration, checked_in_at: null }).badge;
   // email-reminders-web.md W-EM1: every row, the attendee's emails page; no request here.
   const emails = `/registrations/${encodeURIComponent(registration.id)}/emails?event=${encodeURIComponent(eventId)}`;
   return (
     <tr>
       <td>{registration.attendee_name}</td>
       <td>
-        <Badge {...label.badge} />
+        <Badge {...badge} />
         {label.checkedIn && <span className="table-note">{label.checkedIn}</span>}
       </td>
       <td>

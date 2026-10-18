@@ -32,6 +32,8 @@ export type TicketLabel = {
 };
 
 // W-R7 words; badge colours as brand.md (Registered like Open, Waiting list like Full).
+// W-R42: a registered ticket that is checked in has the badge "Checked in" instead of
+// "Registered", same Open tone; waiting and cancelled keep their own badge.
 export function ticketLabel(
   registration: Pick<Registration, "status" | "waitlist_position" | "checked_in_at">,
 ): TicketLabel {
@@ -43,7 +45,7 @@ export function ticketLabel(
         place: null,
         note: null,
         checkedIn,
-        badge: { text: "Registered", tone: "open" },
+        badge: { text: checkedIn ?? "Registered", tone: "open" },
       };
     case "waitlisted":
       return {
@@ -81,13 +83,14 @@ export function showQr(
 }
 
 // W-R18: the registration status on a row of the attendee list. The waiting place is in
-// the badge text; a cancelled row has no place (W-R40).
+// the badge text; a cancelled row has no place (W-R40). A checked-in registered row reads
+// "Checked in" (W-R42).
 export function listStatusText(
-  registration: Pick<Registration, "status" | "waitlist_position">,
+  registration: Pick<Registration, "status" | "waitlist_position" | "checked_in_at">,
 ): string {
   switch (registration.status) {
     case "registered":
-      return "Registered";
+      return registration.checked_in_at === null ? "Registered" : "Checked in";
     case "waitlisted":
       return registration.waitlist_position === null
         ? "Waiting list"
