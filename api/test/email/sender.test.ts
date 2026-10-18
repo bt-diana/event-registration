@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type pg from "pg";
+import { makeQrPng } from "../../src/email/qr.js";
 import { formatSentLine, MAX_SEND_ATTEMPTS, sendPending } from "../../src/email/sender.js";
 import type { EmailTransport } from "../../src/email/transport.js";
 import {
@@ -42,11 +43,15 @@ let registrationId: string;
 let version = 0;
 
 beforeAll(async () => {
+  // Rows with a `Ticket code:` line reach the real QR (email-templates.md
+  // ET22). Its first call loads the native canvas module, which can take
+  // seconds while the other test files run, so it is loaded here once.
+  await makeQrPng("WARMUP0000");
   db = await createTestDb();
   const organizerId = await insertOrganizer(db.pool);
   const eventId = await insertEvent(db.pool, organizerId);
   registrationId = (await insertRegistration(db.pool, eventId, await insertUser(db.pool))).id;
-});
+}, 30_000);
 
 afterAll(async () => {
   await db?.drop();

@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { buildMessage } from "../../src/email/message.js";
+import { makeQrPng } from "../../src/email/qr.js";
 
 // The message builder (email-templates.md ET18-ET21, D76, D77, roadmap step
 // 34b). Written before the module: ET18-ET21 are the tests first. The QR is a
@@ -9,6 +10,12 @@ const CODE = "ABCDEFGH23";
 const FAKE_PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
 
 type Row = { kind: string; to_email: string; subject: string; body: string };
+
+// ET21 uses the real QR. Its first call loads the native canvas module, which
+// can take seconds while the other test files run; loaded once here.
+beforeAll(async () => {
+  await makeQrPng("WARMUP0000");
+}, 30_000);
 
 const ROWS: Record<string, Row> = {
   ticket: {

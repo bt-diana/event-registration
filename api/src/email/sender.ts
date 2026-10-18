@@ -1,5 +1,6 @@
 import type pg from "pg";
-import type { EmailTransport } from "./transport.js";
+import { buildMessage, type QrPng } from "./message.js";
+import type { EmailMessage, EmailTransport } from "./transport.js";
 
 // docs/specs/email-reminders.md ER4-ER17 (D56, D58). Sends pending outbox rows
 // through the transport, one row per short transaction: claim the row with
@@ -7,7 +8,9 @@ import type { EmailTransport } from "./transport.js";
 // it sent or count the failed try, and COMMIT in both cases. At least once: a
 // crash between the provider's answer and the COMMIT leaves the row pending,
 // and the outbox row id as idempotency key makes a repeat unlikely to send.
-// No timer, no HTTP, no import of the provider SDK.
+// No timer, no HTTP, no import of the provider SDK. The per-kind content
+// (text, html, the ticket QR) is built by buildMessage (email-templates.md
+// ET22, D76, D77); the sender has no code per kind (ER9).
 
 // A row is tried at most this many times, then it is `error_sending` (D56).
 export const MAX_SEND_ATTEMPTS = 3;
@@ -25,6 +28,8 @@ export type SendOptions = {
   log?: (line: string) => void;
   // Gets one message per failed try (ER17).
   onError?: (message: string) => void;
+  // Draws the ticket QR. Defaults to makeQrPng; tests pass a fake (ET20).
+  qrPng?: QrPng;
 };
 
 type ClaimedRow = { id: string; kind: string; to_email: string; subject: string; body: string };
@@ -64,8 +69,13 @@ export function formatSentLine(row: { id: string; kind: string }): string {
 const ADDRESS = /[^\s<>()[\]{}"'`,;:]+@[^\s<>()[\]{}"'`,;:]*[^\s<>()[\]{}"'`,;:.]/g;
 
 // ER17: the error's message with every address replaced, cut to 200 characters.
-function failureReason(error: unknown): string {
-  const message = error instanceof Error && error.message !== "" ? error.message : "unknown error";
+// The email's own html, text and body are replaced first, so an error that
+// quotes the message never puts the ticket code into a log or send_error (ET24).
+function failureReason(error: unknown, contents: string[]): string {
+  let message = error instanceof Error && error.message !== "" ? error.message : "unknown error";
+  for (const content of [...contents].sort((a, b) => b.length - a.length)) {
+    if (content !== "") message = message.split(content).join("[content]");
+  }
   return message.replace(ADDRESS, "[address]").slice(0, MAX_REASON);
 }
 
@@ -89,7 +99,7 @@ export async function sendPending(pool: pg.Pool, options: SendOptions): Promise<
   const failedIds: string[] = [];
   let sent = 0;
   for (let tries = 0; tries < batchSize; tries++) {
-    const outcome = await sendOne(pool, transport, failedIds);
+    const outcome = await sendOne(pool, transport, options.qrPng, failedIds);
     if (outcome === null) break;
     if (outcome.sent) {
       sent += 1;
@@ -108,7 +118,12 @@ export async function sendPending(pool: pg.Pool, options: SendOptions): Promise<
 // Claims, sends and marks one row in its own transaction. null = no row left.
 // A database error rolls the transaction back (the try is not counted, ER17)
 // and is thrown to the caller.
-async function sendOne(pool: pg.Pool, transport: EmailTransport, failedIds: string[]): Promise<Outcome | null> {
+async function sendOne(
+  pool: pg.Pool,
+  transport: EmailTransport,
+  qrPng: QrPng | undefined,
+  failedIds: string[],
+): Promise<Outcome | null> {
   const client = await pool.connect();
   let broken: Error | undefined;
   try {
@@ -120,11 +135,15 @@ async function sendOne(pool: pg.Pool, transport: EmailTransport, failedIds: stri
     }
     const row = claimed.rows[0];
 
+    // A failure to build the message (the QR) is a failed try like a
+    // transport failure (ET20); the transport is then not called.
     let reason: string | null = null;
+    let message: EmailMessage | undefined;
     try {
-      await transport({ to: row.to_email, subject: row.subject, text: row.body, idempotencyKey: row.id });
+      message = await buildMessage(row, qrPng);
+      await transport({ ...message, idempotencyKey: row.id });
     } catch (error) {
-      reason = failureReason(error);
+      reason = failureReason(error, message ? [message.html, message.text, row.body] : [row.body]);
     }
 
     if (reason === null) {

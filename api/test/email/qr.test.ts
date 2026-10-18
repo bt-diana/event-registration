@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createCanvas, loadImage } from "canvas";
 import { makeQrPng } from "../../src/email/qr.js";
 
@@ -7,6 +7,12 @@ import { makeQrPng } from "../../src/email/qr.js";
 // node-canvas, no decoder library, no call to the web.
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+// The first call loads the native canvas module, which can take seconds while
+// the other test files run; loaded once here so no test hits its time limit.
+beforeAll(async () => {
+  await makeQrPng("WARMUP0000");
+}, 30_000);
 
 async function pixels(png: Buffer) {
   const image = await loadImage(png);

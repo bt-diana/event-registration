@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type pg from "pg";
 import { createApp } from "../../src/app.js";
 import { startEmailJobs } from "../../src/email/jobs.js";
+import { makeQrPng } from "../../src/email/qr.js";
 import type { EmailTransport } from "../../src/email/transport.js";
 import { TEST_SECRET } from "../auth/helpers.js";
 import {
@@ -25,8 +26,12 @@ const ONE_DAY_BEFORE = new Date(S.getTime() - 24 * 60 * 60 * 1000);
 let db: TestDb;
 
 beforeAll(async () => {
+  // Reminders reach the real QR (email-templates.md ET22). Its first call
+  // loads the native canvas module, which can take seconds while the other
+  // test files run, so it is loaded here once.
+  await makeQrPng("WARMUP0000");
   db = await createTestDb();
-});
+}, 30_000);
 
 afterAll(async () => {
   await db?.drop();

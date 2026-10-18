@@ -86,7 +86,7 @@ Constraints:
 | event_starts_at | timestamptz NOT NULL | copy of `events.starts_at` when the row was written; informational (for the email text), not in the key | B5, B8 |
 | to_email | text NOT NULL | copy of `users.email` when the row was written; a log, so a sent email stays as it was | |
 | subject | text NOT NULL | | |
-| body | text NOT NULL | | |
+| body | text NOT NULL | the plain-text part of the email; the html and the ticket QR are built from `kind`, `subject` and `body` when the row is sent, nothing else is stored (`specs/email-templates.md` ET25, D76, D77) | |
 | created_at | timestamptz NOT NULL DEFAULT now() | | |
 | sent_at | timestamptz NULL | NULL = not sent yet; set when the provider accepted the email | |
 | status | text NOT NULL DEFAULT 'pending' | `CHECK (status IN ('pending','sent','error_sending'))`; `pending` = waiting for the sender, `sent` = the provider accepted it, `error_sending` = 3 failed tries, never picked again (decision 19, migration `004_outbox_status.sql`) | |
