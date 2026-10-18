@@ -91,9 +91,9 @@ function goToScan() {
   fireEvent.click(main().getByRole("link", { name: "Check in attendees" }));
 }
 
-// Header link back to /registrations.
+// Scan screen link back to /registrations.
 function goToList() {
-  fireEvent.click(screen.getByRole("link", { name: "Registrations" }));
+  fireEvent.click(main().getByRole("link", { name: "Registrations" }));
 }
 
 function cellsOf(row: HTMLElement): string[] {

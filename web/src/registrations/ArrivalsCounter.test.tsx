@@ -102,9 +102,9 @@ function typeCode(code = CODE) {
   fireEvent.click(main().getByRole("button", { name: "Check in" }));
 }
 
-// Header link: back to the registrations page (the first event is chosen).
+// Scan screen link: back to the registrations page (the first event is chosen).
 function goToList() {
-  fireEvent.click(screen.getByRole("link", { name: "Registrations" }));
+  fireEvent.click(main().getByRole("link", { name: "Registrations" }));
 }
 
 function goToScan() {

@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { publicListItem } from "../events/test-helpers";
 import { ANN, OLGA, callsTo, deferred, json, mockFetch, renderApp } from "./test-helpers";
 
 afterEach(() => {
@@ -58,8 +59,8 @@ describe("W-A18: header", () => {
 
 describe("W-R14: registrations link per role", () => {
   it.each([
-    [ANN, "My registrations", "/registrations/me", "Registrations"],
-    [OLGA, "Registrations", "/registrations", "My registrations"],
+    [ANN, "My registrations", "/registrations/me", "My events"],
+    [OLGA, "My events", "/organizer", "My registrations"],
   ])("logged in as %o: %s", async (me, text, href, other) => {
     mockFetch({
       "GET /auth/me": () => json(200, me),
