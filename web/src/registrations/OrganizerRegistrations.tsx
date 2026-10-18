@@ -82,6 +82,12 @@ export function OrganizerRegistrations() {
     <section className="list-page registrations-page" data-role="organizer">
       <div className="list-head">
         <h1>Registrations</h1>
+        <Link
+          to={`/registrations/scan?event=${encodeURIComponent(chosen.id)}`}
+          className="button-link"
+        >
+          Check in attendees
+        </Link>
       </div>
       <EventSelect events={events.data} value={chosen.id} onChange={choose} />
       <RegistrationsBody list={list} />

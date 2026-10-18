@@ -1,4 +1,4 @@
-// Route entries for the two registration screens (registration-web.md W-R15-W-R17).
+// Route entries for the registration screens (registration-web.md W-R15-W-R17, W-R28).
 // Each one redirects only the other role, to a route that role may open, so there is
 // no loop. Logged out goes to the login of the screen's role with `next`. RequireRole
 // is not used: it shows the wrong-account page instead of redirecting (W-A6).
@@ -6,9 +6,11 @@ import { Navigate, useLocation } from "react-router";
 import { LOGIN, MeGate } from "../auth/guards";
 import { MyRegistrations } from "./MyRegistrations";
 import { OrganizerRegistrations } from "./OrganizerRegistrations";
+import { ScanScreen } from "./ScanScreen";
 
 export const MY_REGISTRATIONS = "/registrations/me";
 export const REGISTRATIONS = "/registrations";
+export const SCAN = "/registrations/scan";
 
 function useNext(): string {
   const { pathname, search } = useLocation();
@@ -40,6 +42,21 @@ export function RegistrationsEntry() {
         if (!me) return <Navigate to={`${LOGIN.organizer}?next=${next}`} replace />;
         if (me.role !== "organizer") return <Navigate to={MY_REGISTRATIONS} replace />;
         return <OrganizerRegistrations />;
+      }}
+    </MeGate>
+  );
+}
+
+// /registrations/scan: organizers, the same rules as /registrations (W-R28). The screen
+// is a plain child, so nothing (no camera, no request) runs before the guard accepts.
+export function ScanEntry() {
+  const next = useNext();
+  return (
+    <MeGate>
+      {(me) => {
+        if (!me) return <Navigate to={`${LOGIN.organizer}?next=${next}`} replace />;
+        if (me.role !== "organizer") return <Navigate to={MY_REGISTRATIONS} replace />;
+        return <ScanScreen />;
       }}
     </MeGate>
   );

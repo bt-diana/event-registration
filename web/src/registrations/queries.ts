@@ -9,7 +9,14 @@ import {
   publicEventKey,
   statusOf,
 } from "../events/queries";
-import { getMyRegistration, listEventRegistrations, register, type Registration } from "./api";
+import {
+  checkIn,
+  getMyRegistration,
+  listEventRegistrations,
+  register,
+  type CheckInResult,
+  type Registration,
+} from "./api";
 
 // Keyed by the account, so a second account in the same tab never sees the first
 // one's ticket (W-R23).
@@ -70,5 +77,14 @@ export function useRegister(eventId: string) {
         void queryClient.invalidateQueries({ queryKey: publicEventKey(eventId), exact: true });
       }
     },
+  });
+}
+
+// POST /checkin (registration-web.md W-R33, W-R34). The scan screen handles errors
+// itself (a 401/403 re-checks me there); success invalidates nothing yet (the arrivals
+// counter is checkin-web.md).
+export function useCheckIn() {
+  return useMutation<CheckInResult, Error, string>({
+    mutationFn: (ticketCode) => checkIn(ticketCode),
   });
 }

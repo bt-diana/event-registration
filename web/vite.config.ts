@@ -11,6 +11,7 @@ export default defineConfig({
       "/auth": "http://localhost:3000",
       "/events": "http://localhost:3000",
       "/public": "http://localhost:3000",
+      "/checkin": "http://localhost:3000",
     },
   },
   test: { environment: "jsdom", globals: true },

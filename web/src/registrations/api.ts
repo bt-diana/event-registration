@@ -52,3 +52,75 @@ export async function listEventRegistrations(eventId: string): Promise<Organizer
   const { registrations } = (await response.json()) as { registrations: OrganizerRegistration[] };
   return registrations;
 }
+
+// The answer of POST /checkin as a result for the scan screen (registration-web.md
+// section 3, question 10; checkIn in openapi.yaml).
+export type CheckInResult =
+  | {
+      outcome: "checked_in";
+      ticket_code: string;
+      event_title: string;
+      attendee_name: string;
+      checked_in_at: string;
+    }
+  | {
+      outcome: "already_checked_in";
+      ticket_code: string;
+      attendee_name: string;
+      checked_in_at: string;
+    }
+  | {
+      outcome: "not_found" | "waitlisted" | "registration_cancelled" | "event_cancelled" | "invalid_input";
+      ticket_code: string;
+    };
+
+const REFUSED = ["waitlisted", "registration_cancelled", "event_cancelled"] as const;
+
+// 200, 404, 400 and the known 409 codes are results; anything else throws ApiError
+// (401, 403, 5xx, an unknown 409; a network error is ApiError(0)).
+export async function checkIn(ticketCode: string): Promise<CheckInResult> {
+  const response = await request("/checkin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticket_code: ticketCode }),
+  });
+  if (response.ok) {
+    const body = (await response.json()) as {
+      ticket_code: string;
+      event_title: string;
+      attendee_name: string;
+      checked_in_at: string;
+    };
+    return {
+      outcome: "checked_in",
+      ticket_code: body.ticket_code,
+      event_title: body.event_title,
+      attendee_name: body.attendee_name,
+      checked_in_at: body.checked_in_at,
+    };
+  }
+  if (response.status === 404) return { outcome: "not_found", ticket_code: ticketCode };
+  if (response.status === 400) return { outcome: "invalid_input", ticket_code: ticketCode };
+  if (response.status === 409) {
+    const body = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      attendee_name?: string;
+      checked_in_at?: string;
+    };
+    if (
+      body.error === "already_checked_in" &&
+      typeof body.attendee_name === "string" &&
+      typeof body.checked_in_at === "string"
+    ) {
+      return {
+        outcome: "already_checked_in",
+        ticket_code: ticketCode,
+        attendee_name: body.attendee_name,
+        checked_in_at: body.checked_in_at,
+      };
+    }
+    const refused = REFUSED.find((code) => code === body.error);
+    if (refused) return { outcome: refused, ticket_code: ticketCode };
+  }
+  throw new ApiError(response.status);
+}
