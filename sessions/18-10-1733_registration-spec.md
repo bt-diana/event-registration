@@ -45,3 +45,13 @@ then:
 
 ### D42: event description spec, all suggested answers accepted
 The user accepted all seven suggestions: `NOT NULL DEFAULT ''`, 2000 characters, optional on create, whitespace-only becomes `''`, `description` in the organizer list, no editing for now, migration 003 (to confirm when building).
+
+## Step 4: implement the M3 API
+
+**Prompt** (17:41 +06, text cleaned)
+
+> implement after the spec is ready
+
+**What Claude did.** Gave the `code-writer` agent roadmap steps 14-16. It made two commits: the red tests `4d2b70f` (R1-R22; 53 failed, 6 passed because the catch-all 404 already answers them) and the code `893c6f5` (`api/src/registrations/` service, routes and ticket code, `api/src/events/status.ts` moved out of the events routes, `api/openapi.yaml`, `README.md`, `ROADMAP.md` steps 14-16 done). The agent removed `FOR UPDATE` on a local copy to check the B4 test: 11 tests failed, so the test depends on the lock. `bash scripts/verify.sh` passed (api 243 tests, web 116). Claude re-ran `npm test` in `api/`: 243 passed. Not done: web steps 17-18, cancel and promote (M4), the email sender. Both code commits carry the `Claude Opus 5.5` co-author line, not the `Sonnet 5.5` line from the attribution reminder; they are not amended because later commits sit on top. Used Agent (`code-writer`), Bash.
+
+**Decision.** None.
