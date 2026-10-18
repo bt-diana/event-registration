@@ -8,8 +8,9 @@ import { BackLink, EventNotFound, Detail } from "../events/EventParts";
 import { formatDateTime } from "../events/format";
 import { isAuthError, statusOf, usePublicEvent } from "../events/queries";
 import { QrCode } from "./QrCode";
+import { Badge } from "../events/StatusBadge";
 import { useMyRegistration } from "./queries";
-import { showQr } from "./ticket";
+import { showQr, ticketLabel } from "./ticket";
 import { TicketPanel } from "./TicketPanel";
 
 export function TicketPage({ eventId }: { eventId: string }) {
@@ -82,8 +83,11 @@ export function TicketPage({ eventId }: { eventId: string }) {
       <p className="ticket-event">{event.data.title}</p>
       <dl className="details">
         <Detail label="Starts">{formatDateTime(event.data.starts_at)}</Detail>
+        <Detail label="Status">
+          <Badge {...ticketLabel(mine.data).badge} />
+        </Detail>
       </dl>
-      <TicketPanel registration={mine.data} badge flat>
+      <TicketPanel registration={mine.data} flat>
         {showQr(mine.data, event.data) && <QrCode code={mine.data.ticket_code} />}
       </TicketPanel>
     </section>

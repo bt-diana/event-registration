@@ -2,15 +2,13 @@
 // A section labelled by its h2; the code is plain selectable text (W-R22).
 import { useId, type ReactNode, type Ref } from "react";
 import { Link } from "react-router";
-import { Badge } from "../events/StatusBadge";
 import type { Registration } from "./api";
 import { ticketLabel } from "./ticket";
 
 type Props = {
   registration: Registration;
-  // The event page links to the ticket page; the ticket page shows the badge instead.
+  // The event page links to the ticket page; the ticket page has its own page layout.
   viewTicketOf?: string;
-  badge?: boolean;
   // The ticket page (W-R38): no heading and no box, the parts sit in the card itself.
   flat?: boolean;
   headingRef?: Ref<HTMLHeadingElement>;
@@ -21,7 +19,6 @@ type Props = {
 export function TicketPanel({
   registration,
   viewTicketOf,
-  badge = false,
   flat = false,
   headingRef,
   children,
@@ -39,11 +36,6 @@ export function TicketPanel({
         <h2 id={headingId} tabIndex={-1} ref={headingRef}>
           {label.heading}
         </h2>
-      )}
-      {badge && (
-        <p className="ticket-badge">
-          <Badge {...label.badge} />
-        </p>
       )}
       {label.place && <p className="ticket-place">{label.place}</p>}
       <dl className="ticket-code-block">

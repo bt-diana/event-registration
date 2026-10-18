@@ -845,7 +845,6 @@ a:hover {
   outline-offset: 2px;
 }
 
-.ticket-badge,
 .ticket-place,
 .ticket-note {
   margin: 8px 0 0;
@@ -895,13 +894,8 @@ a:hover {
   margin-top: 24px;
 }
 
-.ticket-flat .ticket-badge {
-  margin-top: 0;
-}
-
-/* The badge line box is already 24 px tall: a small margin keeps the code close to it. */
 .ticket-flat .ticket-code-block {
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .ticket-page .ticket-code {

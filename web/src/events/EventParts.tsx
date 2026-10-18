@@ -1,4 +1,5 @@
 // Pieces shared by the organizer and the public event views (W-E12, W-E18, W-E23).
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 export function EventLoading() {
@@ -55,7 +56,7 @@ export function EventDescription({ text }: { text: string }) {
   return <p className="event-description">{text}</p>;
 }
 
-export function Detail({ label, children }: { label: string; children: string }) {
+export function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <dt>{label}</dt>
