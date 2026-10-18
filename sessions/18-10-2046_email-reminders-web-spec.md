@@ -30,3 +30,14 @@ Started 18-10 20:46 +06.
 22:20:20 +0600. The organizer opens it from a link in each row of the registrations table. The table shows the data of `GET /events/:id/registrations/:registrationId/emails`; it replaces the two static lines of W-EM2/W-EM3 on the ticket page. Reason: the user chose this over static text, so the web can show real outbox data.
 
 **Result.** `spec-writer` added the route `GET /events/:id/registrations/:registrationId/emails` to `email-reminders.md` (ER48-ER60) and rewrote `email-reminders-web.md` (W-EM1-W-EM15): an "Emails" column with a "View emails" link in each registrations row, and a page `/registrations/:registrationId/emails?event=` with one table (Kind, Status, To, Subject, Created, Sent at, Failed tries, Error). The ticket page gets no email lines. This decision was first numbered D59, which clashed with two other sessions; renumbered to D74. Open: the route overlaps `email-outbox.md` (`GET /events/:id/emails?registration_id=`, D60/D61). `ROADMAP.md` still says "two static lines" (it has staged changes from another session, so not touched). Used Agent, Bash.
+
+## Step 3: build the emails table UI only
+
+**Prompt** (22:45 +06, text cleaned)
+
+> implement only the ui for now
+> implement this page design from scratch; just follow the branding
+
+**What Claude did.** The design canvas did not render when read (only "Design" and "Loading..."), so no board was added. Per the user, the page is built from `docs/brand.md` and the spec only. Delegated tests-first and code to the `code-writer` agent (see below). API route is not built in this step. Used Artifact, Bash, Agent.
+
+**Decision.** None.
