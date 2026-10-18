@@ -891,22 +891,17 @@ a:hover {
   font-size: 18px;
 }
 
-.ticket-page .event-status {
-  margin: 16px 0 24px;
+/* W-R38: the ticket sits in the card, not in a box of its own. */
+.ticket-flat {
+  margin-top: 24px;
+}
+
+.ticket-flat .ticket-badge {
+  margin-top: 0;
 }
 
 .ticket-page .ticket-code {
   font-size: 30px;
-}
-
-/* The ticket page panel: a 2 px border in the state colour (DA8); the event page
-   panel keeps 1 px. */
-.ticket-page .ticket {
-  border: 2px solid var(--border-input);
-}
-
-.ticket-page .ticket[data-status="registered"] {
-  border-color: var(--accent);
 }
 
 .ticket-checked-in {

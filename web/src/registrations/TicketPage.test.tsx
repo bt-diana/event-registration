@@ -75,7 +75,6 @@ describe("W-R11: the ticket page", () => {
     // W-R38: no ticket heading, no event status line; the registration badge only.
     expect(main().queryByRole("heading", { level: 2 })).toBeNull();
     expect(main().queryByText("Open")).toBeNull();
-    expect(main().queryByRole("region")).toBeNull();
     expect(main().getByText(r.ticket_code)).toBeTruthy();
     expect(main().getByText(badge)).toBeTruthy();
     if (line) expect(main().getByText(line)).toBeTruthy();

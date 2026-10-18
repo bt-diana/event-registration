@@ -11,6 +11,8 @@ type Props = {
   // The event page links to the ticket page; the ticket page shows the badge instead.
   viewTicketOf?: string;
   badge?: boolean;
+  // The ticket page (W-R38): no heading and no box, the parts sit in the card itself.
+  flat?: boolean;
   headingRef?: Ref<HTMLHeadingElement>;
   // The ticket page puts the QR here (W-R25); the event page has none.
   children?: ReactNode;
@@ -20,16 +22,24 @@ export function TicketPanel({
   registration,
   viewTicketOf,
   badge = false,
+  flat = false,
   headingRef,
   children,
 }: Props) {
   const headingId = useId();
   const label = ticketLabel(registration);
+  const Root = flat ? "div" : "section";
   return (
-    <section className="ticket" aria-labelledby={headingId} data-status={registration.status}>
-      <h2 id={headingId} tabIndex={-1} ref={headingRef}>
-        {label.heading}
-      </h2>
+    <Root
+      className={flat ? "ticket-flat" : "ticket"}
+      aria-labelledby={flat ? undefined : headingId}
+      data-status={registration.status}
+    >
+      {!flat && (
+        <h2 id={headingId} tabIndex={-1} ref={headingRef}>
+          {label.heading}
+        </h2>
+      )}
       {badge && (
         <p className="ticket-badge">
           <Badge {...label.badge} />
@@ -51,6 +61,6 @@ export function TicketPanel({
           View ticket
         </Link>
       )}
-    </section>
+    </Root>
   );
 }
