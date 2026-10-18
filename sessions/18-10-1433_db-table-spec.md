@@ -108,3 +108,21 @@ Lowering capacity below the number of registered people is rejected with a warni
 **Time:** 14:59:12 +0600
 
 Accepted as written: tickets and registrations in one table, waiting people get a code but no ticket email, 10-character ticket codes, cancelling a checked-in ticket gives 409, the 24-hour reminder window is worker logic, no reminders for the waiting list, the name stored only in `users.name`, user rows kept, no owner change or organizer delete, and 404 for another organizer's event.
+
+## Step 6: last open questions
+
+**Prompt** (about 15:01 +06, text cleaned)
+
+> 1. OK
+> 2. cancelling an event when it has already started is not possible
+> 3 - 4. OK
+
+**What Claude did.** Gave the four answers to the `spec-writer` agent (Sonnet 5.5, medium). It added `schedule_version` to `events` and `outbox`, so the outbox unique key is now `(registration_id, kind, schedule_version)` and a reschedule that goes A, B, A, B emails every move. It made cancelling an event that has started a 409 (also written into B9 in `SPEC.md`). It confirmed that raising capacity promotes waiting people, and set the cookie lifetime to 7 days as a default (I said OK without a value, so this is my default, not a number from me). No open questions are left in `DATABASE.md`. The agent noted one weakness: the new key no longer blocks a second `ticket`, `promotion` or `event_cancelled` row across versions. The app logic under the event lock keeps them to one per person, and nothing in the design writes them twice. An optional stricter guard is a partial unique index on `(registration_id, kind)` for those three kinds. Claude checked the diff and committed. Used Agent, Bash.
+
+**Decision.**
+
+### D27: outbox "once" rule is per schedule version; no event cancel after the start
+
+**Time:** 15:03:30 +0600
+
+Reminders and reschedule emails are unique per person per `schedule_version`, so an event that returns to an earlier time still emails everyone. An event that has already started cannot be cancelled (409). Raising capacity promotes the waiting people. The cookie lasts 7 days unless changed.

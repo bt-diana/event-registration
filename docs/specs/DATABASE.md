@@ -7,7 +7,7 @@ Five tables: `organizers`, `users`, `events`, `registrations`, `outbox`. A ticke
 - `users` are attendees. They sign up (email, name, password) and log in. Registering for an event needs a signed-in attendee; the email comes from the account.
 - `organizers` sign up, log in and own events. An organizer is not an attendee, so the two tables are separate.
 - Ids are `uuid PRIMARY KEY DEFAULT uuidv7()` (built in since PostgreSQL 18). All foreign keys are `uuid`.
-- Login is a signed cookie, no sessions table (see `SPEC.md` section 3). Passwords are stored only as a `scrypt` hash with a random salt in `password_hash`.
+- Login is a signed cookie that lasts 7 days (default, the user can change it), no sessions table (see `SPEC.md` section 3). Passwords are stored only as a `scrypt` hash with a random salt in `password_hash`.
 
 ## 1. Tables
 
@@ -39,6 +39,7 @@ Five tables: `organizers`, `users`, `events`, `registrations`, `outbox`. A ticke
 | organizer_id | uuid NOT NULL, FK to organizers(id) | the owner; only this organizer manages the event | ownership (3.8) |
 | title | text NOT NULL | | |
 | starts_at | timestamptz NOT NULL | changed by reschedule | B5, B8 |
+| schedule_version | integer NOT NULL DEFAULT 1 | +1 on every reschedule that changes `starts_at`, in the 3.6 locked transaction | B5, B8 |
 | capacity | integer NOT NULL | `CHECK (capacity >= 0)`; changed by B10 | B2, B4, B10 |
 | status | text NOT NULL DEFAULT 'active' | `CHECK (status IN ('active','cancelled'))`; the whole event is cancelled | B9 |
 | cancelled_at | timestamptz NULL | set when the event is cancelled | B9 |
@@ -75,14 +76,15 @@ Constraints:
 | id | uuid, PK, DEFAULT uuidv7() | | |
 | registration_id | uuid NOT NULL, FK to registrations(id) | | |
 | kind | text NOT NULL | `CHECK (kind IN ('ticket','promotion','reminder','reschedule','event_cancelled'))` | B1, B3, B5, B8, B9, B10 |
-| event_starts_at | timestamptz NOT NULL | copy of `events.starts_at` when the row was written | B5, B8 |
+| schedule_version | integer NOT NULL | copy of `events.schedule_version` when the row was written; part of the unique key | B5, B8 |
+| event_starts_at | timestamptz NOT NULL | copy of `events.starts_at` when the row was written; informational (for the email text), not in the key | B5, B8 |
 | to_email | text NOT NULL | copy of `users.email` when the row was written; a log, so a sent email stays as it was | |
 | subject | text NOT NULL | | |
 | body | text NOT NULL | | |
 | created_at | timestamptz NOT NULL DEFAULT now() | | |
 | sent_at | timestamptz NULL | NULL = not printed yet | |
 
-Constraint: `UNIQUE (registration_id, kind, event_starts_at)`. This is the whole "once" rule for B5 (see 3.2). It also stops a second ticket or promotion email for the same person.
+Constraint: `UNIQUE (registration_id, kind, schedule_version)`. This is the whole "once" rule for B5 (see 3.2): one reminder and one reschedule email per person per schedule version, so A -> B -> A -> B still emails each move. For `ticket`, `promotion` and `event_cancelled` it is only a second guard: each is written once per registration by the app under the event lock (3.4, 3.5, 3.7), and it stops a repeat within one version.
 
 ## 2. SQL sketch (shape only, not the migration)
 
@@ -108,6 +110,7 @@ CREATE TABLE events (
   organizer_id uuid NOT NULL REFERENCES organizers(id),
   title        text NOT NULL,
   starts_at    timestamptz NOT NULL,
+  schedule_version integer NOT NULL DEFAULT 1,
   capacity     integer NOT NULL CHECK (capacity >= 0),
   status       text NOT NULL DEFAULT 'active' CHECK (status IN ('active','cancelled')),
   cancelled_at timestamptz,
@@ -136,13 +139,14 @@ CREATE TABLE outbox (
   id              uuid PRIMARY KEY DEFAULT uuidv7(),
   registration_id uuid NOT NULL REFERENCES registrations(id),
   kind            text NOT NULL CHECK (kind IN ('ticket','promotion','reminder','reschedule','event_cancelled')),
+  schedule_version integer NOT NULL,
   event_starts_at timestamptz NOT NULL,
   to_email        text NOT NULL,
   subject         text NOT NULL,
   body            text NOT NULL,
   created_at      timestamptz NOT NULL DEFAULT now(),
   sent_at         timestamptz,
-  UNIQUE (registration_id, kind, event_starts_at)
+  UNIQUE (registration_id, kind, schedule_version)
 );
 ```
 
@@ -153,7 +157,7 @@ Register and cancel both run in one transaction that starts with `SELECT ... FRO
 Different events do not block each other. The `users` row is only read, never locked, so it cannot deadlock with the event lock.
 
 ### 3.2 B5 single reminder: unique constraint, not timing (test first)
-The worker inserts `kind = 'reminder'` rows with `event_starts_at = events.starts_at` and `ON CONFLICT (registration_id, kind, event_starts_at) DO NOTHING`. `to_email` is taken from `users.email` through `registrations.user_id`. Running the worker 10 times, or two workers at once, leaves one row per registered person per start time. Only `registered` people get a reminder.
+The worker inserts `kind = 'reminder'` rows with `schedule_version = events.schedule_version`, `event_starts_at = events.starts_at` and `ON CONFLICT (registration_id, kind, schedule_version) DO NOTHING`. It reads the event columns in the same `INSERT ... SELECT` statement, so version and time cannot come from different moments. `to_email` is taken from `users.email` through `registrations.user_id`. Running the worker 10 times, or two workers at once, leaves one row per registered person per schedule version. Only `registered` people get a reminder.
 
 ### 3.3 B6 single check-in: conditional UPDATE (test first)
 ```sql
@@ -173,10 +177,10 @@ The attendee is the signed-in account, so the second registration has the same `
 Same locked transaction as 3.1: set `status = 'cancelled'`, `cancelled_at = now()` on the row; if it was `registered`, take `SELECT ... WHERE event_id = $1 AND status = 'waitlisted' ORDER BY queue_no LIMIT 1`, set it to `registered`, insert one `promotion` outbox row (`to_email` from that person's `users.email`). Cancelling a `waitlisted` row frees no seat and promotes nobody. A checked-in registration cannot be cancelled: rejected with 409 (the CHECK would also fail).
 
 ### 3.6 B8 reschedule
-The lock query carries the ownership check (3.8). `UPDATE events SET starts_at = $new`, then in the same transaction insert one `reschedule` outbox row per `registered` and `waitlisted` person with `event_starts_at = $new`. Old `reminder` rows keep the old `event_starts_at`, so a new reminder for the new time does not conflict with them. Rescheduling to the same time writes nothing new (unique key). Only active events can be rescheduled.
+The lock query carries the ownership check (3.8). If `$new` equals the current `starts_at`: a no-op, no version bump, nothing written. Otherwise `UPDATE events SET starts_at = $new, schedule_version = schedule_version + 1`, then in the same transaction insert one `reschedule` outbox row per `registered` and `waitlisted` person with the new `schedule_version` and `event_starts_at = $new`. Old `reminder` rows keep the old version, so a new reminder for the new version does not conflict with them, even when the event returns to an earlier time (A -> B -> A -> B). Only active events can be rescheduled.
 
 ### 3.7 B9 cancel the whole event (test first: no)
-One transaction, starting with `SELECT ... FROM events WHERE id = $1 AND organizer_id = $organizer FOR UPDATE` (same lock as 3.1, plus the ownership check of 3.8). If `status` is already `cancelled`, do nothing. Otherwise: `UPDATE events SET status = 'cancelled', cancelled_at = now()`. Then for every `registered` (not checked in) and `waitlisted` registration: insert one `event_cancelled` outbox row with `event_starts_at = events.starts_at`, and set `status = 'cancelled'`, `cancelled_at = now()`. Registrations already checked in stay as they are (the CHECK allows `checked_in_at` only on `registered` rows) and get no email (open question 2). Cancelling twice writes nothing new (the no-op check, and the outbox unique key as a second guard). A cancelled event cannot be re-opened.
+One transaction, starting with `SELECT ... FROM events WHERE id = $1 AND organizer_id = $organizer FOR UPDATE` (same lock as 3.1, plus the ownership check of 3.8). If `status` is already `cancelled`, do nothing. If `starts_at <= now()` (checked here, under the lock): rejected with 409, nothing written; an event that has already started cannot be cancelled. Otherwise: `UPDATE events SET status = 'cancelled', cancelled_at = now()`. Then for every `registered` (not checked in) and `waitlisted` registration: insert one `event_cancelled` outbox row with the current `schedule_version` and `event_starts_at = events.starts_at`, and set `status = 'cancelled'`, `cancelled_at = now()`. Registrations already checked in stay as they are (the CHECK allows `checked_in_at` only on `registered` rows) and get no email; this is now rare, because cancelling is only possible before the start, so only someone who checked in early is left. Cancelling twice writes nothing new (the no-op check, and the outbox unique key as a second guard). A cancelled event cannot be re-opened.
 
 Rules for a cancelled event (app rules, each reads `events.status` under the same `FOR UPDATE` lock, so none can race with the cancel):
 - Register: rejected with 409 (3.1 transaction).
@@ -193,7 +197,7 @@ Every organizer action must match `events.organizer_id`. The part of the query t
 Another organizer's event answers 404, the same as a missing event, so ids are not confirmed to strangers. `$organizer` is the logged-in organizer's id from the signed cookie, never a value from the request body. The public event page needs no login; registering and seeing or cancelling one's own ticket need a signed-in attendee. Check: organizer A cancelling, rescheduling, changing capacity or checking in on organizer B's event changes nothing and gets 404.
 
 ### 3.9 B10 change capacity (test first: no)
-Same locked transaction as 3.6/3.7: `SELECT ... FROM events WHERE id = $1 AND organizer_id = $organizer FOR UPDATE`, only if `status = 'active'`. Count `registered` rows. If `$new < count`: stop with 409 and a warning that says how many people are registered; nothing is written. Otherwise `UPDATE events SET capacity = $new`, then promote the first waitlisted people by `queue_no` until the free seats are filled (`$new - count` people at most), each with a `promotion` outbox row (open question 3). Lowering to a value at or above the registered count promotes nobody and changes no registration.
+Same locked transaction as 3.6/3.7: `SELECT ... FROM events WHERE id = $1 AND organizer_id = $organizer FOR UPDATE`, only if `status = 'active'`. Count `registered` rows. If `$new < count`: stop with 409 and a warning that says how many people are registered; nothing is written. Otherwise `UPDATE events SET capacity = $new`, then promote the first waitlisted people by `queue_no` until the free seats are filled (`$new - count` people at most), each with a `promotion` outbox row (decision 15). Lowering to a value at or above the registered count promotes nobody and changes no registration.
 
 ## 4. Behaviour map
 
@@ -203,11 +207,11 @@ Same locked transaction as 3.6/3.7: `SELECT ... FROM events WHERE id = $1 AND or
 | B2 | `status`, `capacity`, count under the event lock |
 | B3 | waitlist index, order by `queue_no`, outbox `promotion` |
 | B4 | `FOR UPDATE` on `events` row (3.1) |
-| B5 | outbox `UNIQUE (registration_id, kind, event_starts_at)` (3.2) |
+| B5 | `events.schedule_version`; outbox `UNIQUE (registration_id, kind, schedule_version)` (3.2) |
 | B6 | `checked_in_at` and the conditional UPDATE joined to the event's `organizer_id` (3.3) |
 | B7 | `count` of `checked_in_at IS NOT NULL`, joined to the event's `organizer_id` |
-| B8 | `events.starts_at`, outbox `event_starts_at`, `reschedule` rows (3.6) |
-| B9 | `events.status`, `events.cancelled_at`, registrations set to `cancelled`, outbox `event_cancelled`, event lock (3.7) |
+| B8 | `events.starts_at`, `events.schedule_version`, outbox `schedule_version`, `reschedule` rows (3.6) |
+| B9 | `events.status`, `events.cancelled_at`, registrations set to `cancelled`, outbox `event_cancelled`, event lock, 409 once `starts_at <= now()` (3.7) |
 | B10 | `events.capacity`, count under the event lock, `queue_no` order, outbox `promotion` (3.9) |
 | Ownership | `events.organizer_id`, `WHERE organizer_id = $organizer` in the locked query and in the check-in join (3.8) |
 
@@ -228,11 +232,12 @@ No sessions table (signed cookie), no roles or permissions table (an organizer o
 9. User rows are kept forever. An event never changes owner and organizers are never deleted (no cascade).
 10. Another organizer's event answers 404, not 403.
 11. A cancelled event cannot be re-opened.
-12. Login is a signed cookie via `cookie-parser`; passwords use `crypto.scrypt`. Both attendees and organizers sign up themselves; no seed script.
+12. Login is a signed cookie via `cookie-parser`; passwords use `crypto.scrypt` with a random salt, no new library. Both attendees and organizers sign up themselves; no seed script.
+13. `events.schedule_version` (+1 per reschedule) is in the outbox unique key instead of `event_starts_at`, so a reschedule loop A -> B -> A -> B emails and reminds every time. Rescheduling to the same time is a no-op. `outbox.event_starts_at` stays as an informational copy.
+14. An event that has already started (`starts_at <= now()`) cannot be cancelled: 409. Already checked-in people are left alone by a cancel.
+15. Raising capacity promotes the first waitlisted people by `queue_no`, each with a `promotion` email.
+16. The login cookie lasts 7 days. This is a default, the user can change it.
 
 ## 7. Open questions
 
-1. Reschedule loop. Event A -> B -> A -> B: the second move to B writes no `reschedule` email, because `(registration, 'reschedule', B)` already exists. A move back to A gets no new reminder, because `(registration, 'reminder', A)` exists. Option: add `events.schedule_version integer NOT NULL DEFAULT 1`, incremented on every reschedule, and use it in the outbox unique key instead of `event_starts_at`. Do it, or accept this rare case?
-2. Cancelling an event leaves already checked-in registrations as they are (not cancelled, no email), because of the CHECK. OK?
-3. Raising capacity promotes the first waitlisted people by `queue_no` to the new free seats, each with a `promotion` email (default). Or only change the number and promote nobody?
-4. Password hashing uses Node's built-in `crypto.scrypt` with a random salt, no new library (default). Object if you want something else.
+None.
