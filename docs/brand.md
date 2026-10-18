@@ -52,6 +52,7 @@ Both from Google Fonts. Fallback: `system-ui, sans-serif`.
 ## Components
 
 - **Input:** 48px high, 1px `border-input`, radius 8, 16px text, a visible `<label>` above it. Invalid: 2px `error` border, `aria-invalid="true"`, error text below with `role="alert"` linked by `aria-describedby`.
+- **Select** (event selector): like the input (48px, 1px `border-input`, radius 8, 16px text, padding `0 12px`) but `appearance: none` with its own 16px chevron in `text` as a background image, 12px from the right edge; right padding 36px so text never runs under it (`design-alignment.md` DA51 to DA53).
 - **Password field:** input plus a "Show"/"Hide" button (48px high, `aria-pressed`) in a row with an 8px gap.
 - **Primary button:** 48px high, full width in a form, accent background, white 16px 600 text, radius 8. Disabled and relabelled while a request is pending (`auth-web.md` W-A12).
 - **Secondary button:** same size, white background, 1px `border-input`, dark text.

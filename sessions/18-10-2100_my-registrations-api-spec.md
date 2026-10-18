@@ -78,3 +78,15 @@ Started 18-10 21:00 +06.
 
 ### D75: back links read "← Events", "← Event", "← Registrations"
 22:38:19 +0600. The user chose this over "To events". The arrow stays, the word "Back" goes; the accessible name becomes the destination. Reason: the user asked to remove the word "back" from the buttons.
+
+**Result (step 7).** `spec-writer` changed the wording in `design-alignment.md` (DA7, DA16, DA35-DA41, DA43, DA44, DA46, DA47, DA49, question 20), `events-web.md` (W-E21) and `email-reminders-web.md` (W-EM13). New DA50: tests find a back link as `a.back-link` inside `main` whose text starts with "←" (exact names, no regex). No name clash on any screen. Code, tests, `brand.md` line 85 and README lines 166 and 277 still say "Back to ...". Used Agent.
+
+## Step 8: select arrow and padding
+
+**Prompt** (22:45 +06, text cleaned)
+
+> also, fix the arrow style and add paddings for the select component
+
+**What Claude did.** Read the arrow as the event selector's dropdown arrow (`EventSelect.tsx`: native arrow, `padding: 0 12px`). Started a `spec-writer` agent: new rows in `design-alignment.md` (DA51-DA54 after renumbering, because both spec agents had taken DA50 at the same time): `appearance: none`, own 16 px chevron as a background image, padding `0 36px 0 12px`, ellipsis for long titles, system arrow in forced-colors mode, manual browser check at 320 and 390 px plus one small structure test. One bullet in `brand.md`. Used Agent, Grep, Bash.
+
+**Decision.** None.
