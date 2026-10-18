@@ -12,7 +12,8 @@ export function readMailConfig(env: Readonly<Record<string, string | undefined>>
     (name): name is string => name !== null,
   );
   if (missing.length > 0) {
-    throw new Error(`${missing.join(" and ")} must be set (see .env.example); the API does not start without them`);
+    const them = missing.length > 1 ? "them" : "it";
+    throw new Error(`${missing.join(" and ")} must be set (see .env.example); the API does not start without ${them}`);
   }
   return { apiKey, from };
 }

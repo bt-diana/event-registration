@@ -114,6 +114,7 @@ describe("ER35: an error in the task is reported and the timer keeps going (test
     });
     const runner = createRunner(task, { intervalMs: 1000, onError });
     await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(0);
     expect(task).toHaveBeenCalledTimes(2);
     expect(onError).toHaveBeenCalledTimes(2);
     expect(onError.mock.calls[0][0]).toContain("sync boom");
