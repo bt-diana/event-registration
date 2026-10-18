@@ -486,15 +486,32 @@ describe("HB9: accessibility", () => {
     });
   }
 
-  it.each<[State, () => Response, string[]]>([
-    ["logged out", loggedOut, ["Event Registration", WATCH, "Log in", "Sign up", "For organizers"]],
-    ["attendee", () => json(200, ANN), ["Event Registration", WATCH, "My registrations", "Log out"]],
-    ["organizer", () => json(200, OLGA), ["Event Registration", WATCH, "Registrations", "Log out"]],
-  ])("%s: Tab order logo, Watch all events, then the account", async (state, me, order) => {
+  it("logged out: Tab order logo, Watch all events, then the account links", async () => {
+    mockFetch({ [ME]: loggedOut, ...SCREENS });
+    renderApp("/event/1");
+    await meShown("logged out");
+    expect(tabOrder()).toEqual([
+      "Event Registration",
+      WATCH,
+      "Log in",
+      "Sign up",
+      "For organizers",
+    ]);
+  });
+
+  // The account link texts belong to W-R14; only their place after the button is checked here.
+  it.each<[State, () => Response]>([
+    ["attendee", () => json(200, ANN)],
+    ["organizer", () => json(200, OLGA)],
+  ])("%s: Tab order logo, Watch all events, the account link, then Log out", async (state, me) => {
     mockFetch({ [ME]: me, ...SCREENS });
     renderApp("/event/1");
     await meShown(state);
-    expect(tabOrder()).toEqual(order);
+    const accountLinks = within(header().getByRole("navigation", { name: "Main" }))
+      .getAllByRole("link")
+      .map((link) => link.textContent ?? "");
+    expect(accountLinks.length).toBeGreaterThan(0);
+    expect(tabOrder()).toEqual(["Event Registration", WATCH, ...accountLinks, "Log out"]);
   });
 
   it("the text is the accessible name and it takes the focus", async () => {

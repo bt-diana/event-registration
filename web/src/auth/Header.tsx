@@ -60,23 +60,34 @@ export function Header() {
         <img className="logo-icon" src={icon} alt="" width="32" height="32" />
         <span className="logo-text">Event Registration</span>
       </Link>
-      {me.data ? (
-        <Account me={me.data} />
-      ) : (
-        // Nothing while me is loading, so a logged-in person never sees the login links flash.
-        !me.isPending && (
-          <nav aria-label="Account" className="site-nav">
-            <Link to="/login">Log in</Link>
-            <Link to="/signup">Sign up</Link>
-            {/* The role switch follows the page role. */}
-            {organizerPage ? (
-              <Link to="/login">For attendees</Link>
-            ) : (
-              <Link to="/organizer/login">For organizers</Link>
-            )}
-          </nav>
-        )
-      )}
+      <div className="site-header-end" data-role={organizerLook ? "organizer" : "user"}>
+        {/* Same link for everyone and in every state, also while me loads; outside the
+            nav landmarks (header-events-link.md HB1-HB5, D58, D59). */}
+        <Link
+          to="/"
+          className="button-link-secondary"
+          aria-current={pathname === "/" ? "page" : undefined}
+        >
+          Watch all events
+        </Link>
+        {me.data ? (
+          <Account me={me.data} />
+        ) : (
+          // Nothing while me is loading, so a logged-in person never sees the login links flash.
+          !me.isPending && (
+            <nav aria-label="Account" className="site-nav">
+              <Link to="/login">Log in</Link>
+              <Link to="/signup">Sign up</Link>
+              {/* The role switch follows the page role. */}
+              {organizerPage ? (
+                <Link to="/login">For attendees</Link>
+              ) : (
+                <Link to="/organizer/login">For organizers</Link>
+              )}
+            </nav>
+          )
+        )}
+      </div>
     </header>
   );
 }
