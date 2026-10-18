@@ -16,17 +16,21 @@ import { getMyRegistration, listEventRegistrations, register, type Registration 
 export const registrationKey = (meId: string, eventId: string) =>
   ["registration", meId, eventId] as const;
 
-export const eventRegistrationsKey = (eventId: string) =>
-  ["event-registrations", eventId] as const;
+// Keyed by the account like the attendee key (W-R23): a login as another organizer
+// replaces the cookie without a logout, and names and emails must not carry over.
+export const eventRegistrationsKey = (meId: string, eventId: string) =>
+  ["event-registrations", meId, eventId] as const;
 
-// The organizer list of one event (W-R20); runs once an event is chosen. A 401/403
-// re-checks me and the guard decides (W-R13).
+// The organizer list of one event (W-R20); runs once me is a known organizer and an
+// event is chosen. A 401/403 re-checks me and the guard decides (W-R13).
 export function useEventRegistrations(eventId: string | null) {
   const queryClient = useQueryClient();
+  const me = useMe();
+  const meId = me.data?.role === "organizer" ? me.data.id : "";
   return useQuery({
-    queryKey: eventRegistrationsKey(eventId ?? ""),
+    queryKey: eventRegistrationsKey(meId, eventId ?? ""),
     queryFn: () => authCheckedCall(queryClient, () => listEventRegistrations(eventId ?? "")),
-    enabled: eventId !== null,
+    enabled: meId !== "" && eventId !== null,
     ...QUERY_OPTIONS,
   });
 }

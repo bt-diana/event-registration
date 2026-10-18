@@ -50,3 +50,13 @@ Started 18-10 18:39 +06.
 **What Claude did.** Tests first (commit `f50c255`, red: the screen was still the placeholder): `OrganizerRegistrations.test.tsx` (no events with "Create event" and no list request, 404 "Event not found", default first event, `event` parameter in and not in the list, changing the event, table in the API order with the six columns and `scope="col"`, "Checked in", nobody, loading, list and events errors with Retry, 401 to the organizer login, one `h1`), the `it.todo` for W-R20/W-R21 removed, and the organizer cases of `entries.test.tsx` and the W-R13 case of `TicketPage.test.tsx` answer `GET /events`. Then the code: `listEventRegistrations` and the `OrganizerRegistration` type in `api.ts`, `useEventRegistrations` (key `["event-registrations", id]`) in `queries.ts`, `EventSelect.tsx` (selector and `useChosenEvent`, the choice in `?event=`), `OrganizerRegistrations.tsx`, styles for the select and the table. Updated `README.md` and `ROADMAP.md`. `bash scripts/verify.sh` passes (api 332, web 435 and 4 todo). Used Read, Write, Edit, Bash.
 
 **Decision.** None.
+
+## Step 6: organizer list cache keyed by account
+
+**Prompt** (19:30 +06, passed on by the coordinator from a security review, text cleaned)
+
+> `eventRegistrationsKey(eventId)` has no account in it. A login as another account replaces the cookie without a logout, so the cache would show the previous organizer's attendee names and emails. Key it by `me.id`, enable the query only when `me` is a loaded organizer, and add a test first. Also check that the cache is cleared or ignored when the `me` identity changes on login or sign-up; if that is a broader existing gap, report it instead of widening the scope. Add this to the spec and the session file.
+
+**What Claude did.** Test first (commit `349b7b9`, red: after `me` changes from organizer A to B the same key showed A's rows and no new request was made). Then `eventRegistrationsKey(meId, eventId)` and `useEventRegistrations` enabled only for a known organizer (`queries.ts`). Checked login and sign-up in `auth/session.ts`: they only set the `me` cache and remove nothing, so `["events"]` (the organizer's events, from M2) has the same gap: organizer B can briefly see A's event titles until the refetch. Not fixed here (auth-web and events-web scope); written as a known gap in `registration-web.md` W-R23 and reported. Updated the spec W-R20, W-R21, W-R23, section 2 and section 3 keys. `bash scripts/verify.sh` passes (api 332, web 436 and 4 todo; the scan screen test files of the next step were set aside for this run). Used Read, Edit, Bash.
+
+**Decision.** None.
