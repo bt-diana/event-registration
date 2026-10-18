@@ -14,6 +14,7 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 - M1 UI: web login and session (`auth-web.md`, W-A1-W-A20): sign-up, login and logout pages for both roles, `me` session, guards, dev proxy.
 - M2 API spec: `events.md`.
 - M2 API: events (`events.md`, E1-E20): migration `002_event_duration.sql`, `POST /events`, `GET /events`, `GET /events/:id` for the owner, `GET /public/events/:id`, `api/openapi.yaml`.
+- M2 UI spec: `events-web.md` (W-E1-W-E21): organizer events list, create form, event page, public event page.
 
 ## Milestones
 
@@ -45,7 +46,7 @@ Specs are not written all at once. The first steps of each milestone write (or e
 7. API spec: `events.md` (done).
 8. Test, then code: organizer creates, lists and reads own events. Another organizer's event answers 404 (`DATABASE.md` 3.8) (done: migration `002_event_duration.sql`, `api/src/events/routes.ts`; `events.md` calls this step 6).
 9. Test, then code: public event route (no login): title, start, seats left, full or not (done: `GET /public/events/:id` with the derived status; `events.md` calls this step 7).
-10. UI spec: `events-web.md`: organizer events list, create form and event page; the public event page (read only).
+10. UI spec: `events-web.md`: organizer events list, create form and event page; the public event page (read only). (done: W-E1 to W-E21)
 11. Test, then code: organizer events list, create form and event page (states: loading, error, empty list, field errors).
 12. Test, then code: public event page (states: loading, not found, open, full, closed, already started).
 
