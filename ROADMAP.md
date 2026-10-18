@@ -44,7 +44,7 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 | M5 | Check-in and arrivals counter | `checkin.md` | `checkin-web.md` | B6, B7 | B6 |
 | M6 | Outbox sender and reminder worker | `email-reminders.md` | `email-reminders-web.md` | B5 | B5 |
 | M7 | Reschedule and event cancel | `email-reminders.md` (extend) | `email-reminders-web.md` (extend) | B8, B9 | |
-| M8 | Live updates | `checkin.md` (extend) | `checkin-web.md` (extend) | B7 | |
+| M8 | ~~Live updates~~ (dropped, D51) | | | | |
 | M9 | Review and README | | | all | |
 | M10 | Test data (seed) | `seed.md` | | | |
 
@@ -110,16 +110,16 @@ Specs are not written all at once. The first steps of each milestone write (or e
 38. UI spec: extend `email-reminders-web.md`: reschedule form and cancel-event button on the organizer event page; the cancelled and rescheduled states on the public page and the ticket page.
 39. Test, then code: reschedule form, cancel-event button (confirm, error), cancelled state on the public page and the ticket page.
 
-### M8. Live updates
-40. API spec: extend `checkin.md` (live counter).
-41. Server-sent events for the arrivals counter, with a test that a check-in reaches a connected client.
-42. UI spec: extend `checkin-web.md`: live counter states (connecting, live, lost, polling fallback).
-43. Test, then code: the counter listens to the event stream and falls back to polling. Each UI step adds the Vite dev proxy entries for the routes it uses (D34 covers `/auth` only).
+### M8. Live updates (dropped, D51: the counter is not live; it reloads on return, see `checkin-web.md`)
+40. ~~dropped~~ API spec: extend `checkin.md` (live counter).
+41. ~~dropped~~ Server-sent events for the arrivals counter, with a test that a check-in reaches a connected client.
+42. ~~dropped~~ UI spec: extend `checkin-web.md`: live counter states (connecting, live, lost, polling fallback).
+43. ~~dropped~~ Test, then code: the counter listens to the event stream and falls back to polling. Each UI step adds the Vite dev proxy entries for the routes it uses (D34 covers `/auth` only).
 
 ### M9. Review and finish
 44. Review the diff against the specs with the reviewer (correctness and requirements only). Fix what it finds.
-45. Two-tab check by hand: check in on one tab, the counter moves on the other.
-46. README: run instructions and the honest state (SSE in one process, polling worker, no real email). Every behaviour has a test or a README note.
+45. Check by hand: check in on the scan page, return to the registrations page, the list and the numbers are requested again and show the new arrival.
+46. README: run instructions and the honest state (no live updates, reminder worker, no real email). Every behaviour has a test or a README note.
 
 ### M10. Test data (seed)
 47. API spec: `seed.md`: what the seed script creates (organizers, attendees, events in every state: open, full with a waiting list, started, ended, cancelled; registrations with tickets, some checked in), the command to run it, safe to run twice, development database only.

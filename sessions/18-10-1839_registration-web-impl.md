@@ -97,3 +97,17 @@ Started 18-10 18:39 +06.
 
 ### D50: no polling; list and arrivals counter reload on return to the registrations page
 19:45 +0600. The user wants the check-in to use `POST /checkin`, the organizer to stay on the check-in page after a check-in, no polling of the organizer list, and the list and the numbers (from the new `GET /events/:id/arrivals`) to be requested again when the organizer returns to `/registrations`. Reason: simpler than polling, and the data is fresh when it is looked at.
+
+## Step 10: no live counter
+
+**Prompt** (19:48:09 +0600, text cleaned)
+
+> why do we need polling?
+> let's not have it live; SPEC_TEMPLATE.md is just a spec template, not the real spec, so never treat it like one
+
+**What Claude did.** Explained that polling came from B7 in `SPEC_TEMPLATE.md` ("updates live") and from roadmap M8. Dropped M8 (steps 40-43) in `ROADMAP.md`, changed step 45/46 and the README lines that promised live updates or server-sent events to "read again on return". Saved the template rule as a memory. Used Bash.
+
+**Decision.**
+
+### D51: the arrivals counter is not live
+19:48:09 +0600. The user does not want live updates or polling. The counter reloads when the organizer returns to the page (D50). `SPEC_TEMPLATE.md` is only a template: its behaviours (B1-B10) are not requirements and must not be used to justify features. Reason: simpler, and the template was never the real spec.

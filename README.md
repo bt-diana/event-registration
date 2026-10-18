@@ -13,7 +13,7 @@ This is my solution for Task 9. I built it together with an AI agent.
 - **Waiting list:** when seats run out, new people go to the list. A cancellation gives the seat to the first person on the list, and they get an email.
 - **Tickets:** every registered person gets a ticket with a code. A ticket can be checked in only once.
 - **Check-in screen:** the organizer scans the ticket QR code with the camera, or types the ticket code.
-- **Organizer screen:** how many people are registered, on the waiting list, and have arrived. The arrivals counter updates live.
+- **Organizer screen:** how many people are registered, on the waiting list, and have arrived. The arrivals counter is read again when the organizer opens the page (not live).
 - **Emails:** ticket on registration, seat from the waiting list, one reminder one day before the event, and a notice when the event is rescheduled.
 
 ## Tech stack
@@ -26,7 +26,7 @@ This is my solution for Task 9. I built it together with an AI agent.
 | Email | Stub. Every email is saved in an `outbox` table and printed to the console |
 | Accounts | Attendees and organizers sign up with email and password. Passwords are stored as an `scrypt` hash with a random salt (`node:crypto`). Login is one signed `session` cookie that lasts 7 days; no sessions table |
 
-The backend and the frontend are separate apps. They talk over HTTP, and the live counter uses server-sent events. The reasons for these choices are in the decisions in `sessions/`. The task allows stubs for external services, so email is not sent for real.
+The backend and the frontend are separate apps. They talk over HTTP. The reasons for these choices are in the decisions in `sessions/`. The task allows stubs for external services, so email is not sent for real.
 
 ## Getting started
 
@@ -217,7 +217,6 @@ The hard cases are handled in the database, not in application code.
 - **Check in once:** one `UPDATE ... WHERE checked_in_at IS NULL` statement. If it changes zero rows, the ticket was already used.
 - **One reminder:** a worker runs on a timer and saves a reminder with a unique key per registration and event start time. Two workers, or repeated runs, still give one reminder.
 - **Reschedule:** the date changes, and everyone registered or on the waiting list gets an email. A moved event can get a new reminder for the new time.
-- **Live counter:** server-sent events, with polling every 2 seconds as a fallback.
 
 ## How the behaviour is proven
 
@@ -231,7 +230,7 @@ All of these are automatic tests. `[TODO: fill the Status column with real resul
 | Two people compete for the last seat | Capacity 1, 20 attendees register at once through the API. Exactly 1 registered and 19 waiting with places 1 to 19, one ticket email. Repeated on 5 fresh events, plus capacity 3 (3 and 17) and capacity 0 | Passes (API): `api/test/registrations/register.test.ts` |
 | One reminder, one day before | Fake clock to 24 hours before. Run the worker many times and with two workers. One reminder per person | ☐ |
 | Ticket checks in once | 5 check-ins of one code at once through the API. One succeeds, four are refused with `already_checked_in` and the first time; repeated on 5 fresh tickets | Passes (API): `api/test/checkin/checkin.test.ts` |
-| Arrivals counter updates live | Two browser contexts. Check in on one, and the organizer page in the other updates without reload | ☐ |
+| Arrivals counter after a check-in | Check in on the scan page, go back to the registrations page: the list and the numbers are requested again and include the new arrival | ☐ |
 | Reschedule emails everyone | Reschedule. One email per registered and waiting person | ☐ |
 | Works with two clients open | The two-browser test above, plus a screenshot | ☐ |
 
