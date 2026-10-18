@@ -35,3 +35,13 @@ Started 18-10 21:00 +06.
 **What Claude did.** Delegated to the `code-writer` agent with the spec's recommended answers to the open questions. Two commits on `main`: `f3563a9` (22 red tests, MR1-MR15, failing with the 404 catch-all) and `d51f95f` (`listMyRegistrations` in `service.ts`, the route in `routes.ts`, `openapi.yaml` 0.7.0, the `/me` proxy line, ROADMAP). `scripts/verify.sh` passed (api 378 tests, web 825 passed and 4 todo). The README edits for this route landed in another session's commit `fbbc96b`, not in `d51f95f`. `MyRegistration` in `openapi.yaml` lists the keys instead of allOf (`Registration` has `additionalProperties: false`); fixed the spec wording to match. Used Agent, Bash, Grep.
 
 **Decision.** None.
+
+## Step 4: unblock the attendee list in the web spec
+
+**Prompt** (22:25 +06, text cleaned)
+
+> i still see "The list is not built yet."
+
+**What Claude did.** Explained that only the API route was built. Delegated to the `spec-writer` agent: `docs/specs/registration-web.md` now has W-R18 and W-R19 as real behaviours, plus new W-R39 (loading, empty, error), W-R40 (event status badge) and W-R41 (request only for a known attendee); W-R17 and W-R22 adjusted; question 1 marked answered; board S3 "My registrations" described. Tried to read the design canvas twice more: it still returns only "Design / Loading...", so the board could not be checked. Used Agent, Artifact, Bash.
+
+**Decision.** None.
