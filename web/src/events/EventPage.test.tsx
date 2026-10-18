@@ -81,7 +81,20 @@ describe("W-E20 and W-E21: organizer view structure and links", () => {
     );
     const share = main().getByRole("link", { name: `/event/${EVENT_ID}` });
     expect(share.getAttribute("href")).toBe(`/event/${EVENT_ID}`);
-    expect(main().getAllByRole("link").length).toBe(2);
+    expect(main().getAllByRole("link").length).toBe(3);
+  });
+
+  it("links to the registrations of this event", async () => {
+    mockFetch({
+      "GET /auth/me": () => json(200, OLGA),
+      [OWN]: () => json(200, organizerEvent()),
+    });
+    renderApp(`/event/${EVENT_ID}`);
+    await screen.findByRole("heading", { level: 1, name: "Spring meetup" });
+
+    expect(main().getByRole("link", { name: "Registrations" }).getAttribute("href")).toBe(
+      `/registrations?event=${EVENT_ID}`,
+    );
   });
 });
 
