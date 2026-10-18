@@ -113,6 +113,8 @@ The demo runs on Render: https://event-registration-web-rmbi.onrender.com. The w
 
 **Known limit.** `onrender.com` is on the public suffix list, so the two `*.onrender.com` origins are different sites and the session cookie is a third-party cookie for the web. Browsers that block third-party cookies (Safari, Chrome with that setting on) do not keep the login. A custom domain with the web and the API on sibling subdomains of one domain (for example `app.example.com` and `api.example.com`) fixes it; nothing in the code needs to change for that. `SameSite=None` also drops the `Lax` defence from `auth.md`: the exact `CORS_ORIGIN` check and `HttpOnly` remain, and CSRF protection is out of scope.
 
+`api/render.yaml` is a Render Blueprint for the API service and its Postgres (variables, build and start commands, health check at `/health`; `COOKIE_SECRET` is generated, `EMAIL_API_KEY`, `MAIL_FROM` and `CORS_ORIGIN` are asked for). Render looks for the file in the repository root, so create the Blueprint with the file path `api/render.yaml`. It does not run the migrations (see step 2 of the checklist) and does not create the Static Site.
+
 **What to put in `VITE_API_URL` for a built version.** The public URL of the API service, origin only: `https://<api>.onrender.com`. No path, no trailing slash. It must be set in the Static Site environment before the build; to build locally against that API put the same line in `web/.env` (copy `web/.env.example`). Empty means relative calls (the dev proxy). To check a deployed build, open the Network tab: the requests must go to the API address, not to the web address. If they go to the web address, the variable was not set at build time.
 
 **Deploy checklist.**
