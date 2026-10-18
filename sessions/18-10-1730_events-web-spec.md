@@ -47,3 +47,18 @@ The status badge colours in `brand.md` are final. Reason: the user approved them
 **Time:** 17:39:53 +0600
 
 The event page is `/event/:id` for everyone. The owner gets the organizer view, others the public view. Reason: the user wants one share link; the view depends on who is logged in.
+
+## Step 5: header bug and closing the open questions
+
+**Prompt** (cleaned)
+
+> found a bug: on clicking the app title in the header while logged in as org, we get to see the event list as Attendee; let's keep the org view, even for public events
+>
+> update docs/specs/events-web.md: I answered all open questions
+
+**What Claude did.** Found the cause in `web/src/auth/Header.tsx` (logo links to `/`; the organizer look depends only on the path). Added W-E22 to `events-web.md` and gave the fix to the `code-writer` agent, test first (it commits itself). Then turned section 7 of the spec into a list of decisions: questions 2 and 3 as the user answered; question 1 as `registration.md` R11 already says (running events accept registrations); question 4 accepted as drawn on the canvas. Used Read, Grep, Agent, Bash.
+
+### D39: an organizer keeps the organizer view on every screen
+**Time:** 17:50 +0600
+
+The header logo of a logged-in organizer goes to `/organizer` and the organizer look stays on public event pages too (W-E22). Reason: the user found that the logo led an organizer to the attendee home.

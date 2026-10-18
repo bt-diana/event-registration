@@ -31,6 +31,7 @@ Feature spec for the organizer event screens and the public event page, made fro
 | W-E19 | Dates are shown in the browser's time zone, with the zone name (for example `Sat, 1 Jan 2030, 10:00 CET`), by one function `formatDateTime(iso, timeZone?)`. The optional `timeZone` is for tests (they pass `"UTC"`); the app passes nothing. Durations are shown as "{n} min", or "1 h 30 min" from 60 up. | |
 | W-E20 | Accessibility: every input has a `<label>`; an invalid input has `aria-invalid="true"` and `aria-describedby` to its error text; field and form errors have `role="alert"`; loading uses `role="status"`; after a failed client check focus goes to the first invalid field, after a server or network error to the form-level error; each screen has one `h1`; the status is text, never colour alone; the list is a real `<table>` with `<th scope="col">`. | |
 | W-E21 | Header and links: the organizer pages show the existing header; the list links to "Create event" and each title to `/event/{id}`; the form has "Back to events". The organizer view links "Back to events" and shows the share link (`/event/{id}`, the same URL) as text. The public view has no extra links (no public list exists). | |
+| W-E22 | A logged-in organizer keeps the organizer look on every screen, also on the public view of `/event/:id` (own or other organizer's event) and on `/`: the header logo links to `/organizer` (not `/`), the logo and tab icon are the organizer ones, and the account block shows "Organizer". Attendees and logged-out people keep `/` and the attendee look. (Bug found after W-E10: the logo led an organizer to the attendee home.) | yes |
 
 **Out of scope.** Register button and any registration, waiting list, my registration (M3, M4); cancel registration; changing capacity; check-in and arrivals counter; reschedule or cancel the event; editing or deleting an event; a public list of events; search, filters, sorting, pagination; live updates (the list and page refresh on reload, on Retry and after a create; no polling, no refetch on window focus beyond the default); sharing buttons, copy link, calendar export; translations; dark theme; per-event time zone (the zone is the viewer's).
 
@@ -128,7 +129,7 @@ Tests follow `auth-web.md` section 4: Vitest globals, files next to the code, `f
 ## 5. Done means
 
 - Tests, typecheck and linter pass in `web/`.
-- Every behaviour W-E1 to W-E21 has a test, or a note in the README that says it is not covered.
+- Every behaviour W-E1 to W-E22 has a test, or a note in the README that says it is not covered.
 - W-E2, W-E4, W-E6, W-E7, W-E11, W-E13, W-E14 and W-E17 have their tests written and committed before the code (step 11 for the organizer ones, step 12 for W-E17).
 - The mock `fetch` counts prove: one `GET /events` on the list, no event request while logged out or while `me` loads, one `POST /events` after a double click.
 - A manual check against the real API (two organizers): create an event, see it in the list and on its page, open the other organizer's id and see the public view only, open `/event/{id}` logged out and see the same data, open a made-up id and get "Event not found".
@@ -148,9 +149,12 @@ Boards for the design canvas, each at desktop and phone width. Names are the boa
 
 The public boards use the attendee accent (teal) and the organizer boards the organizer accent (indigo). The header is the existing one, logged out and logged in.
 
-## 7. Open questions
+## 7. Decisions on the open questions
 
-1. Registration after the start: the public page says "Already started" for a running event. Can people still register? Decided in `registration.md` (M3); M2 shows no button either way.
-2. Decided (user): the badge colours are approved and are in `brand.md`.
-3. Decided (user): one link `/event/:id` for the public and the organizer view; the owner sees the organizer view. The path (singular) is chosen only to avoid the API path `/events/:id` on one origin. Change it if the share link should look different; then the proxy or a path prefix for the API must change too.
-4. The `datetime-local` input shows the browser's own format and 12/24 hour clock; no custom picker (no library). Accepted unless the canvas needs a different one.
+No open questions are left.
+
+1. Registration after the start: a running event still accepts registrations until it ends (`registration.md` R11). M2 shows no register button; the public view keeps the "Already started" status and M3 adds the button.
+2. Badge colours: approved (user); they are in `brand.md`.
+3. One link `/event/:id` for the public and the organizer view (D38). The owner sees the organizer view, everyone else the public view. The path is singular only to avoid the API path `/events/:id` on one origin.
+4. Start time input: the native `datetime-local` is accepted, with the browser's own format and clock (no custom picker, no library). The canvas draws it that way.
+5. A logged-in organizer keeps the organizer look on every screen, also on the public view (W-E22).
