@@ -4,9 +4,11 @@ import { requireOrganizer } from "../auth/middleware.js";
 import { deriveStatus, endsAt, MINUTE_MS, type StoredStatus } from "./status.js";
 
 // docs/specs/events.md (M2): POST /events, GET /events, GET /events/:id for the
-// owner, and GET /public/events/:id for anyone.
+// owner, and GET /public/events/:id for anyone. The optional description is
+// docs/specs/event-description.md (DS1-DS13).
 
 const MAX_TITLE = 200;
+const MAX_DESCRIPTION = 2000;
 const MIN_CAPACITY = 1;
 const MAX_CAPACITY = 100000;
 const MIN_DURATION = 1;
@@ -23,6 +25,7 @@ const ISO_TIMESTAMP =
 type EventRow = {
   id: string;
   title: string;
+  description: string;
   starts_at: Date;
   duration_minutes: number;
   capacity: number;
@@ -34,9 +37,15 @@ type EventRow = {
   registered: string | number;
 };
 
-type NewEvent = { title: string; startsAt: Date; durationMinutes: number; capacity: number };
+type NewEvent = {
+  title: string;
+  description: string;
+  startsAt: Date;
+  durationMinutes: number;
+  capacity: number;
+};
 
-const COLUMNS = `e.id, e.title, e.starts_at, e.duration_minutes, e.capacity, e.status,
+const COLUMNS = `e.id, e.title, e.description, e.starts_at, e.duration_minutes, e.capacity, e.status,
   e.schedule_version, e.cancelled_at, e.created_at`;
 
 // One query for read and list, no lock: seats are a snapshot (events.md section 3).
@@ -88,16 +97,32 @@ function parseTimestamp(text: string): Date | null {
   return new Date(local.getTime() - offsetMinutes * MINUTE_MS);
 }
 
+// The string trimmed with JS trim(), or null when it is not a string, contains
+// NUL, or is over `max` code points after trimming (title E2, description DS6/DS7).
+function cleanText(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  if ([...text].length > max || text.includes("\0")) return null;
+  return text;
+}
+
+// DS4: missing or null is ''; otherwise the cleaned text, or null when bad.
+function parseDescription(value: unknown): string | null {
+  if (value === undefined || value === null) return "";
+  return cleanText(value, MAX_DESCRIPTION);
+}
+
 // E2: null for a bad body. Extra fields are ignored.
 function parseNewEvent(body: unknown, now: Date): NewEvent | null {
   const b = fields(body);
   if (!b) return null;
-  const { title, starts_at, duration_minutes, capacity } = b;
+  const { title, description, starts_at, duration_minutes, capacity } = b;
 
-  if (typeof title !== "string") return null;
-  const cleanTitle = title.trim();
-  const titleLength = [...cleanTitle].length;
-  if (titleLength < 1 || titleLength > MAX_TITLE || cleanTitle.includes("\0")) return null;
+  const cleanTitle = cleanText(title, MAX_TITLE);
+  if (cleanTitle === null || cleanTitle === "") return null;
+
+  const cleanDescription = parseDescription(description);
+  if (cleanDescription === null) return null;
 
   if (typeof starts_at !== "string") return null;
   const startsAt = parseTimestamp(starts_at);
@@ -106,7 +131,13 @@ function parseNewEvent(body: unknown, now: Date): NewEvent | null {
   if (!isIntegerIn(capacity, MIN_CAPACITY, MAX_CAPACITY)) return null;
   if (!isIntegerIn(duration_minutes, MIN_DURATION, MAX_DURATION)) return null;
 
-  return { title: cleanTitle, startsAt, durationMinutes: duration_minutes, capacity };
+  return {
+    title: cleanTitle,
+    description: cleanDescription,
+    startsAt,
+    durationMinutes: duration_minutes,
+    capacity,
+  };
 }
 
 // The values both shapes share, from one `now` per request (E15, E18, E19).
@@ -127,6 +158,7 @@ function organizerShape(row: EventRow, now: Date) {
   return {
     id: row.id,
     title: row.title,
+    description: row.description,
     starts_at: row.starts_at.toISOString(),
     ends_at: d.endsAt.toISOString(),
     duration_minutes: row.duration_minutes,
@@ -140,8 +172,9 @@ function organizerShape(row: EventRow, now: Date) {
   };
 }
 
-// Public event: exactly these keys (E13). A cancelled or passed event is closed:
-// seats_left 0 and full false (E14, E20).
+// Public event: exactly these keys (E13, DS10). A cancelled or passed event is
+// closed: seats_left 0 and full false (E14, E20); the description is the stored
+// text for every status.
 function publicShape(row: EventRow, now: Date) {
   const d = derive(row, now);
   const open = d.status === "active";
@@ -149,6 +182,7 @@ function publicShape(row: EventRow, now: Date) {
   return {
     id: row.id,
     title: row.title,
+    description: row.description,
     starts_at: row.starts_at.toISOString(),
     ends_at: d.endsAt.toISOString(),
     duration_minutes: row.duration_minutes,
@@ -169,10 +203,10 @@ export function eventsRouter(pool: pg.Pool): Router {
     if (!input) return fail(res, 400, "invalid_input");
     // organizer_id comes from the cookie, never from the body (E1).
     const { rows } = await pool.query<EventRow>(
-      `INSERT INTO events AS e (organizer_id, title, starts_at, duration_minutes, capacity)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO events AS e (organizer_id, title, description, starts_at, duration_minutes, capacity)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING ${COLUMNS}, 0 AS registered`,
-      [req.organizer!.id, input.title, input.startsAt, input.durationMinutes, input.capacity],
+      [req.organizer!.id, input.title, input.description, input.startsAt, input.durationMinutes, input.capacity],
     );
     res.status(201).json(organizerShape(rows[0], now));
   });

@@ -2,6 +2,8 @@
 
 Feature spec for milestone M2, made from `SPEC_TEMPLATE.md` (sections 1-5). The table `events` is in `DATABASE.md` (section 1, rules 3.8, 3.1 and 3.10). M2 adds one column, `duration_minutes`, by a new migration `002_event_duration.sql` (001 is not edited). Login, guards and the error format come from `auth.md` (A13-A15) and are reused as they are. Roadmap steps 6 and 7.
 
+**Extended by `event-description.md` (DS1-DS13):** an optional plain-text `description`, added by migration `003_event_description.sql`. It changes E1, E2, E11, E13 and the shapes in section 3 as marked below; the rules for it (trim, 2000 code points, no NUL, `''` when empty) are in that file.
+
 ## 1. Goals and expected behaviour
 
 **Goal.** A logged-in organizer creates events and sees only their own. Anyone, without login, can open a public event page and see the title, the start and end, the capacity, how many seats are left, whether the event is full and whether it is active, cancelled or passed.
@@ -10,8 +12,8 @@ Feature spec for milestone M2, made from `SPEC_TEMPLATE.md` (sections 1-5). The 
 
 | # | Behaviour | Test first? |
 |---|---|---|
-| E1 | `POST /events` with a valid body and an organizer cookie creates one row owned by that organizer (`organizer_id` is the cookie id, never a body field) and answers 201 with the organizer event shape (section 3). New events have stored status `active` (answered as `active`, because the start is in the future) and `schedule_version` 1. | |
-| E2 | Create validation: a bad body answers 400 `{ "error": "invalid_input" }` and writes nothing. Bad means: body not an object; `title` missing, not a string, empty after trimming or over 200 characters; `starts_at` missing, not a string, not an ISO 8601 timestamp with `Z` or an offset, or not strictly in the future; `capacity` missing, not a JSON integer, below 1 or above 100000; `duration_minutes` missing, not a JSON integer, below 1 or above 1440. Extra fields (`organizer_id`, `status`, ...) are ignored. | |
+| E1 | `POST /events` with a valid body and an organizer cookie creates one row owned by that organizer (`organizer_id` is the cookie id, never a body field) and answers 201 with the organizer event shape (section 3). New events have stored status `active` (answered as `active`, because the start is in the future) and `schedule_version` 1. The body may also have an optional `description` (`event-description.md` DS3, DS4); without it the event has `description` `''`. | |
+| E2 | Create validation: a bad body answers 400 `{ "error": "invalid_input" }` and writes nothing. Bad means: body not an object; `title` missing, not a string, empty after trimming or over 200 characters; `starts_at` missing, not a string, not an ISO 8601 timestamp with `Z` or an offset, or not strictly in the future; `capacity` missing, not a JSON integer, below 1 or above 100000; `duration_minutes` missing, not a JSON integer, below 1 or above 1440; `description` present and not a string or `null`, over 2000 characters (code points) after trimming, or with a NUL (`event-description.md` DS6, DS7). Extra fields (`organizer_id`, `status`, ...) are ignored. | |
 | E3 | The title is trimmed before it is stored. `starts_at` is stored as the instant it names and is answered as an ISO string in UTC (`toISOString()`). `duration_minutes` is stored and answered as given. | |
 | E4 | `GET /events` with an organizer cookie answers 200 `{ events: [...] }` with only that organizer's events, in the organizer event shape. Another organizer's events never appear. An organizer with no events gets `{ events: [] }`. | yes |
 | E5 | List order is `starts_at` ascending, then `id` ascending. All of the organizer's events are listed (past and cancelled too). No pagination. | |
@@ -20,9 +22,9 @@ Feature spec for milestone M2, made from `SPEC_TEMPLATE.md` (sections 1-5). The 
 | E8 | `GET /events/:id` with an id that is not a uuid answers 404 `{ "error": "not_found" }` (not 400, not 500), and no query reaches the database. | |
 | E9 | Guards on `POST /events`, `GET /events`, `GET /events/:id`: no valid login answers 401 `not_logged_in`; an attendee cookie answers 403 `wrong_role`; no handler runs and nothing is written. (`requireOrganizer`, A14, A15.) | yes |
 | E10 | In the organizer event shape, `seats_left` is `capacity` minus the number of `registered` registrations of that event, never below 0, and `registered` is that number. With no registrations, `registered` is 0 and `seats_left` equals `capacity`. In the organizer shape this holds for every status (cancelled and passed too): the organizer sees the real numbers. | |
-| E11 | `GET /public/events/:id` needs no login (it answers the same with no cookie, an attendee cookie or an organizer cookie). For an existing event it answers 200 with the public shape (section 3): `id`, `title`, `starts_at`, `ends_at`, `duration_minutes`, `capacity`, `status`, `has_started`, `seats_left`, `full`. | |
+| E11 | `GET /public/events/:id` needs no login (it answers the same with no cookie, an attendee cookie or an organizer cookie). For an existing event it answers 200 with the public shape (section 3): `id`, `title`, `description`, `starts_at`, `ends_at`, `duration_minutes`, `capacity`, `status`, `has_started`, `seats_left`, `full` (`description` from `event-description.md` DS10). | |
 | E12 | `full` is true when `seats_left` is 0 and `status` is `active`. Capacity 1 with one `registered` row gives `seats_left` 0 and `full` true. `waitlisted` and `cancelled` registrations do not count as taken seats. | |
-| E13 | The public answer has exactly these keys: `id`, `title`, `starts_at`, `ends_at`, `duration_minutes`, `capacity`, `status`, `has_started`, `seats_left`, `full`. It never contains `organizer_id`, `registered`, `schedule_version`, `created_at`, `cancelled_at`, any registration, ticket code, user id, name or email. The test checks the exact key list. | yes |
+| E13 | The public answer has exactly these keys: `id`, `title`, `description` (added by `event-description.md` DS10), `starts_at`, `ends_at`, `duration_minutes`, `capacity`, `status`, `has_started`, `seats_left`, `full`. It never contains `organizer_id`, `registered`, `schedule_version`, `created_at`, `cancelled_at`, any registration, ticket code, user id, name or email. The test checks the exact key list. | yes |
 | E14 | A cancelled event (stored status `cancelled`) answers 200 with `status` `cancelled`, `seats_left` 0 and `full` false (it is not full, it is closed). `capacity` is still shown. | |
 | E15 | A started event (`starts_at <= now`) answers 200 with `has_started` true, also while it is still running (`status` `active`, the other fields computed as usual). The server clock decides, not the client. | |
 | E16 | `GET /public/events/:id` with an unknown id or an id that is not a uuid answers 404 `{ "error": "not_found" }`. | |
@@ -55,7 +57,7 @@ No screens in M2 (API only). The screens are in `events-web.md` (M2 UI). What th
 
 - **Apps:** `api/` only. Express 5, TypeScript, Vitest. No new table, no new library, no new env variable. One new migration, `api/src/db/migrations/002_event_duration.sql`, adds `events.duration_minutes` (`DATABASE.md` section 1); `001` is not edited.
 - **Derived status:** computed in the app when a row is mapped to a shape, from the stored `status`, `starts_at`, `duration_minutes` and the request time `now` (E19). Not stored, no worker. Use one `now` per request for `status`, `has_started` and `ends_at` checks, so the fields agree with each other.
-- **Database access:** parameterised `pg` queries through the existing pool. Create: `INSERT INTO events (organizer_id, title, starts_at, duration_minutes, capacity) VALUES (...) RETURNING ...`. The future check is made in the app with the request time; the table has no such check (it must allow old events later).
+- **Database access:** parameterised `pg` queries through the existing pool. Create: `INSERT INTO events (organizer_id, title, description, starts_at, duration_minutes, capacity) VALUES (...) RETURNING ...` (`description` since `event-description.md`). The future check is made in the app with the request time; the table has no such check (it must allow old events later).
 - **Seats left:** one query for read and list, with no lock:
   `SELECT e.*, count(r.id) FILTER (WHERE r.status = 'registered') AS registered FROM events e LEFT JOIN registrations r ON r.event_id = e.id WHERE ... GROUP BY e.id`
   then `seats_left = max(capacity - registered, 0)` (cast the count to a number; `count` returns bigint as a string in `pg`). The registrations table exists and is empty until M3. No `seats_taken` column (`DATABASE.md` section 1).
@@ -63,13 +65,13 @@ No screens in M2 (API only). The screens are in `events-web.md` (M2 UI). What th
 - **Guards:** `requireOrganizer` on the three organizer routes (A14, A15). The public route has no guard and ignores the cookie.
 - **Concurrency:** none needed; create is one insert, reads are snapshots.
 - **Shapes** (all JSON):
-  - Organizer event: `{ id, title, starts_at, ends_at, duration_minutes, capacity, registered, seats_left, status, schedule_version, cancelled_at, created_at }`. Timestamps are ISO strings, `cancelled_at` is `null` or an ISO string, `status` is `active`, `cancelled` or `passed` (derived). No `organizer_id` (the caller is the owner).
-  - Public event: `{ id, title, starts_at, ends_at, duration_minutes, capacity, status, has_started, seats_left, full }`. `seats_left` is 0 and `full` false when `status` is `cancelled` or `passed`.
+  - Organizer event: `{ id, title, description, starts_at, ends_at, duration_minutes, capacity, registered, seats_left, status, schedule_version, cancelled_at, created_at }`. `description` is always a string, `''` when empty (`event-description.md` DS9). Timestamps are ISO strings, `cancelled_at` is `null` or an ISO string, `status` is `active`, `cancelled` or `passed` (derived). No `organizer_id` (the caller is the owner).
+  - Public event: `{ id, title, description, starts_at, ends_at, duration_minutes, capacity, status, has_started, seats_left, full }`. `seats_left` is 0 and `full` false when `status` is `cancelled` or `passed`; `description` is the stored text for every status (DS10).
 - **API:**
 
 | Route | Guard | Body | Success | Errors |
 |---|---|---|---|---|
-| `POST /events` | `requireOrganizer` | `{ title, starts_at, duration_minutes, capacity }` | 201 organizer event | 400 `invalid_input`, 401 `not_logged_in`, 403 `wrong_role` |
+| `POST /events` | `requireOrganizer` | `{ title, description?, starts_at, duration_minutes, capacity }` (`description` optional, DS3) | 201 organizer event | 400 `invalid_input`, 401 `not_logged_in`, 403 `wrong_role` |
 | `GET /events` | `requireOrganizer` | none | 200 `{ events: [organizer event] }` | 401, 403 |
 | `GET /events/:id` | `requireOrganizer` | none | 200 organizer event | 401, 403, 404 `not_found` (unknown, malformed or not yours) |
 | `GET /public/events/:id` | none | none | 200 public event | 404 `not_found` (unknown or malformed) |
@@ -81,6 +83,7 @@ No screens in M2 (API only). The screens are in `events-web.md` (M2 UI). What th
 | File | What to do | Behaviours |
 |---|---|---|
 | `api/src/db/migrations/002_event_duration.sql` | New migration: add `events.duration_minutes integer NOT NULL DEFAULT 60` with the CHECK (1..1440). Do not edit `001` | E1, E2, E11, E18-E20 |
+| `api/src/db/migrations/003_event_description.sql` | Later migration from `event-description.md`: add `events.description text NOT NULL DEFAULT ''` with `CHECK (char_length(description) <= 2000)`. Does not edit `001` or `002` | DS1, DS2 |
 | `api/test/db/` (the existing schema test) | Update: the `events` columns list includes `duration_minutes`; the CHECK rejects 0, -1 and 1441; the default is 60 for an insert without it | E2, E18 |
 | `api/src/events/routes.ts` | `eventsRouter(pool)`: the four routes, body validation (title, `starts_at`, `duration_minutes`, capacity), uuid check, query, row to shape mapping (`ends_at`, derived `status`, `seats_left`, `full`, `has_started`) | E1-E20 |
 | `api/src/app.ts` | Mount `eventsRouter(pool)` after `authRouter(pool)`, before the 404 handler | E1-E20 |

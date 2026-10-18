@@ -38,6 +38,7 @@ Five tables: `organizers`, `users`, `events`, `registrations`, `outbox`. A ticke
 | id | uuid, PK, DEFAULT uuidv7() | | all |
 | organizer_id | uuid NOT NULL, FK to organizers(id) | the owner; only this organizer manages the event | ownership (3.8) |
 | title | text NOT NULL | | |
+| description | text NOT NULL DEFAULT '' | `CHECK (char_length(description) <= 2000)` (characters, the same unit as the app); plain text, `''` = no description; trimmed in the app only; added by migration `003_event_description.sql` (decision 18) | `event-description.md` DS1, DS2 |
 | starts_at | timestamptz NOT NULL | changed by reschedule | B5, B8 |
 | duration_minutes | integer NOT NULL DEFAULT 60 | `CHECK (duration_minutes > 0 AND duration_minutes <= 1440)`; the end is `starts_at + duration_minutes * interval '1 minute'`; added by migration `002_event_duration.sql` (see below) | derived `passed` status (3.10), M2 |
 | schedule_version | integer NOT NULL DEFAULT 1 | +1 on every reschedule that changes `starts_at`, in the 3.6 locked transaction | B5, B8 |
@@ -49,6 +50,8 @@ Five tables: `organizers`, `users`, `events`, `registrations`, `outbox`. A ticke
 Index: `CREATE INDEX events_organizer ON events (organizer_id);` lists an organizer's events.
 
 **Duration comes as a new migration.** `001` is already applied and is not edited. `api/src/db/migrations/002_event_duration.sql` runs `ALTER TABLE events ADD COLUMN duration_minutes integer NOT NULL DEFAULT 60 CHECK (duration_minutes > 0 AND duration_minutes <= 1440);`. The `DEFAULT 60` is kept on purpose: (a) `ADD COLUMN ... NOT NULL` needs a value for rows that already exist, and (b) the existing tests in `api/test/db/` insert events with plain SQL without a duration and must keep working. The API never relies on it: `POST /events` requires `duration_minutes` (see `events.md`). The stored `status` column is not changed (still `'active'`/`'cancelled'`); `passed` is not stored (3.10).
+
+**Description comes as a new migration too.** `api/src/db/migrations/003_event_description.sql` runs `ALTER TABLE events ADD COLUMN description text NOT NULL DEFAULT '' CHECK (char_length(description) <= 2000);`. Rows that exist before it get `''`, nothing else in them changes. The `DEFAULT ''` stays for the same reasons as `DEFAULT 60`: plain SQL inserts in the tests do not send it. The API always sends a value (`''` when the body has none). There is no trim CHECK, because `btrim` strips only spaces by default and would not match JS `trim()` (see `event-description.md`).
 
 No `seats_taken` counter: seats used = `count(*)` of `registered` rows for the event (see 3.1). Less state, nothing to drift.
 
@@ -116,6 +119,9 @@ CREATE TABLE events (
   -- duration_minutes is added by 002_event_duration.sql, not by 001:
   --   ALTER TABLE events ADD COLUMN duration_minutes integer NOT NULL DEFAULT 60
   --     CHECK (duration_minutes > 0 AND duration_minutes <= 1440);
+  -- description is added by 003_event_description.sql, not by 001:
+  --   ALTER TABLE events ADD COLUMN description text NOT NULL DEFAULT ''
+  --     CHECK (char_length(description) <= 2000);
   schedule_version integer NOT NULL DEFAULT 1,
   capacity     integer NOT NULL CHECK (capacity >= 0),
   status       text NOT NULL DEFAULT 'active' CHECK (status IN ('active','cancelled')),
@@ -228,6 +234,7 @@ Same locked transaction as 3.6/3.7: `SELECT ... FROM events WHERE id = $1 AND or
 | B9 | `events.status`, `events.cancelled_at`, registrations set to `cancelled`, outbox `event_cancelled`, event lock, 409 once `starts_at <= now()` (3.7) |
 | B10 | `events.capacity`, count under the event lock, `queue_no` order, outbox `promotion` (3.9) |
 | Event status `passed` (M2) | `events.starts_at` + `events.duration_minutes`, computed at read time, nothing stored (3.10) |
+| Event description (`event-description.md` DS1, DS2) | `events.description`, `NOT NULL DEFAULT ''`, `CHECK (char_length(description) <= 2000)` |
 | Ownership | `events.organizer_id`, `WHERE organizer_id = $organizer` in the locked query and in the check-in join (3.8) |
 
 ## 5. Not in this schema
@@ -254,6 +261,8 @@ No sessions table (signed cookie), no roles or permissions table (an organizer o
 16. The login cookie lasts 7 days. This is a default, the user can change it.
 
 17. An event has a `duration_minutes` (1 to 1440). Its status `passed` is derived at read time once `starts_at + duration` is reached; it is not stored (3.10). Added by migration `002_event_duration.sql`, not by editing `001`.
+
+18. An event has a plain-text `description`, `NOT NULL DEFAULT ''` (one kind of "none", never `NULL`) and at most 2000 characters (`char_length`, the same code-point count as the app). Trimming is done only in the app. Added by migration `003_event_description.sql`, not by editing `001` or `002` (`event-description.md`).
 
 ## 7. Open questions
 

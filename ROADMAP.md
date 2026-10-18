@@ -16,6 +16,7 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 - M2 API: events (`events.md`, E1-E20): migration `002_event_duration.sql`, `POST /events`, `GET /events`, `GET /events/:id` for the owner, `GET /public/events/:id`, `api/openapi.yaml`.
 - M2 UI spec: `events-web.md` (W-E1-W-E21): organizer events list, create form, event page, public event page.
 - M2 UI: event screens (`events-web.md`, W-E1-W-E23; `role-eyebrow.md` RE1): `/organizer` events list, `/organizer/events/new` create form, `/event/:id` with the organizer and the public view, dev proxy for `/events` and `/public`.
+- M2 API: event description (`event-description.md`, DS1-DS13): migration `003_event_description.sql`, optional `description` on `POST /events`, in both event shapes, `api/openapi.yaml`.
 - M3 API spec: `registration.md` (R1-R22): register, waiting list, last seat, my registration.
 - M3 API: registration (`registration.md`, R1-R22): `POST /events/:id/registrations` (one transaction, `FOR UPDATE` on the event, `ticket` outbox row), `GET /events/:id/registrations/me`, shared `api/src/events/status.ts`, `api/openapi.yaml`.
 
@@ -52,6 +53,7 @@ Specs are not written all at once. The first steps of each milestone write (or e
 10. UI spec: `events-web.md`: organizer events list, create form and event page; the public event page (read only). (done: W-E1 to W-E21)
 11. Test, then code: organizer events list, create form and event page (states: loading, error, empty list, field errors). (done: `web/src/events/`, dev proxy for `/events` and `/public`, RE1 no role eyebrow; the organizer event page is one page with the public one, `/event/:id`, built in step 12)
 12. Test, then code: public event page (states: loading, not found, open, full, closed, already started). (done: `/event/:id` picks the organizer or the public view from `me`, falls back to the public view on 404, shows the description as plain text)
+12a. Test, then code: event description in the API (`event-description.md`, DS1-DS13): optional plain-text `description` on create (trimmed, up to 2000 code points, no NUL, `''` when empty), answered in the organizer and public shapes. (done: tests-first commit, then migration `003_event_description.sql`, `api/src/events/routes.ts`, `api/openapi.yaml`; the web already sent and showed it)
 
 ### M3. Registration
 13. API spec: `registration.md` (B1, B2, B4) (done: R1-R21).

@@ -14,6 +14,9 @@ info:
     `active`. Seat counts are a snapshot (no lock). Until registration exists (M3),
     `registered` is 0 and `seats_left` equals `capacity`.
 
+    An event has an optional plain-text `description` (docs/specs/event-description.md):
+    sent on create, answered in both event shapes, `""` when there is none.
+
     The two registration routes (milestone M3, docs/specs/registration.md): a
     logged-in attendee registers for an event and reads their own registration.
     Registering runs in one transaction that locks the event row, so seats are never
@@ -402,6 +405,16 @@ components:
           type: string
           description: Trimmed, then 1 to 200 characters (code points), no NUL.
           example: Spring meetup
+        description:
+          type: string
+          nullable: true
+          description: |
+            Optional plain text, shown to the organizer and on the public page.
+            Trimmed (leading and trailing whitespace; inner line breaks are kept),
+            then at most 2000 characters (code points), no NUL. Missing, `null`, or
+            only whitespace is stored as `""`. Not changed or escaped by the API
+            (no HTML handling): clients must show it as text.
+          example: "Bring a laptop.\n\nDoors at 9."
         starts_at:
           type: string
           format: date-time
@@ -431,6 +444,7 @@ components:
       required:
         - id
         - title
+        - description
         - starts_at
         - ends_at
         - duration_minutes
@@ -448,6 +462,9 @@ components:
           format: uuid
         title:
           type: string
+        description:
+          type: string
+          description: The stored plain text, `""` when there is none. Never null.
         starts_at:
           type: string
           format: date-time
@@ -480,7 +497,7 @@ components:
           format: date-time
     PublicEvent:
       type: object
-      required: [id, title, starts_at, ends_at, duration_minutes, capacity, status, has_started, seats_left, full]
+      required: [id, title, description, starts_at, ends_at, duration_minutes, capacity, status, has_started, seats_left, full]
       additionalProperties: false
       description: |
         Exactly these keys. No organizer, no registrations, no counts beyond
@@ -491,6 +508,11 @@ components:
           format: uuid
         title:
           type: string
+        description:
+          type: string
+          description: |
+            The stored plain text as is, `""` when there is none, for every status
+            (also cancelled and passed). Show it as text, never as HTML.
         starts_at:
           type: string
           format: date-time
@@ -690,9 +712,11 @@ components:
     InvalidEvent:
       description: |
         Bad body: not an object; a field missing or of the wrong type; a title empty
-        after trimming or over 200 characters; `starts_at` not an ISO 8601 timestamp
-        with `Z` or an offset, or not in the future; `capacity` not an integer from 1
-        to 100000; `duration_minutes` not an integer from 1 to 1440. Nothing is written.
+        after trimming or over 200 characters; `description` not a string or null,
+        over 2000 characters after trimming, or containing NUL; `starts_at` not an
+        ISO 8601 timestamp with `Z` or an offset, or not in the future; `capacity` not
+        an integer from 1 to 100000; `duration_minutes` not an integer from 1 to 1440.
+        Nothing is written.
       content:
         application/json:
           schema:
