@@ -141,9 +141,7 @@ describe("W-R20: the registrations of the chosen event", () => {
         .map((th) => [th.textContent, th.getAttribute("scope")]),
     ).toEqual([
       ["Name", "col"],
-      ["Email", "col"],
       ["Status", "col"],
-      ["Place", "col"],
       ["Arrival", "col"],
       ["Ticket code", "col"],
       ["Registered", "col"],

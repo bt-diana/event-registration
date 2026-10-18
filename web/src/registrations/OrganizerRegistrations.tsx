@@ -154,9 +154,7 @@ function RegistrationsBody({ list }: { list: List }) {
           <thead>
             <tr>
               <th scope="col">Name</th>
-              <th scope="col">Email</th>
               <th scope="col">Status</th>
-              <th scope="col">Place</th>
               <th scope="col">Arrival</th>
               <th scope="col">Ticket code</th>
               <th scope="col">Registered</th>
@@ -178,12 +176,10 @@ function Row({ registration }: { registration: OrganizerRegistration }) {
   return (
     <tr>
       <td>{registration.attendee_name}</td>
-      <td>{registration.attendee_email}</td>
       <td>
         <Badge {...label.badge} />
         {label.checkedIn && <span className="table-note">{label.checkedIn}</span>}
       </td>
-      <td>{registration.waitlist_position ?? ""}</td>
       <td>
         <Arrival registration={registration} />
       </td>
