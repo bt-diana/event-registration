@@ -3,6 +3,8 @@
 // and already checked in. Then W-R29, W-R32, W-R34 (the other answers), W-R36.
 // scanner.ts is mocked (jsdom has no camera and no decoding, W-R37); getUserMedia is a
 // stub on navigator.mediaDevices; POST /checkin is answered by the fetch mock.
+// checkin-web.md: the arrivals counter on this screen (W-C3, W-C4, W-C11, W-C18); the
+// five reads of one code are counted once (W-C11, test first).
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import {
   OLGA,
@@ -18,7 +20,13 @@ import { formatDateTime } from "../events/format";
 import { EVENT_ID, organizerEvent } from "../events/test-helpers";
 import { ScanScreen } from "./ScanScreen";
 import { hasCamera, startScanner } from "./scanner";
-import { SECOND_EVENT_ID } from "./test-helpers";
+import {
+  SECOND_EVENT_ID,
+  arrivals,
+  eventArrivals,
+  eventRegistrations,
+  wholeText,
+} from "./test-helpers";
 
 vi.mock("./scanner", () => ({ hasCamera: vi.fn(), startScanner: vi.fn() }));
 
@@ -29,6 +37,16 @@ const EVENTS = "GET /events";
 const CHECKIN = "POST /checkin";
 const SCAN_PATH = `/registrations/scan?event=${EVENT_ID}`;
 const CODE = "K7M2QX9TPA";
+const ARRIVALS = eventArrivals(EVENT_ID);
+const SECOND_ARRIVALS = eventArrivals(SECOND_EVENT_ID);
+const COUNT_11 = "Arrived: 11 / 20 registered";
+const COUNT_12 = "Arrived: 12 / 20 registered";
+
+// The arrivals counter of the two events (checkin-web.md W-C3).
+const ARRIVALS_OK = {
+  [ARRIVALS]: () => json(200, arrivals(11, 20)),
+  [SECOND_ARRIVALS]: () => json(200, arrivals(3, 5)),
+};
 
 const EVENT_LIST = {
   events: [organizerEvent(), organizerEvent({ id: SECOND_EVENT_ID, title: "Autumn fair" })],
@@ -82,11 +100,17 @@ function location(): string | null {
   return screen.getByTestId("location").textContent;
 }
 
-async function scanScreen(checkin: Handler = () => json(200, CHECKED_IN), path = SCAN_PATH) {
+async function scanScreen(
+  checkin: Handler = () => json(200, CHECKED_IN),
+  path = SCAN_PATH,
+  arrivalsAnswer: Handler = ARRIVALS_OK[ARRIVALS],
+) {
   const fetch = mockFetch({
     [ME]: () => json(200, OLGA),
     [EVENTS]: () => json(200, EVENT_LIST),
     [CHECKIN]: checkin,
+    ...ARRIVALS_OK,
+    [ARRIVALS]: arrivalsAnswer,
   });
   const rendered = renderApp(path);
   await main().findByRole("heading", { level: 1, name: "Check in" });
@@ -95,11 +119,11 @@ async function scanScreen(checkin: Handler = () => json(200, CHECKED_IN), path =
 }
 
 // The camera starts and the preview is active.
-async function withCamera(checkin?: Handler) {
+async function withCamera(checkin?: Handler, arrivalsAnswer?: Handler) {
   const { stream, tracks } = fakeStream();
   const getUserMedia = vi.fn(() => Promise.resolve(stream));
   setMediaDevices({ getUserMedia });
-  const result = await scanScreen(checkin);
+  const result = await scanScreen(checkin, SCAN_PATH, arrivalsAnswer);
   fireEvent.click(main().getByRole("button", { name: "Start camera" }));
   await main().findByText("Point the camera at the ticket QR code.");
   await waitFor(() => expect(startScanner).toHaveBeenCalledTimes(1));
@@ -327,7 +351,7 @@ describe("W-R33: one request per code (tests first)", () => {
   });
 
   it("a submitCode prop replaces the request (the stub counts calls)", async () => {
-    mockFetch({ [ME]: () => json(200, OLGA), [EVENTS]: () => json(200, EVENT_LIST) });
+    mockFetch({ [ME]: () => json(200, OLGA), [EVENTS]: () => json(200, EVENT_LIST), ...ARRIVALS_OK });
     const submitCode = vi.fn(() =>
       Promise.resolve({ outcome: "not_found" as const, ticket_code: CODE }),
     );
@@ -424,6 +448,7 @@ describe("W-R34: result states", () => {
       },
       [EVENTS]: () => json(200, EVENT_LIST),
       [CHECKIN]: () => json(401, { error: "not_logged_in" }),
+      ...ARRIVALS_OK,
     });
     renderApp(SCAN_PATH);
     await main().findByLabelText("Event");
@@ -494,6 +519,7 @@ describe("W-R29: event selector", () => {
     const fetch = mockFetch({
       [ME]: () => json(200, OLGA),
       [EVENTS]: () => (n++ === 0 ? json(500, { error: "internal" }) : json(200, EVENT_LIST)),
+      ...ARRIVALS_OK,
     });
     renderApp("/registrations/scan");
     expect(await main().findByText("Could not load events")).toBeTruthy();
@@ -523,5 +549,150 @@ describe("W-R36: accessibility", () => {
       expect(button.tagName).toBe("BUTTON");
       expect(button.getAttribute("type")).not.toBeNull();
     }
+  });
+});
+
+describe("checkin-web.md W-C3, W-C4, W-C18: the arrivals counter on the scan screen", () => {
+  function counter(): HTMLElement {
+    return document.querySelector<HTMLElement>(".arrivals")!;
+  }
+
+  function placedUnderSelectorAboveCamera() {
+    const block = counter();
+    const select = main().getByLabelText("Event");
+    const camera = document.querySelector(".scan-camera")!;
+    expect(select.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(block.compareDocumentPosition(camera) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  }
+
+  it("idle camera: the counter is under the selector, above the camera", async () => {
+    await scanScreen();
+    expect(await main().findByText(wholeText(COUNT_11))).toBeTruthy();
+    expect(main().getByText("Capacity: 25")).toBeTruthy();
+    placedUnderSelectorAboveCamera();
+  });
+
+  it("active camera: the counter stays", async () => {
+    await withCamera();
+    expect(await main().findByText(wholeText(COUNT_11))).toBeTruthy();
+    placedUnderSelectorAboveCamera();
+  });
+
+  it.each<[string, () => void, string]>([
+    [
+      "denied",
+      () =>
+        setMediaDevices({
+          getUserMedia: () => Promise.reject(new DOMException("no", "NotAllowedError")),
+        }),
+      "Camera access is blocked. Allow the camera in your browser settings, or enter the code below.",
+    ],
+    [
+      "no camera",
+      () =>
+        setMediaDevices({
+          getUserMedia: () => Promise.reject(new DOMException("no", "NotFoundError")),
+        }),
+      "No camera found. Enter the code below.",
+    ],
+    [
+      "insecure",
+      () => setMediaDevices(undefined),
+      "The camera needs a secure connection (https or localhost). Enter the code below.",
+    ],
+    [
+      "other error",
+      () =>
+        setMediaDevices({
+          getUserMedia: () => Promise.reject(new DOMException("busy", "NotReadableError")),
+        }),
+      "Could not start the camera.",
+    ],
+  ])("%s camera: the counter stays", async (_case, setUp, text) => {
+    setUp();
+    await scanScreen();
+    fireEvent.click(main().getByRole("button", { name: "Start camera" }));
+    expect(await main().findByText(text)).toBeTruthy();
+    expect(await main().findByText(wholeText(COUNT_11))).toBeTruthy();
+    placedUnderSelectorAboveCamera();
+  });
+
+  it("reads only the arrivals route of the chosen event, never the registrations list", async () => {
+    const { fetch } = await scanScreen();
+    await main().findByText(wholeText(COUNT_11));
+    expect(callsTo(fetch, ARRIVALS)).toBe(1);
+    expect(callsTo(fetch, SECOND_ARRIVALS)).toBe(0);
+    expect(callsTo(fetch, eventRegistrations(EVENT_ID))).toBe(0);
+    expect(fetch.mock.calls.filter(([input]) => String(input).endsWith("/registrations"))).toEqual(
+      [],
+    );
+  });
+
+  it("has no live region (the scan result is announced already)", async () => {
+    await scanScreen();
+    await main().findByText(wholeText(COUNT_11));
+    const block = counter();
+    expect(block.tagName).toBe("DIV");
+    expect(block.getAttribute("aria-live")).toBeNull();
+    expect(block.getAttribute("role")).toBeNull();
+    expect(block.querySelectorAll("[role], [aria-live]")).toHaveLength(0);
+  });
+});
+
+describe("checkin-web.md W-C11: a check-in is counted once (test first)", () => {
+  function arrivalsInTurn(...counts: number[]): Handler {
+    let n = 0;
+    return () => json(200, arrivals(counts[Math.min(n++, counts.length - 1)], 20));
+  }
+
+  it("five reads of one code: one check-in, one more arrivals request, 12 and not 16", async () => {
+    const { fetch } = await withCamera(
+      () => json(200, CHECKED_IN),
+      arrivalsInTurn(11, 12, 13, 14, 15, 16),
+    );
+    await main().findByText(wholeText(COUNT_11));
+    act(() => {
+      for (let i = 0; i < 5; i += 1) onText(CODE);
+    });
+    expect(await main().findByText(wholeText(COUNT_12))).toBeTruthy();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(callsTo(fetch, CHECKIN)).toBe(1);
+    expect(callsTo(fetch, ARRIVALS)).toBe(2);
+    expect(main().getByText(wholeText(COUNT_12))).toBeTruthy();
+    expect(location()).toBe(SCAN_PATH);
+    expect(fetch.mock.calls.filter(([input]) => String(input).endsWith("/registrations"))).toEqual(
+      [],
+    );
+  });
+
+  it.each<[string, number, unknown]>([
+    [
+      "409 already_checked_in",
+      409,
+      {
+        error: "already_checked_in",
+        attendee_name: "Ann Lee",
+        checked_in_at: "2030-01-01T09:40:00.000Z",
+      },
+    ],
+    ["409 waitlisted", 409, { error: "waitlisted" }],
+    ["409 registration_cancelled", 409, { error: "registration_cancelled" }],
+    ["409 event_cancelled", 409, { error: "event_cancelled" }],
+    ["404 not_found", 404, { error: "not_found" }],
+    ["400 invalid_input", 400, { error: "invalid_input" }],
+    ["500", 500, { error: "internal" }],
+  ])("%s: nothing is read again", async (_case, status, body) => {
+    const { fetch } = await scanScreen(() => json(status, body), SCAN_PATH, arrivalsInTurn(11, 12));
+    await main().findByText(wholeText(COUNT_11));
+    typeCode(CODE);
+    await waitFor(() => expect(callsTo(fetch, CHECKIN)).toBe(1));
+    await main().findByRole("button", { name: "Scan next" });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(callsTo(fetch, ARRIVALS)).toBe(1);
+    expect(main().getByText(wholeText(COUNT_11))).toBeTruthy();
   });
 });
