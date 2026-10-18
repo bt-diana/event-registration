@@ -1,0 +1,4 @@
+set,C1_speed_1day,C2_claude_code_fit,C3_history_decision_log,C4_provability,C5_evidence_for,C6_low_failure_risk,C7_low_review_burden
+A_speed_favoured,0.30,0.15,0.05,0.15,0.05,0.15,0.15
+B_organizer_favoured,0.10,0.10,0.25,0.25,0.10,0.10,0.10
+C_equal,0.142857142857,0.142857142857,0.142857142857,0.142857142857,0.142857142857,0.142857142857,0.142857142859

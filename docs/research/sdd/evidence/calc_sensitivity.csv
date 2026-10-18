@@ -1,0 +1,4 @@
+weight_set,rank1_baseline,single_score_perturbations,perturbations_that_change_rank1
+A_speed_favoured,"P: Claude-native spec-lite + test-first (SPEC.md interview, plan mode, red/green tests, hooks)",89,12
+B_organizer_favoured,"P: Claude-native spec-lite + test-first (SPEC.md interview, plan mode, red/green tests, hooks)",89,3
+C_equal,"P: Claude-native spec-lite + test-first (SPEC.md interview, plan mode, red/green tests, hooks)",89,12

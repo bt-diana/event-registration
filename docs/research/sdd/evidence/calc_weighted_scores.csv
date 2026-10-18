@@ -1,0 +1,22 @@
+weight_set,rank,approach,score_0_5
+A_speed_favoured,1,"P: Claude-native spec-lite + test-first (SPEC.md interview, plan mode, red/green tests, hooks)",4.05
+A_speed_favoured,2,F: Agent red/green TDD + CLAUDE.md (no spec doc),4.05
+A_speed_favoured,3,Plan-then-execute only (plan mode + CLAUDE.md),3.7
+A_speed_favoured,4,OpenSpec,3.15
+A_speed_favoured,5,GitHub Spec Kit,2.25
+A_speed_favoured,6,Kiro (IDE),2.05
+A_speed_favoured,7,BMAD-METHOD,1.8
+B_organizer_favoured,1,"P: Claude-native spec-lite + test-first (SPEC.md interview, plan mode, red/green tests, hooks)",4.05
+B_organizer_favoured,2,F: Agent red/green TDD + CLAUDE.md (no spec doc),3.9
+B_organizer_favoured,3,OpenSpec,3.4
+B_organizer_favoured,4,Plan-then-execute only (plan mode + CLAUDE.md),3.05
+B_organizer_favoured,5,GitHub Spec Kit,2.9
+B_organizer_favoured,6,BMAD-METHOD,2.7
+B_organizer_favoured,7,Kiro (IDE),2.55
+C_equal,1,"P: Claude-native spec-lite + test-first (SPEC.md interview, plan mode, red/green tests, hooks)",3.857
+C_equal,2,F: Agent red/green TDD + CLAUDE.md (no spec doc),3.857
+C_equal,3,Plan-then-execute only (plan mode + CLAUDE.md),3.286
+C_equal,4,OpenSpec,3.143
+C_equal,5,GitHub Spec Kit,2.429
+C_equal,6,Kiro (IDE),2.143
+C_equal,7,BMAD-METHOD,2.143

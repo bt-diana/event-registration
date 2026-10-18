@@ -1,0 +1,8 @@
+approach,C1_speed_1day,C2_claude_code_fit,C3_history_decision_log,C4_provability,C5_evidence_for,C6_low_failure_risk,C7_low_review_burden
+"P: Claude-native spec-lite + test-first (SPEC.md interview, plan mode, red/green tests, hooks)",4,5,4,5,2,3,4
+"F: Agent red/green TDD + CLAUDE.md (no spec doc)",4,5,3,5,3,3,4
+"Plan-then-execute only (plan mode + CLAUDE.md)",5,5,3,2,2,2,4
+"GitHub Spec Kit",2,3,5,3,1,2,1
+"OpenSpec",3,4,5,3,1,3,3
+"BMAD-METHOD",1,3,5,3,1,1,1
+"Kiro (IDE)",2,1,4,3,1,2,2

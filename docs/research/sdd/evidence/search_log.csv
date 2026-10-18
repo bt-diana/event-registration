@@ -1,0 +1,54 @@
+date,tool,query_or_url,outcome
+2026-10-17,WebSearch,Birgitta Bockeler Understanding Spec-Driven-Development Kiro spec-kit Tessl martinfowler.com,found S12
+2026-10-17,WebSearch,METR randomized controlled trial experienced open-source developers AI tools slowed down 19%,found S14; secondary blogs ignored
+2026-10-17,WebSearch,spec-driven development criticism agent ignores spec overhead review fatigue,"found S18; others unread (hackernoon, briefhq, alexcloudstar, arxiv 2609.09671)"
+2026-10-17,WebSearch,test-driven development with AI coding agents study TDD LLM code generation benchmark tests improve pass rate,"found S16 via arXiv; aggregator summaries (themoonlight, liner) not used"
+2026-10-17,WebSearch,github/spec-kit issue agent does not follow tasks.md implement skipped,"found S29, S22; no clear Spec Kit ""agent ignored tasks"" defect issue verified"
+2026-10-17,WebSearch,Thoughtworks Technology Radar spec-driven development assess,found S13
+2026-10-17,WebSearch,empirical study spec-driven development AI coding agents experiment results 2026 arxiv,found S25-S28
+2026-10-17,WebSearch,Claude Code agent modifies tests to pass special-casing tests reward hacking Anthropic Claude 3.7 Sonnet system card,primary system-card section not obtained; only S23 vendor sentence used
+2026-10-17,WebSearch,BMAD method criticism too heavy overhead small project practitioner experience,found S19
+2026-10-17,WebSearch,METR 2026 follow-up study AI developer productivity late 2025 update,found S15 via birchtree mirror link
+2026-10-17,WebSearch,Kiro IDE specs hooks steering files documentation requirements.md design.md tasks.md EARS,"found S20, S21"
+2026-10-17,WebSearch,Simon Willison agentic engineering patterns red green TDD coding agents,found S17
+2026-10-17,WebSearch,Kiro pricing credits specs vibe requests Claude Code compatibility Kiro CLI,results were third-party aggregators; none read; pricing not used
+2026-10-17,WebFetch,github.com/github/spec-kit,S01
+2026-10-17,WebFetch,kiro.dev/docs/specs/,S03
+2026-10-17,WebFetch,code.claude.com/docs/en/memory,S04
+2026-10-17,WebFetch,github.com/Fission-AI/OpenSpec,S10
+2026-10-17,WebFetch,github.com/bmad-code-org/BMAD-METHOD,S11
+2026-10-17,WebFetch,anthropic.com/engineering/claude-code-best-practices,302 redirect to code.claude.com/docs/en/best-practices; followed once by explicit call
+2026-10-17,WebFetch,code.claude.com/docs/en/best-practices,S05
+2026-10-17,WebFetch,martinfowler.com sdd-3-tools,S12
+2026-10-17,WebFetch,metr.org 2025-07-10,S14
+2026-10-17,WebFetch,github.com/github/spec-kit/issues/1193,S29
+2026-10-17,WebFetch,oreilly.com/radar right-amount-of-spec,S18
+2026-10-17,WebFetch,arxiv.org/pdf/2609.09671,FAILED: PDF empty; not used
+2026-10-17,WebFetch,arxiv.org/abs/2402.13521,S16
+2026-10-17,WebFetch,code.claude.com/docs/en/sessions,S07
+2026-10-17,WebFetch,code.claude.com/docs/en/hooks-guide,S06
+2026-10-17,WebFetch,postgresql.org explicit-locking,S24
+2026-10-17,WebFetch,thoughtworks.com radar SDD,S13
+2026-10-17,WebFetch,arxiv.org/abs/2601.03878,S27
+2026-10-17,WebFetch,arxiv.org/abs/2608.17177,S25
+2026-10-17,WebFetch,arxiv.org/abs/2608.12440,S26
+2026-10-17,WebFetch,arxiv.org/abs/2609.00252,S28
+2026-10-17,WebFetch,simonwillison.net red-green-tdd,S17
+2026-10-17,WebFetch,www-cdn.anthropic.com/...pdf,"returned Claude 4 system card, not 3.7 card; reward-hacking section truncated; not used"
+2026-10-17,WebFetch,birchtree.me METR update,pointer to S15; not cited
+2026-10-17,WebFetch,dev.to arch4g BMAD,S19
+2026-10-17,WebFetch,code.claude.com/docs/en/permission-modes,fetched (large); intro only seen; not cited
+2026-10-17,WebFetch,metr.org 2026-02-24,S15
+2026-10-17,WebFetch,anthropic.com/news/claude-4,S23
+2026-10-17,WebFetch,github.github.io/spec-kit/,S02; command list not on page
+2026-10-17,WebFetch,code.claude.com/docs/en/sub-agents,S08
+2026-10-17,WebFetch,code.claude.com/docs/en/skills,S09
+2026-10-17,WebFetch,devclass.com Kiro hands-on,S20
+2026-10-17,WebFetch,claudeissues.com 54049,S22
+2026-10-17,WebFetch,codemyspec.com kiro-specs-explained,S21
+2026-10-17,Bash,gh api repos/github/spec-kit/readme,BLOCKED 403 (repo access not enabled); not worked around
+2026-10-17,WebSearch,OpenSpec Fission-AI problems limitations experience review spec drift,found S30
+2026-10-17,WebSearch,AI coding agent TDD failure agent deletes or edits failing tests to make them pass practitioner report Claude Code,"found S31,S32; no direct report of test-editing found"
+2026-10-17,WebFetch,hackernoon OpenSpec wasnt enough,S30
+2026-10-17,WebFetch,antonymarcano substack,S31
+2026-10-17,WebFetch,eferro substack pseudo-tdd,S32

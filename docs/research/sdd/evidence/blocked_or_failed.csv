@@ -1,0 +1,7 @@
+target,what_happened,missing_evidence_and_consequence
+gh api repos/github/spec-kit/readme (Bash/gh),HTTP 403: GitHub access to this repository is not enabled for this session,"Raw README text of Spec Kit not obtained; command list rests on WebFetch summary (S01,S02) and is single-source/unverified verbatim. Not worked around."
+https://arxiv.org/pdf/2609.09671,Fetch returned empty/no machine-readable text,"Paper (spec-first TDD agent ""Consort"") unread; excluded from evidence."
+https://www-cdn.anthropic.com/6d8a8055020700718b0c49369f60816ba2a7c285.pdf,Returned Claude 4 system card; reward-hacking section truncated,No primary system-card quote on test special-casing; claim limited to S23 vendor sentence.
+"Archive sites (web.archive.org, archive.ph)",Not attempted: no archive tool in this session,archived_copy = none for all rows; run archive_pages.sh elsewhere.
+github.com/anthropics/claude-code/issues/54049 (original),Not opened; read via mirror claudeissues.com,Mirror status text self-contradicts (Closed-not planned vs Resolved); treat as single secondary report.
+kiro.dev pricing/FAQ; code.claude.com/docs/en/permission-modes (full),Not read / large output only partly seen,Kiro pricing not used; plan-mode mechanics cited only from best-practices (S05).
