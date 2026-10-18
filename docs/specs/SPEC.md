@@ -18,7 +18,7 @@ One document, kept short. The agent reads it before every step. Change it first 
 | B6 | A ticket can be checked in only once. | yes |
 | B7 | The arrivals counter on the organizer screen updates live. | |
 | B8 | Rescheduling emails everyone registered and on the waiting list. | |
-| B9 | `[TODO: anything else the task asks for]` | |
+| B9 | Cancelling an event emails everyone registered and on the waiting list, and the event accepts no registrations, reminders or check-ins. | |
 
 **Out of scope.** `[TODO: accounts, real email sending, payments, camera scanner ...]`
 
@@ -52,7 +52,7 @@ What to create or change, and what to do in each. Updated as the build goes.
 
 | File | What to do | Behaviours |
 |---|---|---|
-| `api/src/db/migrations/001_init.sql` | Create `events`, `registrations`, `outbox` with the constraints and indexes in `DATABASE.md`. | B1-B8 |
+| `api/src/db/migrations/001_init.sql` | Create `events`, `registrations`, `outbox` with the constraints and indexes in `DATABASE.md`. | B1-B9 |
 | `api/src/...` | `[TODO]` | |
 | `api/test/...` | `[TODO: tests for B4, B5, B6 first]` | B4, B5, B6 |
 | `web/src/...` | `[TODO]` | |

@@ -14,6 +14,8 @@ Three tables: `events`, `registrations`, `outbox`. A ticket is a registration ro
 | title | text NOT NULL | | |
 | starts_at | timestamptz NOT NULL | changed by reschedule | B5, B8 |
 | capacity | integer NOT NULL | `CHECK (capacity >= 0)` | B2, B4 |
+| status | text NOT NULL DEFAULT 'active' | `CHECK (status IN ('active','cancelled'))`; the whole event is cancelled | B9 |
+| cancelled_at | timestamptz NULL | set when the event is cancelled | B9 |
 | created_at | timestamptz NOT NULL DEFAULT now() | | |
 
 No `seats_taken` counter: seats used = `count(*)` of `registered` rows for the event (see 3.1). Less state, nothing to drift.
@@ -43,7 +45,7 @@ Constraints:
 |---|---|---|---|
 | id | bigint, identity, PK | | |
 | registration_id | bigint NOT NULL, FK to registrations(id) | | |
-| kind | text NOT NULL | `CHECK (kind IN ('ticket','promotion','reminder','reschedule'))` | B1, B3, B5, B8 |
+| kind | text NOT NULL | `CHECK (kind IN ('ticket','promotion','reminder','reschedule','event_cancelled'))` | B1, B3, B5, B8, B9 |
 | event_starts_at | timestamptz NOT NULL | copy of `events.starts_at` when the row was written | B5, B8 |
 | to_email | text NOT NULL | | |
 | subject | text NOT NULL | | |
@@ -61,6 +63,8 @@ CREATE TABLE events (
   title      text NOT NULL,
   starts_at  timestamptz NOT NULL,
   capacity   integer NOT NULL CHECK (capacity >= 0),
+  status       text NOT NULL DEFAULT 'active' CHECK (status IN ('active','cancelled')),
+  cancelled_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -83,7 +87,7 @@ CREATE INDEX registrations_waitlist
 CREATE TABLE outbox (
   id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   registration_id bigint NOT NULL REFERENCES registrations(id),
-  kind            text NOT NULL CHECK (kind IN ('ticket','promotion','reminder','reschedule')),
+  kind            text NOT NULL CHECK (kind IN ('ticket','promotion','reminder','reschedule','event_cancelled')),
   event_starts_at timestamptz NOT NULL,
   to_email        text NOT NULL,
   subject         text NOT NULL,
@@ -120,6 +124,16 @@ Same locked transaction as 3.1: set `status = 'cancelled'`, `cancelled_at = now(
 ### 3.6 B8 reschedule
 `UPDATE events SET starts_at = $new`, then in the same transaction insert one `reschedule` outbox row per `registered` and `waitlisted` person with `event_starts_at = $new`. Old `reminder` rows keep the old `event_starts_at`, so a new reminder for the new time does not conflict with them. Rescheduling to the same time writes nothing new (unique key).
 
+### 3.7 B9 cancel the whole event (test first: no)
+One transaction, starting with `SELECT ... FROM events WHERE id = $1 FOR UPDATE` (same lock as 3.1). If `status` is already `cancelled`, do nothing. Otherwise: `UPDATE events SET status = 'cancelled', cancelled_at = now()`, then insert one `event_cancelled` outbox row per `registered` and `waitlisted` person with `event_starts_at = events.starts_at`. Registration rows are not changed (status stays, history stays). Cancelling twice writes nothing new (the no-op check, and the outbox unique key as a second guard).
+
+Rules for a cancelled event (app rules, each reads `events.status` under the same `FOR UPDATE` lock, so none can race with the cancel):
+- Register: rejected with 409 (3.1 transaction).
+- Cancel a registration: allowed, but promotes nobody (3.5).
+- Reschedule: rejected (3.6).
+- Reminders: the worker only selects events with `status = 'active'` (3.2). The outbox unique key still prevents duplicates.
+- Check-in: rejected. The conditional UPDATE in 3.3 is joined to the event (`AND event_id IN (SELECT id FROM events WHERE status = 'active')`) or the app checks the status first.
+
 ## 4. Behaviour map
 
 | Behaviour | Schema part |
@@ -132,6 +146,7 @@ Same locked transaction as 3.1: set `status = 'cancelled'`, `cancelled_at = now(
 | B6 | `checked_in_at` and the conditional UPDATE (3.3) |
 | B7 | `count` of `checked_in_at IS NOT NULL` |
 | B8 | `events.starts_at`, outbox `event_starts_at`, `reschedule` rows (3.6) |
+| B9 | `events.status`, `events.cancelled_at`, outbox `event_cancelled`, event lock (3.7) |
 
 ## 5. Not in this schema
 
@@ -148,3 +163,6 @@ No users or accounts, no organizer table (shared key from an environment variabl
 7. If an event is moved back to an earlier start time it already had, the old `reminder` or `reschedule` rows block a new one (same unique key). Rare; accept for now?
 8. Event deletion and editing of capacity are not specified. Lowering capacity below the seats taken does nothing to existing registrations. Is a capacity change in scope at all?
 9. `bigint` ids are shown in URLs. Fine for a local project; switch to uuid if you prefer.
+10. Cancelling an event leaves registrations as they are (default). Should they also become `cancelled`? That would lose the history of who was seated and who was checked in.
+11. Can a cancelled event be re-opened (back to `active`)? Default: no.
+12. Cancelling a registration on a cancelled event is allowed but promotes nobody. Reject it instead?
