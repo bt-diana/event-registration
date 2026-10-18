@@ -69,3 +69,5 @@ The user approved `react-router` (v7) as a new library for `web/`. Not installed
 **What Claude did.** Moved `web/icon.svg` to `web/public/icon-attendee.svg` and made `icon-organizer.svg` with the indigo accent `#3A3AA0`. The header logo and the tab icon use the organizer icon on `/organizer` routes and the attendee icon elsewhere. Updated `docs/brand.md`. Typecheck, lint and tests pass. Used Bash.
 
 **Decision.** None.
+
+**Note on the icon commit (`3a98f6f`).** It was made with `git add -A`, so it also took in changes I did not make: an edit to `docs/brand.md` made on disk by another session (the logo text and the radius line, which belong to this icon change and are correct), and a version of `sessions/18-10-1535_auth-spec.md` that lacked its "Step 6: link the design artifact in the README" block, so the commit deleted that block. The block was restored from `9907f40` in the next commit. Lesson: stage files by name.
