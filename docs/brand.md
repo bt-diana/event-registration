@@ -66,7 +66,7 @@ Both from Google Fonts. Fallback: `system-ui, sans-serif`.
 
 ## Event screens (added from `specs/events-web.md`)
 
-Status badge: pill, radius 999px, padding `2px 10px`, 14px 600. The status is always text, never colour alone.
+Status badge colours are approved (user, 18-10). Pill, radius 999px, padding `2px 10px`, 14px 600. The status is always text, never colour alone.
 
 | Badge | Text | Background |
 |---|---|---|

@@ -17,20 +17,20 @@ Feature spec for the organizer event screens and the public event page, made fro
 | W-E5 | Client checks before sending, the same limits as E2: title 1-200 characters after trimming; start is a valid date and time and in the future by the browser clock; duration an integer 1-1440; capacity an integer 1-100000 (digits only, no decimals, no empty). A failing form sends nothing. | |
 | W-E6 | The server decides (as W-A11). The API answers 400 `invalid_input` without field names, so a 400 shows one form-level message "Some fields are not valid. Check them and try again." The typed values are kept. The client checks never replace this handling, also for input they accepted (for example a start that became past while typing). | yes |
 | W-E7 | While the create request is pending the button is disabled and reads "Creating..."; a second click sends no second request (a create is not idempotent, a double click would make two events). | yes |
-| W-E8 | On 201 the form puts the answer into `["events", id]`, invalidates `["events"]` and goes to `/organizer/events/{id}` (`replace`). The new event is then on the list without a stale copy. | |
+| W-E8 | On 201 the form puts the answer into `["events", id]`, invalidates `["events"]` and goes to `/event/{id}` (`replace`). The new event is then on the list without a stale copy. | |
 | W-E9 | Network error or 5xx on create shows "Something went wrong. Try again." at form level; values kept; no navigation. | |
-| W-E10 | Event page (`/organizer/events/:id`): calls `GET /events/:id` (key `["events", id]`) and shows title, start, end, duration, capacity, registered, seats left, status and created date. Read only: no edit, cancel or register controls. The organizer shape's real numbers are shown for every status (E10). | |
-| W-E11 | Event page 404 (unknown, malformed or another organizer's id: the API gives the same answer, E7/E8) shows "Event not found" with a link back to the list. The text never says whether the event exists. No retry button. | yes |
+| W-E10 | One link for everyone: `/event/:id`, no guard. The page waits for `me`, then picks the view. A logged-in **organizer** first calls `GET /events/:id` (key `["events", id]`); on 200 (their own event) the **organizer view** shows title, start, end, duration, capacity, registered, seats left, status and created date, with the real numbers for every status (E10) and a link "Back to events". On 404 (not theirs, unknown) the page falls back to the **public view** (W-E15). Everybody else (logged out, attendee, or `me` failed) gets the public view and no organizer request is made. Read only: no edit, cancel or register controls. | yes |
+| W-E11 | Another organizer's event opened by an organizer shows the public view, never organizer data and never an "owned by someone else" message (the API gives the same 404 as for an unknown id, E7/E8). If the public call also answers 404, the page shows "Event not found" (W-E18). | yes |
 | W-E12 | Event page shows "Loading..." while pending; network error or 5xx shows "Could not load this event" with Retry. | |
 | W-E13 | A `401` or `403` answer from any organizer call (cookie expired or role changed) invalidates `["me"]`. The guard then redirects to the login with `next` (W-A4) or shows the wrong-account message (W-A6). The screen shows no error of its own. | yes |
-| W-E14 | Organizer screens are inside `RequireRole role="organizer"`. While `me` loads no request for events is made; logged out sends no request (the redirect happens first). | yes |
-| W-E15 | Public page (`/event/:id`) calls `GET /public/events/:id` (key `["public-event", id]`) with no guard, and shows the same page whether `me` is a user, an organizer or nobody. It does not wait for `me`. | |
+| W-E14 | `/organizer` and `/organizer/events/new` are inside `RequireRole role="organizer"`. While `me` loads no request for events is made; logged out sends no request (the redirect happens first). `/event/:id` has no guard: it shows "Loading..." until `me` has an answer, then makes only the request for its view. | yes |
+| W-E15 | Public view (any viewer, including an organizer who does not own the event): calls `GET /public/events/:id` (key `["public-event", id]`) and looks the same for a user, another organizer or nobody. An organizer who owns the event does not call it. | |
 | W-E16 | Public page shows title, start, end, duration and the status line (W-E17). Seats are shown as "{seats_left} of {capacity} seats left" while the status line is Open, Full or Already started; for Cancelled and Ended no seat count is shown, only "Capacity: {capacity}". | |
 | W-E17 | Status line, first match wins: `status` `cancelled` gives "Cancelled"; `passed` gives "Ended"; `has_started` true gives "Already started"; `full` true gives "Full"; else "Open". Cancelled and Ended are "closed": the page says "Registration is closed." There is no register button in M2 for any status. | yes |
 | W-E18 | Public page 404 shows "Event not found" and a link home (`/`). Loading shows "Loading..."; network error or 5xx shows "Could not load this event" with Retry. | |
 | W-E19 | Dates are shown in the browser's time zone, with the zone name (for example `Sat, 1 Jan 2030, 10:00 CET`), by one function `formatDateTime(iso, timeZone?)`. The optional `timeZone` is for tests (they pass `"UTC"`); the app passes nothing. Durations are shown as "{n} min", or "1 h 30 min" from 60 up. | |
 | W-E20 | Accessibility: every input has a `<label>`; an invalid input has `aria-invalid="true"` and `aria-describedby` to its error text; field and form errors have `role="alert"`; loading uses `role="status"`; after a failed client check focus goes to the first invalid field, after a server or network error to the form-level error; each screen has one `h1`; the status is text, never colour alone; the list is a real `<table>` with `<th scope="col">`. | |
-| W-E21 | Header and links: the organizer pages show the existing header; the list links to "Create event" and the form to "Back to events". The event page links to the list and shows "Public page" (to `/event/{id}`). The public page shows the existing header and a link "All events" is not shown (no public list exists). | |
+| W-E21 | Header and links: the organizer pages show the existing header; the list links to "Create event" and each title to `/event/{id}`; the form has "Back to events". The organizer view links "Back to events" and shows the share link (`/event/{id}`, the same URL) as text. The public view has no extra links (no public list exists). | |
 
 **Out of scope.** Register button and any registration, waiting list, my registration (M3, M4); cancel registration; changing capacity; check-in and arrivals counter; reschedule or cancel the event; editing or deleting an event; a public list of events; search, filters, sorting, pagination; live updates (the list and page refresh on reload, on Retry and after a create; no polling, no refetch on window focus beyond the default); sharing buttons, copy link, calendar export; translations; dark theme; per-event time zone (the zone is the viewer's).
 
@@ -50,8 +50,7 @@ Feature spec for the organizer event screens and the public event page, made fro
 |---|---|---|---|---|
 | `/organizer` | Organizers (`RequireRole`) | `GET /events` | `["events"]` | Events list or empty state. "Create event" link. Replaces `OrganizerHome`. |
 | `/organizer/events/new` | Organizers | `POST /events` | mutation | Create form. On success goes to the event page. |
-| `/organizer/events/:id` | Organizers | `GET /events/:id` | `["events", id]` | Read-only details of one own event. 404 state. |
-| `/event/:id` | Everyone, no guard | `GET /public/events/:id` | `["public-event", id]` | Public read-only page with the status line. |
+| `/event/:id` | Everyone, no guard. One link: the owner sees the organizer view, everybody else the public view (W-E10) | owner: `GET /events/:id`; others: `GET /public/events/:id` | `["events", id]`; `["public-event", id]` | Organizer view (all numbers) or public view (status line). 404 state. |
 
 **Events list columns** (in order): Title, Starts, Status, Registered ("0 / 25"). Status text: "Active", "Cancelled", "Ended" (from `passed`). Rows for passed and cancelled events stay in the list (E5), same columns.
 
@@ -95,7 +94,7 @@ Text inputs with `inputMode` (not `type="number"`) so that the check, not the br
 - **Time:** pure functions in `web/src/events/format.ts` (`formatDateTime`, `formatDuration`, `localToIso`) and `web/src/events/validate.ts` (`validateTitle`, `validateStart`, `validateDuration`, `validateCapacity`, all returning an error text or `null`, taking `now` as a parameter so tests need no fake clock). `localToIso("2030-01-01T10:00")` is `new Date(value).toISOString()` and an invalid date gives the start error. No date library.
 - **Status line:** one pure function `publicStatus(event)` returning `"cancelled" | "ended" | "started" | "full" | "open"` in the order of W-E17; the component only maps it to text.
 - **Create flow:** `useMutation`; `onSuccess`: `setQueryData(["events", id], data)`, `invalidateQueries({ queryKey: ["events"], exact: true })`, then `navigate`. The button is disabled by `isPending`, so the second click cannot send.
-- **Guards:** all three organizer routes wrap their element in the existing `RequireRole role="organizer"`. The public route has none. `main.tsx` is unchanged.
+- **Guards:** the two organizer routes (`/organizer`, `/organizer/events/new`) wrap their element in the existing `RequireRole role="organizer"`. `/event/:id` has none and picks its view from `me` (W-E10). `main.tsx` is unchanged.
 - **Styling:** `styles.css` and the values in `brand.md`; the cards for the form and the public page, a plain bordered table for the list. New: a status badge (text on a tint) and a table style. Colours for badges are not in `brand.md` yet: use `text` on `ground` for Active/Open, `error-text-on-tint` on `error-tint` for Cancelled, `text-muted` on `ground` for Ended, and add them to `brand.md` when the canvas is drawn (open question 2).
 
 ## 4. Files to touch
@@ -111,9 +110,9 @@ Text inputs with `inputMode` (not `type="number"`) so that the check, not the br
 | `web/src/events/publicStatus.ts` | `publicStatus` | W-E17 |
 | `web/src/events/EventsList.tsx` | List, empty, loading, error states | W-E1-W-E3, W-E20, W-E21 |
 | `web/src/events/CreateEventForm.tsx` | Form, checks, pending, errors, focus | W-E4-W-E9, W-E20 |
-| `web/src/events/EventPage.tsx` | Organizer event details, 404, errors | W-E10-W-E12, W-E21 |
+| `web/src/events/EventPage.tsx` | Picks the view from `me`; organizer view, 404, errors | W-E10-W-E12, W-E21 |
 | `web/src/events/PublicEventPage.tsx` | Public page, status line, 404, errors | W-E15-W-E18 |
-| `web/src/App.tsx` | Replace `OrganizerHome` with `EventsList`; add the three other routes (section 2); the organizer ones inside `RequireRole` | W-E14, W-E15 |
+| `web/src/App.tsx` | Replace `OrganizerHome` with `EventsList`; add `/organizer/events/new` inside `RequireRole` and the unguarded `/event/:id` | W-E14, W-E15 |
 | `web/src/styles.css` | Table, badge, definition list, hint text | |
 | `web/src/events/test-helpers.ts` | Sample `OrganizerEvent` and `PublicEvent` builders; reuse `auth/test-helpers.tsx` (`mockFetch`, `json`, `renderApp`, `OLGA`) | |
 | `web/src/events/ownership.test.tsx` | Tests first: W-E2, W-E11, W-E13, W-E14 | W-E2, W-E11, W-E13, W-E14 |
@@ -132,7 +131,7 @@ Tests follow `auth-web.md` section 4: Vitest globals, files next to the code, `f
 - Every behaviour W-E1 to W-E21 has a test, or a note in the README that says it is not covered.
 - W-E2, W-E4, W-E6, W-E7, W-E11, W-E13, W-E14 and W-E17 have their tests written and committed before the code (step 11 for the organizer ones, step 12 for W-E17).
 - The mock `fetch` counts prove: one `GET /events` on the list, no event request while logged out or while `me` loads, one `POST /events` after a double click.
-- A manual check against the real API (two organizers): create an event, see it in the list and on its page, open the other organizer's id and get "Event not found", open `/event/{id}` logged out and see the same data, open a made-up id and get "Event not found".
+- A manual check against the real API (two organizers): create an event, see it in the list and on its page, open the other organizer's id and see the public view only, open `/event/{id}` logged out and see the same data, open a made-up id and get "Event not found".
 - The README "Project status" says what works: no registration yet, seats left always equal capacity until M3, times shown in the viewer's zone.
 
 ## 6. Canvas boards
@@ -152,6 +151,6 @@ The public boards use the attendee accent (teal) and the organizer boards the or
 ## 7. Open questions
 
 1. Registration after the start: the public page says "Already started" for a running event. Can people still register? Decided in `registration.md` (M3); M2 shows no button either way.
-2. Badge colours (Active/Open, Cancelled, Ended, Full) are proposals. Check the contrast of each pair (at least 4.5:1) when the canvas is drawn, and add them to `brand.md`.
-3. Public path `/event/:id` (singular) is chosen only to avoid the API path `/events/:id` on one origin. Change it if the share link should look different; then the proxy or a path prefix for the API must change too.
+2. Decided (user): the badge colours are approved and are in `brand.md`.
+3. Decided (user): one link `/event/:id` for the public and the organizer view; the owner sees the organizer view. The path (singular) is chosen only to avoid the API path `/events/:id` on one origin. Change it if the share link should look different; then the proxy or a path prefix for the API must change too.
 4. The `datetime-local` input shows the browser's own format and 12/24 hour clock; no custom picker (no library). Accepted unless the canvas needs a different one.
