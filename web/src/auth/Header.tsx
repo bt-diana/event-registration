@@ -5,10 +5,10 @@ import { useLogout, useMe } from "./session";
 
 const ROLE_NAME: Record<Me["role"], string> = { user: "Attendee", organizer: "Organizer" };
 
-// One registrations link per role (registration-web.md W-R14).
+// One main link per role (registration-web.md W-R14): attendees their tickets, organizers their events.
 const REGISTRATIONS_LINK: Record<Me["role"], { to: string; text: string }> = {
   user: { to: "/registrations/me", text: "My registrations" },
-  organizer: { to: "/registrations", text: "Registrations" },
+  organizer: { to: "/organizer", text: "My events" },
 };
 
 function Account({ me }: { me: Me }) {

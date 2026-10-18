@@ -239,6 +239,9 @@ export function ScanScreen({ submitCode }: Props) {
 
   return (
     <Shell>
+      <Link to={`/registrations?event=${encodeURIComponent(chosen.id)}`} className="back-link">
+        <span aria-hidden="true">&larr;</span> Registrations
+      </Link>
       <EventSelect events={events.data} value={chosen.id} onChange={changeEvent} />
       {/* checkin-web.md W-C3: in every camera state; a 200 check-in reads it again (W-C11). */}
       <ArrivalsCounter eventId={chosen.id} />

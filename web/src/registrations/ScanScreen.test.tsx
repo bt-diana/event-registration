@@ -470,7 +470,7 @@ describe("W-R35: the camera is released (tests first)", () => {
   it("on a route change", async () => {
     const { tracks } = await withCamera();
     fireEvent.click(main().getByRole("link", { name: "Registrations" }));
-    await waitFor(() => expect(location()).toBe("/registrations"));
+    await waitFor(() => expect(location()).toMatch(/^\/registrations(\?|$)/));
     for (const track of tracks) expect(track.stop).toHaveBeenCalled();
     expect(scannerStop).toHaveBeenCalled();
   });
