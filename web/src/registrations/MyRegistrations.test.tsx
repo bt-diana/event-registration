@@ -1,5 +1,6 @@
 // Tests first (registration-web.md): the attendee list on /registrations/me without
-// `event`. W-R39 empty, W-R18 rows in the API order with their content and links, W-R40
+// `event`. W-R39 empty, W-R18 rows in the API order with their content and the one card
+// link to the ticket page (no title link, no "View ticket", no /event link), W-R40
 // (cancelled event, ended event, cancelled registration, two rows of one event), W-R41
 // (no request before me, for logged-out viewers and organizers; 401 and 403), W-R19
 // (cache per account); then loading, error with Retry and W-R22.
@@ -84,9 +85,31 @@ function badges(row: HTMLElement): string[] {
 }
 
 function rowOf(title: string): HTMLElement {
-  const row = main().getByRole("link", { name: title }).closest("li");
+  const row = main().getByText(title).closest("li");
   if (!row) throw new Error(`No row for ${title}`);
   return row;
+}
+
+const ticketHref = (eventId: string) => `/registrations/me?event=${eventId}`;
+
+// The row's only link (W-R18: the whole card is one link).
+function cardLink(row: HTMLElement): HTMLElement {
+  const links = within(row).getAllByRole("link");
+  expect(links).toHaveLength(1);
+  return links[0];
+}
+
+// A link whose accessible name holds every part (title, start, status texts).
+const named = (...parts: string[]) => (name: string) => parts.every((part) => name.includes(part));
+
+// The title is plain text inside the card link.
+function titleOf(row: HTMLElement): string | null {
+  return row.querySelector(".registration-card-title")?.textContent ?? null;
+}
+
+// No link to an event page anywhere on the list.
+function eventPageLinks(): Element[] {
+  return [...screen.getByRole("main").querySelectorAll('a[href^="/event/"]')];
 }
 
 // me answers each value in turn, then keeps the last one.
@@ -120,7 +143,7 @@ describe("W-R18: one row per registration, in the API order", () => {
   it("one GET /me/registrations with no query and no body; rows as the API sends them", async () => {
     const { fetch } = await attendeeList(list(...ALL));
     expect(rows()).toHaveLength(4);
-    expect(rows().map((row) => within(row).getAllByRole("link")[0].textContent)).toEqual([
+    expect(rows().map(titleOf)).toEqual([
       "Spring Meetup",
       "Autumn Fair",
       "Old Talk",
@@ -141,24 +164,60 @@ describe("W-R18: one row per registration, in the API order", () => {
     expect(rows()).toHaveLength(1);
   });
 
-  it("a row: the title links to the event, the start, the status badge, View ticket", async () => {
+  it("a row is one card link to the ticket page: plain title, the start, the status badge", async () => {
     await attendeeList(list(...ALL));
     const row = rowOf("Spring Meetup");
-    const title = within(row).getByRole("link", { name: "Spring Meetup" });
-    expect(title.getAttribute("href")).toBe(`/event/${EVENT_ID}`);
-    const start = within(row).getByText(formatDateTime(SPRING.event_starts_at));
-    const badge = within(row).getByText("Registered");
-    const ticket = within(row).getByRole("link", { name: "View ticket" });
-    expect(ticket.getAttribute("href")).toBe(`/registrations/me?event=${EVENT_ID}`);
+    const link = cardLink(row);
+    expect(link.tagName).toBe("A");
+    expect(link.getAttribute("href")).toBe(ticketHref(EVENT_ID));
+    // The whole card is the link: the li holds only the anchor.
+    expect([...row.children]).toEqual([link]);
+    const title = within(link).getByText("Spring Meetup");
+    expect(title.closest("a")).toBe(link);
+    expect(title.tagName).not.toBe("A");
+    const start = within(link).getByText(formatDateTime(SPRING.event_starts_at));
+    const badge = within(link).getByText("Registered");
     expect(badges(row)).toEqual(["Registered"]);
-    // In this order in the row.
+    // In this order in the card.
     for (const [before, after] of [
       [title, start],
       [start, badge],
-      [badge, ticket],
     ]) {
       expect(before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
+  });
+
+  it("the card link's accessible name holds the title, the start and the status text", async () => {
+    await attendeeList(list(...ALL));
+    for (const [item, status] of [
+      [SPRING, ["Registered"]],
+      [AUTUMN, ["Waiting list: place 3"]],
+      [OLD_TALK, ["Cancelled", "Ended"]],
+      [WINTER, ["Registered", "Event cancelled"]],
+    ] as const) {
+      const row = rowOf(item.event_title);
+      const name = named(item.event_title, formatDateTime(item.event_starts_at), ...status);
+      expect(within(row).getByRole("link", { name })).toBe(cardLink(row));
+    }
+  });
+
+  it("nothing interactive inside the card link; the badges are plain spans", async () => {
+    await attendeeList(list(...ALL));
+    for (const row of rows()) {
+      const link = cardLink(row);
+      expect(link.querySelectorAll("a, button, input, select, textarea, [tabindex]")).toHaveLength(0);
+      const inside = [...link.querySelectorAll(".badge")];
+      expect(inside.length).toBeGreaterThan(0);
+      expect(inside.every((badge) => badge.tagName === "SPAN")).toBe(true);
+    }
+  });
+
+  it('no "View ticket" and no link to /event/{id} anywhere on the list', async () => {
+    await attendeeList(list(...ALL));
+    expect(main().queryByText("View ticket")).toBeNull();
+    expect(main().queryByRole("link", { name: "View ticket" })).toBeNull();
+    expect(eventPageLinks()).toEqual([]);
+    expect(main().getAllByRole("link")).toHaveLength(ALL.length);
   });
 
   it("a waiting row reads Waiting list: place 3", async () => {
@@ -201,27 +260,23 @@ describe("W-R40: event status and cancelled rows", () => {
     expect(badges(rowOf("Old Talk"))).toEqual(["Cancelled", "Ended"]);
   });
 
-  it("a cancelled registration has no place and no not-valid line, and its links work", async () => {
+  it("a cancelled registration has no place and no not-valid line, and its card link works", async () => {
     await attendeeList(list(...ALL));
     const row = rowOf("Old Talk");
     expect(within(row).queryByText(/place/i)).toBeNull();
     expect(within(row).queryByText("This ticket is no longer valid.")).toBeNull();
-    expect(within(row).getByRole("link", { name: "Old Talk" }).getAttribute("href")).toBe(
-      `/event/${OLD_TALK.event_id}`,
-    );
-    expect(within(row).getByRole("link", { name: "View ticket" }).getAttribute("href")).toBe(
-      `/registrations/me?event=${OLD_TALK.event_id}`,
-    );
+    expect(cardLink(row).getAttribute("href")).toBe(ticketHref(OLD_TALK.event_id));
+    expect(eventPageLinks()).toEqual([]);
   });
 
-  it("View ticket is on every row, whatever the statuses", async () => {
+  it("the card link to the ticket page is on every row, whatever the statuses", async () => {
     await attendeeList(list(...ALL));
-    for (const row of rows()) {
-      expect(within(row).getAllByRole("link", { name: "View ticket" })).toHaveLength(1);
-    }
+    expect(rows().map((row) => cardLink(row).getAttribute("href"))).toEqual(
+      ALL.map((item) => ticketHref(item.event_id)),
+    );
   });
 
-  it("two rows of one event (cancelled, then a new one) are two rows with the same links", async () => {
+  it("two rows of one event (cancelled, then a new one) are two rows with the same link target", async () => {
     const error = vi.spyOn(console, "error");
     const again = myRegistration({
       id: "b2000000-0000-4000-8000-000000000002",
@@ -238,13 +293,15 @@ describe("W-R40: event status and cancelled rows", () => {
     expect(rows()).toHaveLength(2);
     expect(rows().map(badges)).toEqual([["Registered"], ["Cancelled"]]);
     for (const row of rows()) {
-      expect(within(row).getByRole("link", { name: "Spring Meetup" }).getAttribute("href")).toBe(
-        `/event/${EVENT_ID}`,
-      );
-      expect(within(row).getByRole("link", { name: "View ticket" }).getAttribute("href")).toBe(
-        `/registrations/me?event=${EVENT_ID}`,
-      );
+      expect(cardLink(row).getAttribute("href")).toBe(ticketHref(EVENT_ID));
     }
+    // Told apart by the status in the link name (W-R22).
+    expect(main().getByRole("link", { name: named("Spring Meetup", "Registered") })).toBe(
+      cardLink(rows()[0]),
+    );
+    expect(main().getByRole("link", { name: named("Spring Meetup", "Cancelled") })).toBe(
+      cardLink(rows()[1]),
+    );
     // The rows are keyed by the registration id, not by the event (no duplicate key).
     expect(error.mock.calls.some((call) => String(call[0]).includes("same key"))).toBe(false);
   });
@@ -259,7 +316,7 @@ describe("W-R41: request and 401 rules", () => {
     expect(main().getByRole("status").textContent).toBe("Loading...");
     expect(callsTo(fetch, MY_REGISTRATIONS)).toBe(0);
     await act(async () => me.resolve(json(200, ANN)));
-    expect(await main().findByRole("link", { name: "Spring Meetup" })).toBeTruthy();
+    expect(await main().findByRole("link", { name: named("Spring Meetup") })).toBeTruthy();
     expect(callsTo(fetch, MY_REGISTRATIONS)).toBe(1);
   });
 
@@ -342,7 +399,7 @@ describe("W-R19: the list is cached per account", () => {
 
     const bens = myRegistration({ id: "c1000000-0000-4000-8000-000000000001", event_title: "Ben's Event" });
     await act(async () => ben.resolve(json(200, { registrations: [bens] })));
-    expect(await main().findByRole("link", { name: "Ben's Event" })).toBeTruthy();
+    expect(await main().findByRole("link", { name: named("Ben's Event") })).toBeTruthy();
     expect(rows()).toHaveLength(1);
     for (const item of ALL) expect(main().queryByText(item.event_title)).toBeNull();
     // The web sends no user id: the same path, no query, no body, for both accounts.
@@ -357,8 +414,10 @@ describe("W-R19: the list is cached per account", () => {
       [`GET /public/events/${EVENT_ID}`]: () => json(200, publicEvent({ title: "Spring Meetup" })),
       [MY_REGISTRATION]: () => json(200, SPRING),
     });
-    fireEvent.click(main().getByRole("link", { name: "Spring Meetup" }));
-    expect(await main().findByRole("heading", { level: 1, name: "Spring Meetup" })).toBeTruthy();
+    // A click on the card opens the ticket page, not the event page.
+    fireEvent.click(cardLink(rowOf("Spring Meetup")));
+    expect(await main().findByRole("heading", { level: 1, name: "Your ticket" })).toBeTruthy();
+    expect(location()).toBe(ticketHref(EVENT_ID));
     fireEvent.click(within(screen.getByRole("banner")).getByRole("link", { name: "My registrations" }));
     expect(await main().findByRole("heading", { level: 1, name: "My registrations" })).toBeTruthy();
     await waitFor(() => expect(callsTo(fetch, MY_REGISTRATIONS)).toBe(2));
@@ -376,7 +435,7 @@ describe("W-R39: loading and error", () => {
     expect(rows()).toEqual([]);
     expect(main().queryByText("You have no registrations yet.")).toBeNull();
     await act(async () => answer.resolve(json(200, { registrations: [SPRING] })));
-    expect(await main().findByRole("link", { name: "Spring Meetup" })).toBeTruthy();
+    expect(await main().findByRole("link", { name: named("Spring Meetup") })).toBeTruthy();
     expect(main().queryByRole("status")).toBeNull();
   });
 
@@ -395,7 +454,7 @@ describe("W-R39: loading and error", () => {
     expect(rows()).toEqual([]);
     expect(main().queryByText("You have no registrations yet.")).toBeNull();
     fireEvent.click(main().getByRole("button", { name: "Retry" }));
-    expect(await main().findByRole("link", { name: "Spring Meetup" })).toBeTruthy();
+    expect(await main().findByRole("link", { name: named("Spring Meetup") })).toBeTruthy();
     expect(main().queryByRole("alert")).toBeNull();
     expect(callsTo(fetch, MY_REGISTRATIONS)).toBe(2);
     expect(callsTo(fetch, ME)).toBe(1);
