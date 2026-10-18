@@ -74,3 +74,52 @@ export async function listEmails(
   const emails = rows.filter((row): row is EmailRow => row.id !== null);
   return { kind: "ok", rows: emails.slice(0, CAP), truncated: emails.length > CAP };
 }
+
+// docs/specs/email-reminders.md (ER48-ER60, D74): the emails of one
+// registration of one of the organizer's own events, newest first, all rows (a
+// registration has a handful by the unique key, ER57). Read only.
+
+export type RegistrationEmailRow = {
+  id: string;
+  kind: EmailKind;
+  status: EmailStatus;
+  to_email: string;
+  subject: string;
+  created_at: Date;
+  sent_at: Date | null;
+  send_attempts: number;
+  send_error: string | null;
+};
+
+export type ListRegistrationEmailsResult =
+  | { kind: "not_found" }
+  | { kind: "ok"; attendeeName: string; rows: RegistrationEmailRow[] };
+
+// One statement, no lock, no transaction. The registration row is the ownership
+// check: `r.event_id = $1` makes a registration of another event look like an
+// unknown one, `e.organizer_id = $3` does the same for a foreign event (ER49).
+// The left join keeps one row with a NULL id when the registration has no
+// email, so "no row" is only the 404 (ER56). The body is never selected (ER51).
+const LIST_REGISTRATION_EMAILS_SQL = `SELECT u.name AS attendee_name,
+       o.id, o.kind, o.status, o.to_email, o.subject,
+       o.created_at, o.sent_at, o.send_attempts, o.send_error
+  FROM registrations r
+  JOIN events e ON e.id = r.event_id
+  JOIN users u ON u.id = r.user_id
+  LEFT JOIN outbox o ON o.registration_id = r.id
+ WHERE r.id = $2 AND r.event_id = $1 AND e.organizer_id = $3
+ ORDER BY o.created_at DESC NULLS LAST, o.id`;
+
+type JoinedRow = { attendee_name: string } & (RegistrationEmailRow | { [K in keyof RegistrationEmailRow]: null });
+
+export async function listRegistrationEmails(
+  pool: pg.Pool,
+  organizerId: string,
+  eventId: string,
+  registrationId: string,
+): Promise<ListRegistrationEmailsResult> {
+  const { rows } = await pool.query<JoinedRow>(LIST_REGISTRATION_EMAILS_SQL, [eventId, registrationId, organizerId]);
+  if (rows.length === 0) return { kind: "not_found" };
+  const emails = rows.filter((row): row is { attendee_name: string } & RegistrationEmailRow => row.id !== null);
+  return { kind: "ok", attendeeName: rows[0].attendee_name, rows: emails };
+}

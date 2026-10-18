@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Event registration API - accounts, login, events, registration, check-in and emails
-  version: 0.9.0
+  version: 0.10.0
   description: |
     Hand-written description of the seven auth routes (milestone M1, docs/specs/auth.md):
     signup, login and logout for each role, and GET /auth/me for either role. All bodies are JSON. Errors use the body { "error": "<code>" }; the status is
@@ -46,6 +46,12 @@ info:
     lists the outbox rows of the organizer's own event with their delivery status,
     newest first, at most 200, optionally of one kind, one status or one
     registration. Never the body (it holds the ticket code).
+
+    The emails of one attendee (docs/specs/email-reminders.md ER48-ER60, D74):
+    `GET /events/{id}/registrations/{registrationId}/emails` answers the
+    attendee's name and every outbox row of that one registration of the
+    organizer's own event, newest first, no cap. A registration that is not in
+    this event answers the same 404 as an unknown one. Never the body.
 
     Reschedule and cancel an event (milestone M7, docs/specs/email-reminders.md
     ER61-ER87): `POST /events/{id}/reschedule` moves the start of an own event that
@@ -527,6 +533,57 @@ paths:
           $ref: "#/components/responses/AttendeeOnly"
         "404":
           $ref: "#/components/responses/NoRegistration"
+
+  /events/{id}/registrations/{registrationId}/emails:
+    get:
+      tags: [registrations]
+      operationId: registrationEmails
+      summary: The emails of one attendee of one of the logged-in organizer's events
+      description: |
+        Every outbox row of this one registration, in every kind and status, also
+        of a waiting or cancelled registration and of a cancelled or passed event
+        (docs/specs/email-reminders.md ER48-ER60, D74). Newest first (`created_at`
+        descending, then `id`), all rows, no paging and no cap; a query string is
+        ignored. `attendee_name` is the person's current name; `to_email` is the
+        address stored in the row. `status` is as stored: `pending` (waiting for
+        the sender; `send_attempts` counts failed tries), `sent` (the provider
+        accepted it, not that it arrived) or `error_sending` (3 failed tries, not
+        retried). The body is never returned (it holds the ticket code). A
+        registration with no emails answers 200 with an empty `emails` array. One
+        statement, no lock, nothing written, `Cache-Control: no-store` on 200 and
+        404. Order of checks: the guard (401, 403; so a malformed id from an
+        anonymous caller is 401), the event id, the registration id (404 without
+        a query when not a uuid), then the ownership (404). An unknown or foreign
+        event and an unknown registration or one of another event all answer the
+        same 404. There is no 400.
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - name: registrationId
+          in: path
+          required: true
+          description: The registration id. A value that is not a uuid answers 404.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The attendee's name and emails.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationEmails"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/WrongRole"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /me/registrations:
     get:
@@ -1256,6 +1313,55 @@ components:
         attendee_name:
           type: string
           description: The current name of the registration's person.
+    RegistrationEmails:
+      type: object
+      required: [attendee_name, emails]
+      additionalProperties: false
+      properties:
+        attendee_name:
+          type: string
+          description: The current name of the registration's person.
+        emails:
+          type: array
+          description: Every email of the registration, newest first; empty when there is none.
+          items:
+            $ref: "#/components/schemas/RegistrationEmail"
+    RegistrationEmail:
+      type: object
+      required: [id, kind, status, to_email, subject, created_at, sent_at, send_attempts, send_error]
+      additionalProperties: false
+      description: One outbox row of the registration. Never the body or the ticket code.
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [ticket, promotion, reminder, reschedule, event_cancelled]
+        status:
+          type: string
+          enum: [pending, sent, error_sending]
+        to_email:
+          type: string
+          description: The address stored in the row when it was written.
+        subject:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set only when `status` is `sent`.
+        send_attempts:
+          type: integer
+          minimum: 0
+          description: Failed tries (3 for an `error_sending` row).
+        send_error:
+          type: string
+          nullable: true
+          description: The short reason of the last failed try (addresses replaced), or null.
     RescheduleBody:
       type: object
       required: [starts_at]

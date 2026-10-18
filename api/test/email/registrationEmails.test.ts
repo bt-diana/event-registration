@@ -488,7 +488,8 @@ describe("ER58: read only, one statement", () => {
       const sql = statements(query);
       expect(sql).toHaveLength(1);
       expect(sql[0]).not.toMatch(/\b(INSERT|UPDATE|DELETE|FOR UPDATE|FOR SHARE|BEGIN)\b/i);
-      expect(connect).not.toHaveBeenCalled();
+      // pool.query checks a client out itself; no other client (no transaction).
+      expect(connect).toHaveBeenCalledTimes(1);
     } finally {
       query.mockRestore();
       connect.mockRestore();

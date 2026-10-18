@@ -1,11 +1,24 @@
 import { Router, type Request, type Response } from "express";
 import type pg from "pg";
 import { requireOrganizer } from "../auth/middleware.js";
-import { EMAIL_KINDS, EMAIL_STATUSES, listEmails, type EmailFilters, type EmailRow } from "./service.js";
+import {
+  EMAIL_KINDS,
+  EMAIL_STATUSES,
+  listEmails,
+  listRegistrationEmails,
+  type EmailFilters,
+  type EmailRow,
+  type RegistrationEmailRow,
+} from "./service.js";
 
 // docs/specs/email-outbox.md: GET /events/:id/emails, the emails of one of the
 // organizer's own events (OB1-OB18). Order of checks: guard, no-store header,
 // path id (404), kind, status, registration_id (400), ownership (404).
+//
+// docs/specs/email-reminders.md: GET /events/:id/registrations/:registrationId/emails,
+// the emails of one attendee (ER48-ER60, D74). Order of checks: guard, no-store
+// header, event id (404), registration id (404), ownership (404). The query
+// string is ignored.
 
 // The same regex as the check-in routes (a copy, email-outbox.md section 3).
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -45,6 +58,21 @@ function emailShape(row: EmailRow) {
   };
 }
 
+// Exactly these keys, mapped one by one so a new column never leaks (ER50, ER51).
+function registrationEmailShape(row: RegistrationEmailRow) {
+  return {
+    id: row.id,
+    kind: row.kind,
+    status: row.status,
+    to_email: row.to_email,
+    subject: row.subject,
+    created_at: row.created_at.toISOString(),
+    sent_at: row.sent_at === null ? null : row.sent_at.toISOString(),
+    send_attempts: row.send_attempts,
+    send_error: row.send_error,
+  };
+}
+
 export function emailRouter(pool: pg.Pool): Router {
   const router = Router();
 
@@ -65,6 +93,21 @@ export function emailRouter(pool: pg.Pool): Router {
     if (result.kind === "not_found") return fail(res, 404, "not_found");
     res.status(200).json({ emails: result.rows.map(emailShape), truncated: result.truncated });
   });
+
+  router.get(
+    "/events/:id/registrations/:registrationId/emails",
+    requireOrganizer,
+    async (req: Request, res: Response) => {
+      res.set("Cache-Control", "no-store");
+      const { id, registrationId } = req.params;
+      if (typeof id !== "string" || !UUID.test(id)) return fail(res, 404, "not_found");
+      if (typeof registrationId !== "string" || !UUID.test(registrationId)) return fail(res, 404, "not_found");
+
+      const result = await listRegistrationEmails(pool, req.organizer!.id, id, registrationId);
+      if (result.kind === "not_found") return fail(res, 404, "not_found");
+      res.status(200).json({ attendee_name: result.attendeeName, emails: result.rows.map(registrationEmailShape) });
+    },
+  );
 
   return router;
 }
