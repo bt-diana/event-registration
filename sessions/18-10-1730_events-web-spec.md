@@ -118,3 +118,15 @@ The attendee home `/` becomes a list of upcoming events (new route `GET /public/
 **What Claude did.** The `code-writer` agent finished the description API: `8fa023f` (tests, red) and `7dbfb05` (migration 003, validation, shapes, `openapi.yaml`, docs). `scripts/verify.sh` passes (api 279, web 265); the dev database is migrated and a manual check showed the description in POST, `GET /events`, `GET /events/:id` and `GET /public/events/:id`. Claude added roadmap steps 12b-12d for the public events list. Used Bash.
 
 **Decision.** None.
+
+## Step 11: event page mock-up and the public events list
+
+**Prompt** (cleaned)
+
+> update the event screen mock-up: it should look like https://claude.ai/artifact/Ca1zKGzeKDGuXHhn7J5L76#artboard-c784a0d983e3
+>
+> ok, let's not do that; instead, create a list of public event: docs\specs\events-public-list-web.md. i just added the new api route: api\openapi.yaml
+
+**What Claude did.** Redrew the organizer and public event boards (`OrgEvent`, `PublicEvent`) in the layout of the `RegEvent` board (assumed to be the board meant, the id could not be matched): description before the badge, outlined badge, two-column details, calendar icon. Offered to bring the other boards, `brand.md` and the app in line; the user said no. Then the `code-writer` agent built the attendee home with the public events list (`events-public-list-web.md`, W-L1-W-L13), web only because the API route was being committed by another session: `8f1a068` (tests) and `8e8bf9e` (code); 296 web tests, typecheck and lint pass. W-L13 is half done (the refresh after a registration waits for the register button, step 18). Claude updated the README. Used Artifact (publish), Agent, Bash.
+
+**Decision.** None.
