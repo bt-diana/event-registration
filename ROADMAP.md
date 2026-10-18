@@ -23,6 +23,7 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 - M3 API spec: `registration.md` (R1-R22): register, waiting list, last seat, my registration.
 - M5 arrivals route spec: `arrivals.md` (AR1-AR15): `GET /events/:id/arrivals` with `{ capacity, registered, arrived }`; replaces D45 (D47, shape D49).
 - M5 API: arrivals route `GET /events/:id/arrivals` (`arrivals.md` AR1-AR15, step 27a): tests-first commit `api/test/checkin/arrivals.test.ts`, then `getArrivals` in `api/src/checkin/service.ts` (one statement with the ownership check and both counts, no lock, no transaction) and the route in `checkinRouter` (`requireOrganizer`, `Cache-Control: no-store`, uuid check, same 404 for unknown, malformed and foreign), `api/openapi.yaml` 0.6.0. The web does not read it yet (step 28).
+- M6 API spec: `email-reminders.md` (ER1-ER28, step 29): stub sender, reminder worker, timer; no migration, no new route, no new library. Open questions 1-5 have recommendations, not answers yet.
 - M5 API spec: `checkin.md` (C1-C19): check-in by ticket code, organizer registrations list for the arrivals counter.
 - M5 API, part of step 26: organizer registrations list `GET /events/:id/registrations` (`checkin.md` C1 for this route, C15-C19 list side): own event only (404 otherwise, same body), `registered` and `waitlisted` rows by `created_at` then `id`, name and email, one statement, `Cache-Control: no-store`, `api/openapi.yaml`.
 - M5 API: check-in `POST /checkin` (`checkin.md` C1-C14, C19; steps 25 and 26): tests-first commit, then one conditional UPDATE with no lock and no transaction (5 parallel calls: one 200, four 409 `already_checked_in` with the first time), the classify read (`not_found`, `event_cancelled`, `registration_cancelled`, `waitlisted`, `already_checked_in`), one retry after a waitlist promotion, the code check from the shared ticket alphabet, `api/openapi.yaml` 0.5.0. The M5 API is finished; the M5 UI (steps 27, 28) is next.
@@ -96,7 +97,7 @@ Specs are not written all at once. The first steps of each milestone write (or e
 28. Test, then code: the arrivals counter and the "Arrival" column (`checkin-web.md`, W-C1-W-C19), polled with fake-timer tests first; one check-in counted once. The check-in screen itself is already built from `registration-web.md` (W-R28-W-R37, M3); this step only wires the refetch after a 200 into it.
 
 ### M6. Email and reminder
-29. API spec: `email-reminders.md` (stub sender, B5).
+29. API spec: `email-reminders.md` (stub sender, B5). (done: ER1-ER28)
 30. Stub sender: prints unsent outbox rows and sets `sent_at`. Test: sends once, a repeat run sends nothing.
 31. **Red:** B5 test (fake clock at one day before, worker run 10 times and with two workers: one `reminder` row per registered person, none for waiting people).
 32. **Green:** reminder worker with `INSERT ... SELECT ... ON CONFLICT DO NOTHING`, a timer to start it, a clock that can be injected.
