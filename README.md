@@ -90,7 +90,7 @@ The API reads the repository `.env` when `DATABASE_URL` or `COOKIE_SECRET` is no
 
 ## API
 
-Described in [api/openapi.yaml](api/openapi.yaml) (OpenAPI 3.0.3, hand-written). The behaviours are in [docs/specs/auth.md](docs/specs/auth.md), [docs/specs/events.md](docs/specs/events.md), [docs/specs/event-description.md](docs/specs/event-description.md), [docs/specs/events-public-list.md](docs/specs/events-public-list.md) and [docs/specs/registration.md](docs/specs/registration.md). All bodies are JSON; errors are `{ "error": "<code>" }`.
+Described in [api/openapi.yaml](api/openapi.yaml) (OpenAPI 3.0.3, hand-written). The behaviours are in [docs/specs/auth.md](docs/specs/auth.md), [docs/specs/events.md](docs/specs/events.md), [docs/specs/event-description.md](docs/specs/event-description.md), [docs/specs/events-public-list.md](docs/specs/events-public-list.md) and [docs/specs/registration.md](docs/specs/registration.md) and [docs/specs/checkin.md](docs/specs/checkin.md) (M5, specified, not built yet). All bodies are JSON; errors are `{ "error": "<code>" }`.
 
 | Route | Answer |
 |---|---|
@@ -123,6 +123,13 @@ Registration (M3, [docs/specs/registration.md](docs/specs/registration.md)):
 | `GET /events/:id/registrations/me` (attendee) | 200 the caller's registration in any status (`registered`, `waitlisted` or `cancelled`), also for a cancelled or passed event; 404 unknown or malformed id, or never registered; 401; 403 organizer |
 
 The registration is `{ id, event_id, status, ticket_code, waitlist_position, checked_in_at, created_at }`. `ticket_code` is 10 characters from A-Z without I and O, and 2-9; waiting people get one too. `waitlist_position` is the 1-based place on the waiting list, counted when it is read, and `null` unless the status is `waitlisted`. Registering is one transaction that locks the event row (`FOR UPDATE`), so seats are never over-sold. A new seat also stores one `ticket` row in the `outbox` table; nothing is sent yet.
+
+Check-in (M5, [docs/specs/checkin.md](docs/specs/checkin.md), **specified, not built yet**):
+
+| Route | Answer |
+|---|---|
+| `POST /checkin` (organizer) | Body `{ ticket_code }` (trimmed, upper-cased). 200 `{ registration_id, ticket_code, event_id, event_title, attendee_name, checked_in_at }` the first time; 409 `already_checked_in` (with the first `checked_in_at` and `attendee_name`), `waitlisted`, `registration_cancelled` or `event_cancelled`; 404 for an unknown code or another organizer's ticket; 400 `invalid_input` for a bad code. Allowed before the start and after the end. One conditional `UPDATE`, so of 5 parallel calls one wins |
+| `GET /events/:id/registrations` (organizer) | 200 `{ registrations: [...] }`: the `registered` and `waitlisted` rows of the organizer's own event, each with the registration shape plus `attendee_name` and `attendee_email`; 404 for an unknown or other organizer's event. The arrivals counter is counted from this list (no separate arrivals route) |
 
 Later routes use the middleware in `api/src/auth/middleware.ts`: `authenticate` puts `req.user` or `req.organizer` on the request, and `requireUser` / `requireOrganizer` answer 401 (no login) or 403 (other role).
 

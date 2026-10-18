@@ -40,6 +40,7 @@ Feature spec for milestone M5, made from `SPEC_TEMPLATE.md` (sections 1-5). No n
 - The code is unique across all events (`ticket_code UNIQUE`), so no event id is needed in the body; the organizer's ownership decides which tickets are visible.
 - "Waiting" has a distinct error (`waitlisted`) so the screen can say "on the waiting list, no seat yet". It is not a 404, because the organizer owns that event.
 - There is no separate arrivals route (decided by the user): the counter is computed by the screen from `GET /events/:id/registrations`. That route is the organizer registrations list that `registration-web.md` (open question 2, option A) asked for, so this spec defines it and `registration-web.md` W-R20 and W-R21 can use it; `events.md` shapes (E10) stay unchanged. Name and email go to the owning organizer only (same decision as option A).
+- `registration-web.md` asked for both routes (its open questions 2 and 10). This spec answers them and `registration-web.md` was changed to match: the scan screen sends `POST /checkin` with the code only, the error codes are the ones in C19, and the organizer screen reads the list of C15. A ticket of another of the organizer's own events can be checked in at the scan screen; the answer names its `event_title` so the organizer sees it. The web steps add the `/checkin` entry to the Vite dev proxy (`/events` is proxied already).
 - Rows made by tests (cancelled tickets, cancelled and passed events, other organizers) are inserted by SQL with the helpers in `api/test/db/helpers.ts`.
 
 ## 2. UI decisions
@@ -87,6 +88,7 @@ No screens in M5 API (API only). The check-in screen and the counter are in `che
 | `api/src/registrations/ticket.ts` | Export the alphabet (and length) so the check-in regex uses the same one. No other change | C2 |
 | `api/src/app.ts` | Mount `checkinRouter(pool)` after `registrationsRouter(pool)`, before the 404 handler | all |
 | `api/openapi.yaml` | Add the two routes, the two shapes and the 409 bodies | all |
+| `docs/specs/registration-web.md` | Done with this spec: questions 2 and 10, W-R20, W-R33, W-R34 and the scan texts follow `checkin.md` | C3-C9, C15 |
 | `README.md` | Add the two routes; update "Project status" | |
 | `ROADMAP.md` | Step 24 done now; steps 25, 26 when finished | |
 
