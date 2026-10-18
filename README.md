@@ -123,7 +123,7 @@ The demo runs on Render: https://event-registration-web-rmbi.onrender.com. The w
 3. Set the API variables (`COOKIE_SECRET`, `EMAIL_API_KEY`, `MAIL_FROM`, `NODE_ENV=production`) and deploy the API; copy its URL.
 4. Set `VITE_API_URL` to that URL on the Static Site and deploy it; copy the web URL.
 5. Set `CORS_ORIGIN` to the web URL on the API and redeploy the API.
-6. Add a rewrite of `/*` to `/index.html` on the Static Site, so a reload on a page such as `/events/:id` does not give a 404. This is a setting in the Render dashboard (Redirects/Rewrites), not a file in the repository.
+6. A reload on a page such as `/events/:id` must not break the app. The web build copies `dist/index.html` to `dist/404.html`, and a Render Static Site serves `404.html` for a path it does not find, so the app loads and the router shows the page. Nothing to set. The cleaner option is a rewrite of `/*` to `/index.html` in the Render dashboard (Redirects/Rewrites), which answers 200 instead of 404; add it if you like.
 
 ### Demo logins
 
