@@ -1,5 +1,6 @@
 // The ticket panel (W-R7), shared by the event page and the ticket page (W-R11).
-// A section labelled by its h2; the code is plain selectable text (W-R22).
+// A section labelled by its h2; the code is plain selectable text (W-R22), and it is left
+// out once the ticket is checked in (W-R25).
 import { useId, type ReactNode, type Ref } from "react";
 import { Link } from "react-router";
 import type { Registration } from "./api";
@@ -38,10 +39,13 @@ export function TicketPanel({
         </h2>
       )}
       {label.place && <p className="ticket-place">{label.place}</p>}
-      <dl className="ticket-code-block">
-        <dt>Ticket code</dt>
-        <dd className="ticket-code">{registration.ticket_code}</dd>
-      </dl>
+      {/* W-R25: a checked-in ticket shows no code at all (keys on checked_in_at only). */}
+      {registration.checked_in_at === null && (
+        <dl className="ticket-code-block">
+          <dt>Ticket code</dt>
+          <dd className="ticket-code">{registration.ticket_code}</dd>
+        </dl>
+      )}
       {label.note && <p className="ticket-note">{label.note}</p>}
       {label.checkedIn && <p className="ticket-checked-in">{label.checkedIn}</p>}
       {children}
