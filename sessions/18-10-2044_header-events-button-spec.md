@@ -95,3 +95,13 @@ Started 18-10 20:44 +06.
 
 ### D64: the header logo opens `/` for everyone; the "Watch all events" button is removed
 21:12:00 +0600. Replaces D58-D59 (the button) and D62 (organizer logo to `/organizer`). Organizers reach `/organizer` through "My events" and after login (D61). Reason: the user asked for the logo to be the button for both roles.
+
+## Step 8: build the logo change
+
+**Prompt** (21:15 +06, text cleaned)
+
+> implement
+
+**What Claude did.** Delegated to the `code-writer` agent: tests `ab197e5` (38 failed first), code `259e9f0` (logo `to="/"` with `aria-current`, button and its CSS removed, Log out keeps the link look; one stale assertion in `PublicEventsList.test.tsx` fixed). Web tests (633 passed), typecheck and lint pass. Not done: HB10 (phone layout by hand), canvas boards, `docs/brand.md`. Used Agent, Bash.
+
+**Decision.** None.
