@@ -6,11 +6,11 @@ Read `docs/specs/SPEC.md` before you start. All specs are in `docs/specs/`. Deci
 
 ## Commands
 
-`[TODO: fill in after the projects are created]`
-
 - API tests: `cd api && npm test`
 - Web tests: `cd web && npm test`
-- Typecheck and lint: `[TODO]`
+- Typecheck: `cd api && npm run typecheck`, `cd web && npm run typecheck`
+- Lint: `[TODO: waiting for the linter decision]`
+- Database: `docker compose up -d db`
 
 ## History log (part of the task, please follow it)
 
