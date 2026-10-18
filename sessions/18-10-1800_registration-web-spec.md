@@ -26,3 +26,26 @@ Started 18-10 18:00 +06.
 **What Claude did.** Added five boards (`RegEvent`, `RegTicket`, `RegPhone`, `RegAreaStates`, `RegLists`: event page with the register button, ticket page states, phone view, all area states, attendee and organizer lists) and a title note to the existing canvas https://claude.ai/artifact/Ca1zKGzeKDGuXHhn7J5L76, below the event screens. Added the canvas link and the rule "add boards to it, no new artifact" to `.claude/CLAUDE.md`, and marked roadmap step 17 done. The first, wrong artifact (https://claude.ai/artifact/7gp1thoHPG3HFH5zPGvuC8) is still there; not deleted without the user's word.
 
 **Decision.** None.
+
+## Step 3: organizer registrations board
+
+**Prompt** (text cleaned)
+
+> add the registration view from the org
+
+**What Claude did.** Added the board `RegOrg` (organizer `/registrations`: event selector, counters, table, and the states empty, no events, loading, error, 404) to the existing design canvas. Used Artifact.
+
+**Decision.** None.
+
+## Step 4: QR code for check-in and scanning in the organizer view
+
+**Prompt** (18:18:08 +0600, text cleaned)
+
+> let's also add to the spec a feature of generation of a QR code for check-in and the ability to scan it from the organizer's view
+
+**What Claude did.** Gave the `spec-writer` agent the change. It added W-R24-W-R37 to `docs/specs/registration-web.md`: a QR with the ticket code on the ticket page (drawn in the browser, only for `registered`, not checked in) and a scan screen `/registrations/scan?event={id}` for organizers (camera states, manual code field, one request per code, camera stopped on leave, decoder behind `scanner.ts`). The result part of the scan needs a check-in API that does not exist (M5), so W-R34 is blocked until then. It added open questions 9-14: libraries (`qrcode`, `jsqr`; not installed, versions not verified against npm), the check-in route `POST /events/{id}/check-in`, and where the screen lives. No library was added. Used Agent (`spec-writer`).
+
+**Decision.**
+
+### D43: QR code and scanning are in the scope of the registration web spec
+18:18:08 +0600. The user wants the ticket to show a QR code for check-in and the organizer to scan it from their view. Reason: check-in by camera, not only by typing the code. The libraries and the check-in API are not decided yet (questions 9 and 10).
