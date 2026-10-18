@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import type pg from "pg";
 import { requireOrganizer } from "../auth/middleware.js";
+import { deriveStatus, endsAt, MINUTE_MS, type StoredStatus } from "./status.js";
 
 // docs/specs/events.md (M2): POST /events, GET /events, GET /events/:id for the
 // owner, and GET /public/events/:id for anyone.
@@ -10,7 +11,6 @@ const MIN_CAPACITY = 1;
 const MAX_CAPACITY = 100000;
 const MIN_DURATION = 1;
 const MAX_DURATION = 1440;
-const MINUTE_MS = 60 * 1000;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -20,16 +20,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_TIMESTAMP =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(?:Z|([+-])(\d{2}):(\d{2}))$/;
 
-type Stored = "active" | "cancelled";
-type Status = "active" | "cancelled" | "passed";
-
 type EventRow = {
   id: string;
   title: string;
   starts_at: Date;
   duration_minutes: number;
   capacity: number;
-  status: Stored;
+  status: StoredStatus;
   schedule_version: number;
   cancelled_at: Date | null;
   created_at: Date;
@@ -114,13 +111,10 @@ function parseNewEvent(body: unknown, now: Date): NewEvent | null {
 
 // The values both shapes share, from one `now` per request (E15, E18, E19).
 function derive(row: EventRow, now: Date) {
-  const endsAt = new Date(row.starts_at.getTime() + row.duration_minutes * MINUTE_MS);
-  const status: Status =
-    row.status === "cancelled" ? "cancelled" : now.getTime() >= endsAt.getTime() ? "passed" : "active";
   const registered = Number(row.registered);
   return {
-    endsAt,
-    status,
+    endsAt: endsAt(row.starts_at, row.duration_minutes),
+    status: deriveStatus(row.status, row.starts_at, row.duration_minutes, now),
     registered,
     seatsLeft: Math.max(row.capacity - registered, 0),
     hasStarted: row.starts_at.getTime() <= now.getTime(),

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
-  title: Event registration API - accounts, login and events
-  version: 0.2.0
+  title: Event registration API - accounts, login, events and registration
+  version: 0.3.0
   description: |
     Hand-written description of the seven auth routes (milestone M1, docs/specs/auth.md):
     signup, login and logout for each role, and GET /auth/me for either role. All bodies are JSON. Errors use the body { "error": "<code>" }; the status is
@@ -13,6 +13,13 @@ info:
     was cancelled, else `passed` once `starts_at + duration_minutes` is reached, else
     `active`. Seat counts are a snapshot (no lock). Until registration exists (M3),
     `registered` is 0 and `seats_left` equals `capacity`.
+
+    The two registration routes (milestone M3, docs/specs/registration.md): a
+    logged-in attendee registers for an event and reads their own registration.
+    Registering runs in one transaction that locks the event row, so seats are never
+    over-sold: when the `registered` count has reached `capacity`, the new
+    registration is `waitlisted`. A seat writes one `ticket` row to the outbox table
+    (stored only; nothing is sent yet). Cancelling and promotion are not built yet (M4).
 
     Login is one signed cookie named `session` (cookie-parser), valid 7 days,
     httpOnly, sameSite=lax, secure only when NODE_ENV=production. Its signed value is
@@ -32,6 +39,8 @@ tags:
     description: The logged-in organizer's own events (requireOrganizer).
   - name: public
     description: Routes that need no login.
+  - name: registrations
+    description: The logged-in attendee's own registrations (requireUser).
 
 paths:
   /auth/users/signup:
@@ -240,6 +249,79 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /events/{id}/registrations:
+    post:
+      tags: [registrations]
+      operationId: register
+      summary: Register the logged-in attendee for an event
+      description: |
+        The attendee is the account in the cookie; the body is ignored. One
+        transaction locks the event row (`FOR UPDATE`), checks that the event is
+        open, then: an active registration of this account (`registered` or
+        `waitlisted`) is answered with 200 and nothing is written; otherwise a new
+        row is stored as `registered` while the `registered` count is below
+        `capacity`, else as `waitlisted`, and answered with 201. A new `registered`
+        row also writes one `ticket` outbox row (subject and body name the event
+        title and the ticket code); a `waitlisted` row writes none. The row and the
+        outbox row are stored together or not at all. A started event that has not
+        ended still accepts registrations. A cancelled registration does not block a
+        new one. The guard runs first, so a malformed id from an anonymous caller is
+        401; a malformed id is answered 404 before any database query.
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "201":
+          description: A new registration, `registered` or `waitlisted`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+        "200":
+          description: Already registered or on the waiting list; the same registration (same id and ticket code).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/AttendeeOnly"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/EventClosed"
+
+  /events/{id}/registrations/me:
+    get:
+      tags: [registrations]
+      operationId: myRegistration
+      summary: The logged-in attendee's registration for an event
+      description: |
+        The caller's own row in whatever status it has, also for a cancelled or
+        passed event. An active row (`registered` or `waitlisted`) wins; otherwise
+        the newest `cancelled` row is answered. `waitlist_position` is counted at
+        read time (a snapshot, no lock). Another attendee's registration is never
+        shown.
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: The caller's registration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/AttendeeOnly"
+        "404":
+          $ref: "#/components/responses/NoRegistration"
+
 components:
   securitySchemes:
     session:
@@ -430,6 +512,43 @@ components:
         full:
           type: boolean
           description: True when `seats_left` is 0 and `status` is `active` (a closed event is not full).
+    Registration:
+      type: object
+      required: [id, event_id, status, ticket_code, waitlist_position, checked_in_at, created_at]
+      additionalProperties: false
+      description: |
+        Exactly these keys. No user id, queue number, email, name or other
+        person's data.
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [registered, waitlisted, cancelled]
+          description: "`cancelled` is answered only by GET .../registrations/me."
+        ticket_code:
+          type: string
+          pattern: "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$"
+          description: 10 characters from A-Z without I and O, and 2-9. Also given to waiting people.
+          example: K7QM2XWP9D
+        waitlist_position:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: |
+            1-based place on the waiting list (waiting rows of the event that came
+            before it, plus itself); `null` unless `status` is `waitlisted`.
+        checked_in_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
     Error:
       type: object
       required: [error]
@@ -527,6 +646,41 @@ components:
             error: wrong_role
     NotFound:
       description: Unknown id, an id that is not a uuid, or (on the organizer route) another organizer's event. All give the same body.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: not_found
+    AttendeeOnly:
+      description: Logged in, but as an organizer. No handler runs and nothing is written.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: wrong_role
+    EventClosed:
+      description: |
+        The event does not take registrations. `event_cancelled`: the event was
+        cancelled (wins over passed). `event_passed`: `starts_at + duration_minutes`
+        is reached. Checked under the event lock, before the existing registration,
+        so a repeat request on a closed event also gets 409. Nothing is written.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            cancelled:
+              value:
+                error: event_cancelled
+            passed:
+              value:
+                error: event_passed
+    NoRegistration:
+      description: |
+        Unknown event, an id that is not a uuid, or the caller never registered for
+        this event (no row in any status). All give the same body.
       content:
         application/json:
           schema:

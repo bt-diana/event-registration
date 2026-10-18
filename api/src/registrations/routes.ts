@@ -1,0 +1,59 @@
+import { Router, type Request, type Response } from "express";
+import type pg from "pg";
+import { requireUser } from "../auth/middleware.js";
+import { REGISTRATION_COLUMNS, registerForEvent, type RegistrationRow } from "./service.js";
+
+// docs/specs/registration.md (M3): POST /events/:id/registrations and
+// GET /events/:id/registrations/me for the logged-in attendee.
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function fail(res: Response, status: number, error: string): void {
+  res.status(status).json({ error });
+}
+
+// Exactly these keys (R21): no user_id, queue_no, cancelled_at or personal data.
+function registrationShape(row: RegistrationRow) {
+  return {
+    id: row.id,
+    event_id: row.event_id,
+    status: row.status,
+    ticket_code: row.ticket_code,
+    waitlist_position: row.status === "waitlisted" ? row.waitlist_position : null,
+    checked_in_at: row.checked_in_at === null ? null : row.checked_in_at.toISOString(),
+    created_at: row.created_at.toISOString(),
+  };
+}
+
+export function registrationsRouter(pool: pg.Pool): Router {
+  const router = Router();
+
+  // The body is ignored; the attendee is the cookie's user (R1).
+  router.post("/events/:id/registrations", requireUser, async (req: Request, res: Response) => {
+    const id = req.params.id;
+    if (typeof id !== "string" || !UUID.test(id)) return fail(res, 404, "not_found");
+    const result = await registerForEvent(pool, id, req.user!.id, new Date());
+    if (result.kind === "not_found") return fail(res, 404, "not_found");
+    if (result.kind === "closed") return fail(res, 409, result.error);
+    res.status(result.created ? 201 : 200).json(registrationShape(result.registration));
+  });
+
+  // The caller's own row in any status, for any event status, no lock (R17,
+  // R22). An active row wins, else the newest cancelled one. Unknown event and
+  // never registered give the same 404 (R19).
+  router.get("/events/:id/registrations/me", requireUser, async (req: Request, res: Response) => {
+    const id = req.params.id;
+    if (typeof id !== "string" || !UUID.test(id)) return fail(res, 404, "not_found");
+    const { rows } = await pool.query<RegistrationRow>(
+      `SELECT ${REGISTRATION_COLUMNS} FROM registrations r
+        WHERE r.event_id = $1 AND r.user_id = $2
+        ORDER BY (r.status <> 'cancelled') DESC, r.created_at DESC, r.queue_no DESC
+        LIMIT 1`,
+      [id, req.user!.id],
+    );
+    if (rows.length === 0) return fail(res, 404, "not_found");
+    res.status(200).json(registrationShape(rows[0]));
+  });
+
+  return router;
+}

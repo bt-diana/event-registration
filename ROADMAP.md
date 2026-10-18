@@ -15,7 +15,8 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 - M2 API spec: `events.md`.
 - M2 API: events (`events.md`, E1-E20): migration `002_event_duration.sql`, `POST /events`, `GET /events`, `GET /events/:id` for the owner, `GET /public/events/:id`, `api/openapi.yaml`.
 - M2 UI spec: `events-web.md` (W-E1-W-E21): organizer events list, create form, event page, public event page.
-- M3 API spec: `registration.md` (R1-R21): register, waiting list, last seat, my registration.
+- M3 API spec: `registration.md` (R1-R22): register, waiting list, last seat, my registration.
+- M3 API: registration (`registration.md`, R1-R22): `POST /events/:id/registrations` (one transaction, `FOR UPDATE` on the event, `ticket` outbox row), `GET /events/:id/registrations/me`, shared `api/src/events/status.ts`, `api/openapi.yaml`.
 
 ## Milestones
 
@@ -53,9 +54,9 @@ Specs are not written all at once. The first steps of each milestone write (or e
 
 ### M3. Registration
 13. API spec: `registration.md` (B1, B2, B4) (done: R1-R21).
-14. **Red:** B4 concurrency test (capacity 1, 20 parallel attendees: 1 registered, 19 waitlisted; repeat). Add B1 (same account twice = same ticket, one seat) and B2 (full goes to the list).
-15. **Green:** the register service in one transaction with `FOR UPDATE` on the event, a `ticket` outbox row, route `POST /events/:id/registrations`.
-16. "My registration" route (ticket code, status, place on the list).
+14. **Red:** B4 concurrency test (capacity 1, 20 parallel attendees: 1 registered, 19 waitlisted; repeat). Add B1 (same account twice = same ticket, one seat) and B2 (full goes to the list). (done: `api/test/registrations/`, with the other R1-R22 tests in the same red commit)
+15. **Green:** the register service in one transaction with `FOR UPDATE` on the event, a `ticket` outbox row, route `POST /events/:id/registrations`. (done: `api/src/registrations/`)
+16. "My registration" route (ticket code, status, place on the list). (done: `GET /events/:id/registrations/me`)
 17. UI spec: `registration-web.md`: the register button on the public event page, the ticket page.
 18. Test, then code: registration form (states: loading, error, full so the list, already registered, not logged in) and the ticket page (code, status, place on the list).
 
