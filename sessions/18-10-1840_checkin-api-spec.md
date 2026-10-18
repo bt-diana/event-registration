@@ -40,3 +40,13 @@ The agent made six recommendations in the spec for the user to confirm: check-in
 **What Claude did.** Took this as "make the three files agree with the decisions D44 and D45". In `registration-web.md`: marked open questions 2 and 10 as answered by `checkin.md` (list route and `POST /checkin` with `{ ticket_code }`, new error codes), and changed the known-gap text, W-R20, W-R33, W-R34, the scan texts and the `checkIn` helper. In `checkin.md`: added the assumption about `registration-web.md` and the Vite `/checkin` proxy entry, and the file row. In `README.md`: added the check-in routes table (marked specified, not built) and the spec link. Other uncommitted `web/` changes belong to another session and were not touched. Used Bash, Read, Grep.
 
 **Decision.** None.
+
+## Step 4: implement `GET /events/:id/registrations`
+
+**Prompt** (19:10 +06, text cleaned)
+
+> implement the GET /events/:id/registrations
+
+**What Claude did.** Delegated to the `code-writer` agent with the spec `checkin.md` (C15-C18). It wrote 13 tests first (`api/test/checkin/registrationsList.test.ts`; 12 failed red for the right reason, commit 722d852), then the route (`api/src/checkin/routes.ts`, `api/src/checkin/service.ts`, mounted in `api/src/app.ts`, `registrationShape` exported from `api/src/registrations/routes.ts`), `api/openapi.yaml` 0.4.0, `README.md` and `ROADMAP.md` (commit 510127d). Checked afterwards: 311 API tests, typecheck and lint pass. Step 26 stays open for `POST /checkin`. Notes: the route does an ownership read, then one statement for the rows; `no-store` is also set on the 404; the agent's commit trailer names Opus 5.5 (its own model). Used Agent, Bash.
+
+**Decision.** None.
