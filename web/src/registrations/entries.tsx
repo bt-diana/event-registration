@@ -6,6 +6,7 @@ import { Navigate, useLocation } from "react-router";
 import { LOGIN, MeGate } from "../auth/guards";
 import { MyRegistrations } from "./MyRegistrations";
 import { OrganizerRegistrations } from "./OrganizerRegistrations";
+import { RegistrationEmails } from "./RegistrationEmails";
 import { ScanScreen } from "./ScanScreen";
 
 export const MY_REGISTRATIONS = "/registrations/me";
@@ -57,6 +58,22 @@ export function ScanEntry() {
         if (!me) return <Navigate to={`${LOGIN.organizer}?next=${next}`} replace />;
         if (me.role !== "organizer") return <Navigate to={MY_REGISTRATIONS} replace />;
         return <ScanScreen />;
+      }}
+    </MeGate>
+  );
+}
+
+// /registrations/:registrationId/emails?event=: organizers, the same rules as
+// /registrations (email-reminders-web.md W-EM2). The page is a plain child, so no
+// request runs before the guard accepts.
+export function RegistrationEmailsEntry() {
+  const next = useNext();
+  return (
+    <MeGate>
+      {(me) => {
+        if (!me) return <Navigate to={`${LOGIN.organizer}?next=${next}`} replace />;
+        if (me.role !== "organizer") return <Navigate to={MY_REGISTRATIONS} replace />;
+        return <RegistrationEmails />;
       }}
     </MeGate>
   );

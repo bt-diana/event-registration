@@ -436,8 +436,10 @@ describe("W-EM12: the states (test first)", () => {
   it('"Loading emails..." until the first answer, with the h1 "Emails"', async () => {
     const first = deferred<Response>();
     app(PAGE, { [EMAILS]: () => first.promise });
-    const status = await main().findByRole("status");
-    expect(status.textContent).toBe("Loading emails...");
+    // After the guard's own "Loading..." (me), the page's status.
+    const status = await main().findByText("Loading emails...");
+    expect(status.getAttribute("role")).toBe("status");
+    expect(main().getAllByRole("status")).toEqual([status]);
     expect(h1()).toBe("Emails");
     expect(main().queryByRole("table")).toBeNull();
     await act(async () => first.resolve(json(200, body(TICKET))));

@@ -6,7 +6,12 @@ import { CreateEventForm } from "./events/CreateEventForm";
 import { EventPage } from "./events/EventPage";
 import { EventsList } from "./events/EventsList";
 import { PublicEventsList } from "./events/PublicEventsList";
-import { MyRegistrationsEntry, RegistrationsEntry, ScanEntry } from "./registrations/entries";
+import {
+  MyRegistrationsEntry,
+  RegistrationEmailsEntry,
+  RegistrationsEntry,
+  ScanEntry,
+} from "./registrations/entries";
 
 export function App() {
   return (
@@ -22,6 +27,8 @@ export function App() {
           <Route path="/registrations" element={<RegistrationsEntry />} />
           <Route path="/registrations/me" element={<MyRegistrationsEntry />} />
           <Route path="/registrations/scan" element={<ScanEntry />} />
+          {/* Organizers: the emails of one attendee (email-reminders-web.md W-EM2). */}
+          <Route path="/registrations/:registrationId/emails" element={<RegistrationEmailsEntry />} />
           <Route
             path="/login"
             element={
