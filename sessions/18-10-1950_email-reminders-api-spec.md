@@ -146,3 +146,16 @@ Started 18-10 19:50 +06.
 **What Claude did.** The `spec-writer` agent wrote `docs/specs/email-outbox.md` (OB1-OB15): `GET /events/:id/emails`, organizer only, filters `kind` and `status`, newest first, cap 200 with a `truncated` flag, no body or ticket code, one read-only statement, code in `api/src/email/`. Added step 32a to `ROADMAP.md` and the spec to `README.md`. Used Agent, Bash.
 
 **Decision.** None.
+
+## Step 12: emails of one attendee
+
+**Prompt** (22:19 +06, text cleaned)
+
+> let's make the endpoint return info for a separate attendee reminders
+
+**What Claude did.** Read it as: the organizer can ask for the emails of one attendee of an own event. Chose a `registration_id` filter on `GET /events/:id/emails` instead of a second route (open to change). Delegated the edit of `docs/specs/email-outbox.md` to the `spec-writer` agent. Used Bash, Agent.
+
+**Decision.**
+
+### D61: `GET /events/:id/emails` can be limited to one attendee with `registration_id`
+22:19:21 +0600. The organizer gets the emails (reminders and the other kinds) of one registration of the own event. Reason: the user asked for the reminders of a separate attendee.
