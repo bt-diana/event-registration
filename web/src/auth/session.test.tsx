@@ -41,11 +41,17 @@ describe("W-A1: one GET /auth/me at start", () => {
   });
 
   it("gives the session on 200", async () => {
-    const fetch = mockFetch({ "GET /auth/me": () => json(200, ANN) });
+    const fetch = mockFetch({
+      "GET /auth/me": () => json(200, ANN),
+      "GET /public/events": () => json(200, { events: [] }),
+    });
     const { queryClient } = renderApp("/");
     expect(await screen.findByText("Ann")).toBeTruthy();
     expect(queryClient.getQueryData(["me"])).toEqual(ANN);
-    expect(fetch).toHaveBeenCalledTimes(1);
+    // `/` is the public events list, so its own list request is the only other call.
+    await waitFor(() => expect(callsTo(fetch, "GET /public/events")).toBe(1));
+    expect(callsTo(fetch, "GET /auth/me")).toBe(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("treats 401 as logged out, not as an error", async () => {
@@ -63,6 +69,7 @@ describe("W-A8: login and sign-up fill the me cache", () => {
     const fetch = mockFetch({
       "GET /auth/me": () => json(401, { error: "not_logged_in" }),
       "POST /auth/users/login": () => json(200, ANN),
+      "GET /public/events": () => json(200, { events: [] }),
     });
     const { queryClient } = renderApp("/login");
     fireEvent.change(await screen.findByLabelText("Email"), { target: { value: "ann@mail.com" } });
@@ -79,7 +86,9 @@ describe("W-A8: login and sign-up fill the me cache", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(callsTo(fetch, "POST /auth/users/login")).toBe(1);
     expect(callsTo(fetch, "GET /auth/me")).toBe(1);
-    expect(fetch).toHaveBeenCalledTimes(2);
+    // The login lands on `/`, which loads the public events list.
+    expect(callsTo(fetch, "GET /public/events")).toBe(1);
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
 
   it("organizer sign-up puts the answer in the cache, no second GET /auth/me", async () => {

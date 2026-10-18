@@ -6,6 +6,7 @@ import {
   getEvent,
   getPublicEvent,
   listEvents,
+  listPublicEvents,
   type NewEvent,
   type OrganizerEvent,
 } from "./api";
@@ -13,6 +14,8 @@ import {
 export const EVENTS_KEY = ["events"] as const;
 export const eventKey = (id: string) => ["events", id] as const;
 export const publicEventKey = (id: string) => ["public-event", id] as const;
+// W-L13: the register success handler (registration-web.md W-R6) invalidates this key.
+export const PUBLIC_EVENTS_KEY = ["public-events"] as const;
 
 // The HTTP status of a failed call; 0 is a network error, -1 is not an API error.
 export function statusOf(error: unknown): number {
@@ -30,7 +33,7 @@ function onApiError(queryClient: QueryClient, error: unknown) {
 }
 
 // Queries in TanStack Query v5 have no onError, so the check wraps the call.
-async function organizerCall<T>(queryClient: QueryClient, call: () => Promise<T>): Promise<T> {
+async function authCheckedCall<T>(queryClient: QueryClient, call: () => Promise<T>): Promise<T> {
   try {
     return await call();
   } catch (error) {
@@ -45,7 +48,7 @@ export function useEvents() {
   const queryClient = useQueryClient();
   return useQuery({
     queryKey: EVENTS_KEY,
-    queryFn: () => organizerCall(queryClient, listEvents),
+    queryFn: () => authCheckedCall(queryClient, listEvents),
     ...QUERY_OPTIONS,
   });
 }
@@ -54,7 +57,7 @@ export function useEvent(id: string) {
   const queryClient = useQueryClient();
   return useQuery({
     queryKey: eventKey(id),
-    queryFn: () => organizerCall(queryClient, () => getEvent(id)),
+    queryFn: () => authCheckedCall(queryClient, () => getEvent(id)),
     ...QUERY_OPTIONS,
   });
 }
@@ -63,6 +66,18 @@ export function usePublicEvent(id: string) {
   return useQuery({
     queryKey: publicEventKey(id),
     queryFn: () => getPublicEvent(id),
+    ...QUERY_OPTIONS,
+  });
+}
+
+// The attendee home list (W-L1). `enabled` is false until me has answered and for an
+// organizer, so W-L8 and W-L9 make no list request. A 401/403 re-checks me (W-L10).
+export function usePublicEvents(enabled: boolean) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: PUBLIC_EVENTS_KEY,
+    queryFn: () => authCheckedCall(queryClient, listPublicEvents),
+    enabled,
     ...QUERY_OPTIONS,
   });
 }

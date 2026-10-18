@@ -522,3 +522,118 @@ a:hover {
   font-size: 15px;
   overflow-wrap: anywhere;
 }
+
+/* Public events list, the attendee home (events-public-list-web.md, boards PubList*). */
+.public-list {
+  width: 100%;
+  max-width: 760px;
+}
+
+.public-list h1 {
+  margin-bottom: 24px;
+}
+
+.event-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Title and badge on one row, start and duration under them. */
+.event-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "title badge"
+    "meta meta";
+  align-items: center;
+  gap: 8px 16px;
+  padding: 20px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.event-card:hover {
+  border-color: var(--accent);
+}
+
+/* One real link; its ::after covers the card, so the whole card is clickable. */
+.event-card-link {
+  grid-area: title;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.event-card-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+}
+
+.event-card-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.event-card-link:focus-visible {
+  outline: none;
+}
+
+.event-card-link:focus-visible::after {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.event-card-badge {
+  grid-area: badge;
+  white-space: nowrap;
+}
+
+.event-card-meta {
+  grid-area: meta;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.list-error {
+  margin: 12px 0 0;
+  color: var(--error-text-on-tint);
+  font-weight: 600;
+}
+
+.list-error + .intro {
+  margin-top: 4px;
+}
+
+@media (max-width: 520px) {
+  .event-card {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "title"
+      "meta"
+      "badge";
+    justify-items: start;
+    gap: 6px;
+    padding: 16px;
+  }
+
+  .event-card-link {
+    font-size: 20px;
+  }
+
+  .event-card-badge {
+    margin-top: 4px;
+  }
+}

@@ -81,3 +81,12 @@ export async function getPublicEvent(id: string): Promise<PublicEvent> {
     await body<PublicEvent>(await request(`/public/events/${encodeURIComponent(id)}`)),
   );
 }
+
+// An item of GET /public/events (events-public-list.md PL5): the ten keys, no description.
+export type PublicListItem = Omit<PublicEvent, "description">;
+
+// Upcoming and running events, soonest first; the client keeps the API order (W-L1).
+export async function listPublicEvents(): Promise<PublicListItem[]> {
+  const { events } = await body<{ events: PublicListItem[] }>(await request("/public/events"));
+  return events;
+}

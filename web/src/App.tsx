@@ -5,17 +5,7 @@ import { Header } from "./auth/Header";
 import { CreateEventForm } from "./events/CreateEventForm";
 import { EventPage } from "./events/EventPage";
 import { EventsList } from "./events/EventsList";
-
-// Public: no guard. A placeholder; there is no public list of events yet (events-web.md).
-// No role eyebrow: the header shows the role (RE1).
-function AttendeeHome() {
-  return (
-    <section className="card" data-role="user">
-      <h1>Events</h1>
-      <p className="intro">The event list is not built yet.</p>
-    </section>
-  );
-}
+import { PublicEventsList } from "./events/PublicEventsList";
 
 export function App() {
   return (
@@ -23,7 +13,8 @@ export function App() {
       <Header />
       <main className="page">
         <Routes>
-          <Route path="/" element={<AttendeeHome />} />
+          {/* Public: no guard. An organizer is sent to /organizer (W-L8). */}
+          <Route path="/" element={<PublicEventsList />} />
           {/* One link for everyone, no guard: the page picks its view from me (W-E10). */}
           <Route path="/event/:id" element={<EventPage />} />
           <Route

@@ -17,8 +17,9 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 - M2 UI spec: `events-web.md` (W-E1-W-E21): organizer events list, create form, event page, public event page.
 - M2 UI: event screens (`events-web.md`, W-E1-W-E23; `role-eyebrow.md` RE1): `/organizer` events list, `/organizer/events/new` create form, `/event/:id` with the organizer and the public view, dev proxy for `/events` and `/public`.
 - M2 API: event description (`event-description.md`, DS1-DS13): migration `003_event_description.sql`, optional `description` on `POST /events`, in both event shapes, `api/openapi.yaml`.
-- M2 specs for the public events list: `events-public-list.md`, `events-public-list-web.md` (step 12d is still to build).
+- M2 specs for the public events list: `events-public-list.md`, `events-public-list-web.md`.
 - M2 API: public events list (`events-public-list.md`, PL1-PL11): `GET /public/events` (not cancelled and not ended, by `starts_at` then `id`, at most 100, no `description`), `api/openapi.yaml`.
+- M2 UI: public events list (`events-public-list-web.md`, W-L1-W-L13): `/` lists the open events as cards (title link, start, duration, badge from `publicStatus`), with loading, error with Retry and empty states; it waits for `me` and redirects an organizer to `/organizer` with no list request. The W-L13 invalidation from the register handler comes with step 18.
 - M3 API spec: `registration.md` (R1-R22): register, waiting list, last seat, my registration.
 - M3 API: registration (`registration.md`, R1-R22): `POST /events/:id/registrations` (one transaction, `FOR UPDATE` on the event, `ticket` outbox row), `GET /events/:id/registrations/me`, shared `api/src/events/status.ts`, `api/openapi.yaml`.
 
@@ -59,7 +60,7 @@ Specs are not written all at once. The first steps of each milestone write (or e
 12a. Test, then code: event description in the API (`event-description.md`, DS1-DS13): optional plain-text `description` on create (trimmed, up to 2000 code points, no NUL, `''` when empty), answered in the organizer and public shapes. (done: tests-first commit, then migration `003_event_description.sql`, `api/src/events/routes.ts`, `api/openapi.yaml`; the web already sent and showed it)
 12b. Specs for the attendee home: `events-public-list.md` (API, PL1-PL11) and `events-public-list-web.md` (UI, W-L1-W-L13) (done; mockup boards on the design canvas).
 12c. Test, then code: `GET /public/events` (filter: not cancelled and not ended; order; exact key list; privacy are test first). (done: tests-first commit `api/test/events/publicList.test.ts`, then the route in `api/src/events/routes.ts` with one `now` per request as a query parameter, `api/openapi.yaml`)
-12d. Test, then code: attendee home `/` with the events list (states: loading, error, empty; organizer redirect to `/organizer`) (W-L1-W-L13).
+12d. Test, then code: attendee home `/` with the events list (states: loading, error, empty; organizer redirect to `/organizer`) (W-L1-W-L13). (done: tests-first commit `web/src/events/PublicEventsList.test.tsx`, then `web/src/events/PublicEventsList.tsx`, `listPublicEvents` and `usePublicEvents` with the key `["public-events"]`; the register handler that invalidates this key comes with step 18)
 
 ### M3. Registration
 13. API spec: `registration.md` (B1, B2, B4) (done: R1-R21).
