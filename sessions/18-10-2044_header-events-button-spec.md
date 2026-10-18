@@ -59,3 +59,13 @@ Started 18-10 20:44 +06.
 
 ### D62: the logo opens `/organizer` for an organizer
 20:53:38 +0600. Already the behaviour (W-E22); only the new button is fixed to `/`. Reason: the user asked for it.
+
+## Step 5: build
+
+**Prompt** (21:05 +06, text cleaned)
+
+> implement
+
+**What Claude did.** Delegated to the `code-writer` agent: W-L8 tests (`37db0ed`), the code that keeps organizers on `/`, the header tests (`7bf0d2d`, 49 new, failing first) and the link with styles (`82c47ae`). Another process committed to `main` at the same time, so the code for W-L8 went into `c807773` (message about the registrations link) instead of its own commit; history was not rewritten. Checked: web tests, typecheck and lint pass. Not done: HB10 (phone layout by hand). Used Agent, Bash.
+
+**Decision.** None.
