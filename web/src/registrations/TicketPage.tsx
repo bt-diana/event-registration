@@ -79,13 +79,13 @@ export function TicketPage({ eventId }: { eventId: string }) {
     <section className="card card-event ticket-page" data-role="user">
       {back}
       <h1>Your ticket</h1>
+      <p className="event-status">
+        <Badge {...ticketLabel(mine.data).badge} />
+      </p>
       {/* The event name is plain text (user request, D72); "Back to event" leads there. */}
       <p className="ticket-event">{event.data.title}</p>
       <dl className="details">
         <Detail label="Starts">{formatDateTime(event.data.starts_at)}</Detail>
-        <Detail label="Status">
-          <Badge {...ticketLabel(mine.data).badge} />
-        </Detail>
       </dl>
       <TicketPanel registration={mine.data} flat>
         {showQr(mine.data, event.data) && <QrCode code={mine.data.ticket_code} />}

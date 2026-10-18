@@ -21,3 +21,13 @@ Started 18-10 21:57 +06.
 **What Claude did.** Updated W-R38, test first (`test(web): ...`, 1 failed), then `Detail` takes any node, `TicketPage` shows the registration badge as a "Status" row in the details list, `TicketPanel` lost its `badge` prop, CSS adjusted (Edit). Web tests (826), typecheck and lint pass. README updated. Earlier in the session a gap tweak (`bcf26a9`) was replaced by this.
 
 **Decision.** None.
+
+## Step 3: badge under the title
+
+**Prompt** (text cleaned)
+
+> Move it below the title as on the event page.
+
+**What Claude did.** Updated W-R38, test first, then the badge is the `event-status` line under the `h1` again (no Status row), `Detail` back to text only, CSS and README. Tests, typecheck, lint pass.
+
+**Decision.** None.
