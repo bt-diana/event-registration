@@ -10,9 +10,9 @@ To test the email sender, register for an event with your own email address (sig
 
 ## Features
 
-- **Events:** description, date and time, seat limit. The organizer can reschedule an event or cancel it; the people registered or waiting get an email, and a moved event gets a new reminder.
-- **Registration:** by email. Registering again with the same email does not create a second seat. A participant can cancel *(not built yet, M4)*.
-- **Waiting list:** when seats run out, new people go to the list. A cancellation gives the seat to the first person on the list, and they get an email *(the list works; cancel and promotion are not built yet, M4)*.
+- **Events:** description, date and time, seat limit. The organizer can reschedule an event, change its seat limit (raising it seats the first people on the list) or cancel it; the people registered or waiting get an email, and a moved event gets a new reminder.
+- **Registration:** by email. Registering again with the same email does not create a second seat. A participant can cancel from the ticket page; the row is kept as `cancelled`.
+- **Waiting list:** when seats run out, new people go to the list. A cancellation gives the seat to the first person on the list, and they get an email.
 - **Tickets:** every registered person gets a ticket with a code. A ticket can be checked in only once.
 - **Check-in screen:** the organizer scans the ticket QR code with the camera, or types the ticket code.
 - **Organizer screen:** how many people are registered, on the waiting list, and have arrived. The arrivals counter is read again when the organizer opens the page (not live).
@@ -221,7 +221,7 @@ The hard cases are handled in the database, not in application code.
 
 - **Last seat, two people at once:** registration runs in one transaction that locks the event row first. The second person waits, then sees that the seat is gone and goes to the waiting list.
 - **One seat per account:** registering needs a login, so the same email is the same account. Inside the locked transaction an active registration of the account is answered again (200, same ticket); a partial unique index on (event, user) for active rows is the safety net.
-- **Cancel and promote:** one locked transaction cancels the seat, promotes the first person on the list (by registration time) and saves the email.
+- **Cancel and promote:** one locked transaction cancels the seat, promotes the first person on the list (by `queue_no`, the order they joined the list) and saves the email.
 - **Check in once:** one `UPDATE ... WHERE checked_in_at IS NULL` statement. If it changes zero rows, the ticket was already used.
 - **One reminder:** a worker runs on a timer and saves a reminder with a unique key per registration and event start time. Two workers, or repeated runs, still give one reminder.
 - **Reschedule:** one transaction with the same event lock as registering moves the start, bumps the schedule version, deletes the pending reminders with the old time and saves one email for everyone waiting or registered (not yet checked in). A moved event gets a new reminder for the new time, also when it moves back (A -> B -> A -> B). The reminder worker takes a share lock on the event, so it cannot slip in an old reminder behind a reschedule.
@@ -241,7 +241,7 @@ The hard parts have automatic tests that run against the real database (API) or 
 | Reschedule and cancel the event: one email per person, a second cancel writes nothing | `api/test/events/` |
 | Screens and guards | `web/src/` |
 
-Not done yet: cancel with promotion (M4), a real email delivery through Resend by hand, and the two-browser test with a screenshot.
+Not done yet: a real email delivery through Resend by hand, and the two-browser test with a screenshot.
 
 ## Project status
 
@@ -250,11 +250,11 @@ Not done yet: cancel with promotion (M4), a real email delivery through Resend b
 - Events: an organizer creates events (title, description, start, duration, seats), lists their own, reschedules and cancels them. Anyone sees the public list and the event page.
 - Registration: an attendee registers, goes to the waiting list when the event is full, and sees their ticket with a code and a QR. The last seat is safe against parallel requests.
 - Check-in: the organizer scans the QR or types the code. A ticket checks in once. The registrations list and the arrivals counter are read again when the page opens.
-- Emails: ticket, reschedule, event cancelled and one reminder 24 hours before the start. They are sent as html and plain text through Resend from a timer, with 3 tries. The organizer sees the status of each email.
+- Cancel and capacity (M4): an attendee cancels their ticket (`POST /events/:id/registrations/me/cancel`; a checked-in ticket answers 409 `already_checked_in`); the first waiting person gets the seat and a `promotion` email. The organizer changes the seat limit (`POST /events/:id/capacity`; below the registered count answers 409 `capacity_below_registered`; a raise seats the first waiting people). Both run in the event lock, so the seats never go above the limit.
+- Emails: ticket, seat from the waiting list, reschedule, event cancelled and one reminder 24 hours before the start. They are sent as html and plain text through Resend from a timer, with 3 tries. The organizer sees the status of each email.
 - Demo data (migration 005) and a deploy on Render.
 
 **Not built**
-- Cancelling a registration, promoting the first person from the waiting list (the `promotion` email exists but nothing writes it), and changing the seat limit (M4).
 - Live updates: nothing refreshes by itself.
 
 **Known limits**
