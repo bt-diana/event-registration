@@ -36,23 +36,43 @@ The backend and the frontend are separate apps. They talk over HTTP. The reasons
 
 ### Prerequisites
 
-- Node.js 20 or newer
-- PostgreSQL 18, installed as a Windows service on port 5433 (no Docker)
+- Node.js 22 (the tested version; 20.12 or newer is the minimum, because the API loads `.env` with Node's built-in loader) and npm
+- PostgreSQL 18 with the `psql` command, listening on port 5433 (this project runs it as a Windows service, no Docker). Any recent PostgreSQL on another port works if `DATABASE_URL` says so. No extensions are needed
 - Free ports: 3000 (API), 5173 (web) and 5433 (database)
+- A [Resend](https://resend.com) account with an API key. The API refuses to start without one (see "Environment")
+
+### Set up the database
+
+The migrator creates the tables but not the database itself, so create an empty one first (use your own `postgres` password):
+
+```bash
+psql -p 5433 -U postgres -c "CREATE DATABASE events;"
+```
+
+The tests use the same server: each test file creates and drops its own throw-away schema inside the database from `DATABASE_URL`, so the `postgres` user (or any user that may create schemas) is needed.
+
+### Set up the environment
+
+Copy `.env.example` to `.env` in the repository root (the API reads it from there; it is git-ignored, never commit it) and fill in:
+
+| Variable | What to put |
+|---|---|
+| `DATABASE_URL` | `postgres://postgres:<your password>@localhost:5433/events` |
+| `COOKIE_SECRET` | At least 32 random characters: `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` |
+| `EMAIL_API_KEY` | Your Resend API key |
+| `MAIL_FROM` | `onboarding@resend.dev` (without a verified domain Resend delivers only to your own account address) |
+
+`PORT` (3000) and `EMAIL_JOB_INTERVAL_MS` (10000 in the example) can stay as they are. All variables are described under "Environment" below.
 
 ### Run locally
 
 ```bash
-# 1. PostgreSQL runs as a Windows service.
-#    Copy .env.example to .env and set DATABASE_URL and COOKIE_SECRET
-#    (at least 32 random characters; the API refuses to start without it),
-#    EMAIL_API_KEY (your Resend key) and MAIL_FROM (onboarding@resend.dev);
-#    the API refuses to start without them too. Never commit .env.
+# 1. PostgreSQL must be running and the database and .env must be ready (above).
 
 # 2. Backend
 cd api
 npm install
-npm run db:migrate   # applies the pending .sql files in api/src/db/migrations/ (001 to 005)
+npm run db:migrate   # applies the pending .sql files in api/src/db/migrations/ (001 to 005); "Nothing to apply" on a repeat
 npm run dev
 
 # 3. Frontend (in a new terminal)
@@ -61,7 +81,9 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173.
+Open http://localhost:5173 and log in with a demo account (see "Demo logins"; migration 005 created them).
+
+Starting the API with a real Resend key sends every `pending` outbox row of that database, so use a test database.
 
 The web app calls the API on its own origin. In development the Vite dev server proxies `/auth`, `/events`, `/public`, `/checkin` and `/me` to the API on http://localhost:3000 (`web/vite.config.ts`), so no CORS is needed and `fetch` uses `credentials: "same-origin"`. This proxy exists only in `npm run dev`; a production build must be served from the same origin as the API (for example behind one reverse proxy), or the login cookie and the calls will not work.
 
