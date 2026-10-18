@@ -8,7 +8,7 @@ Order of work for the event registration service. One row = one step = one commi
 
 - Repo, `api/` and `web/` set up, eslint, env example, database setup.
 - Database schema, migrator and schema tests (`DATABASE.md`).
-- M1 accounts and login (`auth.md`, A1-A19): hashing, signed cookie, nine auth routes, middleware and guards, `api/openapi.yaml`.
+- M1 accounts and login (`auth.md`, A1-A18, A11 removed): hashing, signed cookie, seven auth routes, middleware and guards, `api/openapi.yaml`.
 
 ## Milestones
 
@@ -32,7 +32,7 @@ Specs are not written all at once. The first step of each milestone writes (or e
 ### M1. Accounts (`api/`)
 1. Spec: `auth.md` (done).
 2. Test, then code: password hashing (scrypt, random salt) and the signed cookie (7 days) (done; `cookie-parser` and `@types/cookie-parser` installed with the user's OK).
-3. Test, then code: attendee sign-up, login, logout, "who am I". Same for organizers. Also `GET /auth/me` and `role` in the answers (`auth.md` A17-A19), which the web app needs (done; described in `api/openapi.yaml`).
+3. Test, then code: attendee sign-up, login, logout. Same for organizers. Also `GET /auth/me` ("who am I", the only "me" route) and `role` in the answers (`auth.md` A17, A18), which the web app needs (done; described in `api/openapi.yaml`). The role-specific `GET /auth/users/me` and `GET /auth/organizers/me` (A11, A19) were removed later (done).
 4. Auth middleware that puts `user` or `organizer` on the request. Tests: no cookie gives 401, an attendee cookie cannot use organizer routes (done).
 
 ### M2. Events

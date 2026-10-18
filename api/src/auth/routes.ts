@@ -1,7 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import type pg from "pg";
 import { clearSession, setSession, type Role } from "./cookie.js";
-import { requireOrganizer, requireUser } from "./middleware.js";
 import { DUMMY_HASH, hashPassword, verifyPassword } from "./password.js";
 
 // The only place a table name comes from. Never from the request.
@@ -95,7 +94,7 @@ function tableFor(role: Role): string {
   return ROLES.find((r) => r.role === role)!.table;
 }
 
-// The four routes per role (signup, login, logout, me), one handler set for
+// Seven routes: three per role (signup, login, logout), one handler set for
 // both, and GET /auth/me for either role.
 export function authRouter(pool: pg.Pool): Router {
   const router = Router();
@@ -140,18 +139,9 @@ export function authRouter(pool: pg.Pool): Router {
       clearSession(res);
       res.status(204).end();
     });
-
-    // Role-specific: 403 for a cookie of the other role (A19).
-    const guard = role === "user" ? requireUser : requireOrganizer;
-    router.get(`${base}/me`, guard, async (req: Request, res: Response) => {
-      const id = role === "user" ? req.user!.id : req.organizer!.id;
-      const account = await loadAccount(pool, table, id);
-      if (!account) return fail(res, 401, "not_logged_in");
-      res.status(200).json(answer(role, account));
-    });
   }
 
-  // Either role: the role comes from the cookie, the row from its table. Never 403.
+  // The only "me" route (A17, A18). Either role: the role comes from the cookie, the row from its table. Never 403.
   router.get("/auth/me", async (req: Request, res: Response) => {
     const session: { role: Role; id: string } | undefined = req.user
       ? { role: "user", id: req.user.id }

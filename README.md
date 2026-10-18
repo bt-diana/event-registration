@@ -95,8 +95,9 @@ Described in [api/openapi.yaml](api/openapi.yaml) (OpenAPI 3.0.3, hand-written).
 | `POST /auth/users/signup`, `POST /auth/organizers/signup` | 201 `{ role, id, email, name }` and the cookie; 400 bad input; 409 email taken |
 | `POST /auth/users/login`, `POST /auth/organizers/login` | 200 `{ role, id, email, name }` and the cookie; 400 bad input; 401 wrong email or password (same answer for both) |
 | `POST /auth/users/logout`, `POST /auth/organizers/logout` | 204, cookie cleared |
-| `GET /auth/users/me`, `GET /auth/organizers/me` | 200 `{ role, id, email, name }`; 401 not logged in; 403 logged in with the other role |
-| `GET /auth/me` | 200 `{ role, id, email, name }` for either role; 401 not logged in |
+| `GET /auth/me` | 200 `{ role, id, email, name }` for either role (the only "me" route); 401 not logged in |
+
+Seven routes in total. There is no role-specific `GET /auth/users/me` or `GET /auth/organizers/me`; those paths answer 404.
 
 Later routes use the middleware in `api/src/auth/middleware.ts`: `authenticate` puts `req.user` or `req.organizer` on the request, and `requireUser` / `requireOrganizer` answer 401 (no login) or 403 (other role).
 
@@ -171,7 +172,7 @@ All of these are automatic tests. `[TODO: fill the Status column with real resul
 
 `[TODO: fill in honestly after the build. Do not copy the plan here.]`
 
-- **Works:** the database schema and migrator. Accounts and login (API only, M1): sign-up, login, logout and "me" for attendees and organizers, `GET /auth/me` for either role, the signed 7-day cookie (expiry checked on the server), and the `authenticate`, `requireUser` and `requireOrganizer` middleware. Behaviours A1-A19 of `docs/specs/auth.md` have tests in `api/test/auth/` and `api/test/app.test.ts`.
+- **Works:** the database schema and migrator. Accounts and login (API only, M1): sign-up, login and logout for attendees and organizers, `GET /auth/me` for either role, the signed 7-day cookie (expiry checked on the server), and the `authenticate`, `requireUser` and `requireOrganizer` middleware. Behaviours A1-A18 of `docs/specs/auth.md` (except the removed A11) have tests in `api/test/auth/` and `api/test/app.test.ts`.
 - **Partly works:** the web login and sign-up pages for both roles, the logged-out header and the links between pages are built as UI only (M9 step 28, visual part). Only the password Show/Hide button works. The forms send nothing; the session (`GET /auth/me`), guards, validation, error messages, pending states and logout (W-A1 to W-A17, W-A20) are not built yet.
 - **Does not work, or not done, and why:** events, registration, waiting list, check-in, emails, live updates and the rest of the web app are not built yet (milestones M2-M9 in `ROADMAP.md`).
 - **Known limits of the login:** logout only clears the cookie in the browser. A copy of the cookie stays valid until its 7 days end, because there is no sessions table (a test shows this). `sameSite=lax` is the only CSRF defence, which is not full protection (for example a hostile subdomain). No rate limiting, password reset or email verification.

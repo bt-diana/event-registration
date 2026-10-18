@@ -3,8 +3,8 @@ info:
   title: Event registration API - accounts and login
   version: 0.1.0
   description: |
-    Hand-written description of the auth routes (milestone M1, docs/specs/auth.md).
-    All bodies are JSON. Errors use the body { "error": "<code>" }; the status is
+    Hand-written description of the seven auth routes (milestone M1, docs/specs/auth.md):
+    signup, login and logout for each role, and GET /auth/me for either role. All bodies are JSON. Errors use the body { "error": "<code>" }; the status is
     fixed by the spec, the codes may be refined.
 
     Login is one signed cookie named `session` (cookie-parser), valid 7 days,
@@ -63,20 +63,6 @@ paths:
       responses:
         "204":
           $ref: "#/components/responses/LoggedOut"
-  /auth/users/me:
-    get:
-      tags: [attendees]
-      operationId: meUser
-      summary: The logged-in attendee, read from the database
-      security:
-        - session: []
-      responses:
-        "200":
-          $ref: "#/components/responses/Account"
-        "401":
-          $ref: "#/components/responses/NotLoggedIn"
-        "403":
-          $ref: "#/components/responses/WrongRole"
 
   /auth/organizers/signup:
     post:
@@ -118,20 +104,6 @@ paths:
       responses:
         "204":
           $ref: "#/components/responses/LoggedOut"
-  /auth/organizers/me:
-    get:
-      tags: [organizers]
-      operationId: meOrganizer
-      summary: The logged-in organizer, read from the database
-      security:
-        - session: []
-      responses:
-        "200":
-          $ref: "#/components/responses/Account"
-        "401":
-          $ref: "#/components/responses/NotLoggedIn"
-        "403":
-          $ref: "#/components/responses/WrongRole"
 
   /auth/me:
     get:
@@ -299,11 +271,3 @@ components:
             $ref: "#/components/schemas/Error"
           example:
             error: not_logged_in
-    WrongRole:
-      description: Logged in, but with the other role.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
-          example:
-            error: wrong_role
