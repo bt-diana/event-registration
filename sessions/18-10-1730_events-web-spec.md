@@ -110,3 +110,11 @@ A running event still accepts registrations until it ends (same as `registration
 **Time:** 18:15:59 +0600
 
 The attendee home `/` becomes a list of upcoming events (new route `GET /public/events`), specified in `events-public-list.md` and `events-public-list-web.md`. Reason: the user chose this when asked.
+
+## Step 10: description API done, roadmap for the events list
+
+**Prompt** (none; background result)
+
+**What Claude did.** The `code-writer` agent finished the description API: `8fa023f` (tests, red) and `7dbfb05` (migration 003, validation, shapes, `openapi.yaml`, docs). `scripts/verify.sh` passes (api 279, web 265); the dev database is migrated and a manual check showed the description in POST, `GET /events`, `GET /events/:id` and `GET /public/events/:id`. Claude added roadmap steps 12b-12d for the public events list. Used Bash.
+
+**Decision.** None.
