@@ -91,9 +91,9 @@ function rowOf(name: string): HTMLElement {
   return main().getByText(name).closest("tr")!;
 }
 
-// The Arrival cell (the fifth column).
+// The Arrival cell (the third column).
 function arrivalOf(name: string): HTMLElement {
-  return within(rowOf(name)).getAllByRole("cell")[4];
+  return within(rowOf(name)).getAllByRole("cell")[2];
 }
 
 function goToScan() {
@@ -159,18 +159,14 @@ describe("W-R20: the registrations of the chosen event", () => {
     expect(body.map(cellsOf)).toEqual([
       [
         "Olga Test",
-        "olga@example.com",
         "Registered",
-        "",
         "Not yet",
         "K7M2QX9TPA",
         formatDateTime("2026-10-18T10:00:00.000Z"),
       ],
       [
         "Ivan Test",
-        "ivan@example.com",
         "Waiting list",
-        "1",
         "",
         "H4Z8WR5NCD",
         formatDateTime("2026-10-18T11:00:00.000Z"),
@@ -351,7 +347,7 @@ describe("W-R22: one h1, a real table", () => {
     expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual([
       "Registrations",
     ]);
-    expect(main().getAllByRole("columnheader")).toHaveLength(7);
+    expect(main().getAllByRole("columnheader")).toHaveLength(5);
   });
 });
 
