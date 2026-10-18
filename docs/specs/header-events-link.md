@@ -1,96 +1,84 @@
-# Spec: "Watch all events" button in the header (web)
+# Spec: header logo opens the events list (web)
 
-Feature spec made from `SPEC_TEMPLATE.md` (sections 1-5). Decisions D58 and D59: the button is a `Link` styled as a button that always opens `/`, the events list. Frontend only: it does not read `me`; no subscription, no API change, no new library. It changes `web/src/auth/Header.tsx` (header rules W-A18, W-R14, W-E22 in `Header.test.tsx`). The list itself is `events-public-list-web.md` (`/`; W-L8, D60: an organizer on `/` stays there and sees the list). No role words in page content: `role-eyebrow.md` RE1 (the header is not content). Style values are `docs/brand.md`. Ids are HB1, HB2, ...
+Feature spec made from `SPEC_TEMPLATE.md` (sections 1-5). Decision D64: there is no separate "Watch all events" button. The header logo is the way to the events list `/`, for logged out people, attendees and organizers. Frontend only: no API change, no new library, no new route. It changes `web/src/auth/Header.tsx` (header rules W-A18, W-R14, W-E22 in `Header.test.tsx`). The list itself is `events-public-list-web.md` (`/`; W-L8, D60: an organizer on `/` stays there and sees the list in the organizer look). No role words in page content: `role-eyebrow.md` RE1 (the header is not content). Style values are `docs/brand.md`. Ids are HB1, HB2, ...
+
+History: D58 and D59 added the "Watch all events" button, D62 gave the organizer logo the target `/organizer`, D63 gave the button and Log out the link look. D64 removes the button and replaces D62 (and the logo part of W-E22); D61 and D63 (for Log out) stay.
 
 ## 1. Goals and expected behaviour
 
-**Goal.** From any screen, anyone (logged out, attendee, organizer) opens `/` in one click, without using the logo. An organizer who clicks it stays on `/` and sees the list in the organizer look (W-L8, D60).
+**Goal.** From any screen, anyone (logged out, attendee, organizer) opens `/` in one click on the logo. An organizer who clicks it stays on `/` and sees the list in the organizer look (W-L8, D60). Organizers reach their own events `/organizer` with the "My events" link in the header and after login (D61).
 
 **Behaviours.** Each line is checked with a component test in `web/src/auth/Header.test.tsx` (`fetch` mocked). "Test first" ones get the test before the code.
 
 | # | Behaviour | Test first? |
 |---|---|---|
-| HB1 | The header has a link with the exact text "Watch all events" (role `link`, inside the `banner`). It is a `Link`, not a `<button>`, and makes no request of its own. | |
-| HB2 | The `href` is `/` in every state: logged out, attendee and organizer. It never depends on `me`. | yes |
-| HB3 | The link is shown at once, also while `me` is pending, and stays the same after `me` answers 200, 401, a network error or 5xx. It never waits for `me` and does not change when `me` answers. | yes |
-| HB4 | Same link in all three states (logged out, attendee, organizer) and on every route the header shows on, including `/login`, `/signup`, `/organizer/login`, `/event/:id` and the registrations screens. Exactly one such link in the header. | |
-| HB5 | Current page: when the pathname is exactly `/`, the link has `aria-current="page"`; elsewhere it has no `aria-current`. `/event/1`, `/organizer` and `/organizer/events/new` do not count (exact match, not prefix). This holds for an organizer on `/` too. | yes |
-| HB6 | Clicking it from another screen goes to `/` (location changes, `me` is not refetched: `GET /auth/me` count stays 1), for an organizer too: the location stays `/`, no redirect. Clicking it when already there stays on the page and does nothing else. | |
-| HB7 | Log out and login keep working: the link is the same before and after (it is not read from the `me` cache). An organizer who clicks it from another screen stays on `/` and sees the public list in the organizer look (W-L8: "Loading..." until `me`, then one list request). | |
-| HB8 | The existing header checks stay green: logo `href` and icon (W-E22), account links per role (W-R14), `Log in` / `Sign up` / role switch (W-A18), Log out (W-A9). | |
-| HB9 | Accessibility: it is a real `<a>` reached by Tab, in this order: logo, "Watch all events", then the account links and Log out; Enter opens it; visible focus ring (the existing `a:focus-visible`); the text is the accessible name (no icon-only, no `aria-label` that differs from the text); target at least 44 px high. | |
-| HB10 | Phone width: the label stays complete (no shortening, no hiding); the header keeps wrapping as today and the button may drop to its own row. No horizontal scroll at 320 px. Checked by hand on the canvas and the real page (jsdom has no layout). | |
+| HB1 | The header has exactly one logo link (role `link`, inside the `banner`), accessible name "Event Registration" (from its text; the icon has `alt=""`; no `aria-label`). It is a `Link`, not a `<button>`, and makes no request of its own. | |
+| HB2 | The logo `href` is `/` in every state: logged out, attendee and organizer, on every route. It never depends on `me`. For an organizer it is no longer `/organizer`. | yes |
+| HB3 | The logo is shown at once with `href` `/`, also while `me` is pending, and stays the same element with the same `href` after `me` answers 200 (attendee or organizer), 401, a network error or 5xx. | yes |
+| HB4 | No "Watch all events" text anywhere: no link, no button, no `aria-label`, no title, on any route and in any state. | yes |
+| HB5 | Current page: when the pathname is exactly `/`, the logo has `aria-current="page"` (no visual change); elsewhere it has no `aria-current`. `/event/1`, `/organizer` and `/organizer/events/new` do not count (exact match). Query string and hash are ignored. Holds for an organizer on `/` too. | yes |
+| HB6 | Clicking the logo from another screen goes to `/` (location changes; `GET /auth/me` count stays 1), for an organizer too: the location stays `/`, no redirect. Clicking it on `/` stays on the page and makes no request. | |
+| HB7 | An organizer who clicks the logo from `/organizer` stays on `/` and sees "Loading..." until `me`, then the public list in the organizer look, with one `GET /public/events` request (W-L8). The "My events" link (`href` `/organizer`) is still in the Main nav and opens `/organizer`. | |
+| HB8 | Look kept: the organizer logo and tab icon are `/icon-organizer.svg` for a logged-in organizer on every screen (W-E22), `/icon-attendee.svg` for everyone else; the account block shows "Organizer" / "Attendee"; account links per role (W-R14), `Log in` / `Sign up` / role switch (W-A18) and Log out (W-A9) work as before. Only the logo `href` changed. | |
+| HB9 | Log out keeps the link look (D63): no border or background, `--text`, 15 px semibold, 44 px high, underline on hover. Tab order: logo, then the account links (`Log in`, `Sign up`, role switch; or "My events" / "My registrations"), then Log out. Enter on the logo opens `/`; visible focus ring (the existing `a:focus-visible`). | |
+| HB10 | Phone width: the header keeps wrapping as today (logo, then the right group below it); no horizontal scroll at 320 px. Checked by hand on the canvas and the real page (jsdom has no layout). | |
 
-**Out of scope.** Subscribing, notifications or email for new events; counters or badges on the button; a dropdown or menu; showing it only on some screens; changing the logo link; changing the `/` or `/organizer` pages; translations; dark theme; a new icon.
+**Out of scope.** A separate events button or any other new header element; subscribing, notifications or email for new events; counters or badges; a dropdown or menu; changing the `/` or `/organizer` pages; changing "My events" / "My registrations"; translations; dark theme; new icons.
 
 **Assumptions.** Change any of these first in this file.
-- The target is `/` for everyone (D59). An organizer on `/` is no longer sent to `/organizer` (D60, W-L8): the page waits for `me` ("Loading..." only), then shows the public list in the organizer look. So `aria-current="page"` on `/` applies to organizers too (HB5).
-- After login the organizer opens `/organizer` by default (D61; `HOME` in `web/src/auth/guards.tsx`, W-A5/W-A7 in `auth-web.md`). This spec relies on that and does not change it.
-- The header logo keeps its role-based target (D62, W-E22): `/organizer` for an organizer, `/` for others. Only the new button is fixed to `/`.
-- "Current" means exact pathname match; the query string and hash are ignored.
+- The logo target is `/` for everyone (D64). An organizer on `/` is not sent to `/organizer` (D60, W-L8): the page waits for `me` ("Loading..." only), then shows the public list in the organizer look.
+- After login the organizer opens `/organizer` (D61; `HOME` in `web/src/auth/guards.tsx`, W-A5/W-A7 in `auth-web.md`). Unchanged.
+- The organizer's way to `/organizer` from other screens is the "My events" link (built in `Header.tsx`, `REGISTRATIONS_LINK`). The text of W-R14 in `registration-web.md` still says "Registrations" to `/registrations`; that row owns the header account link and is out of date with the built code (see section 7).
+- `aria-current` is set only on the logo and only on `/` (exact match).
 - The text is English only, as the rest of the app.
 
 ## 2. UI decisions
 
 | Part | Decision |
 |---|---|
-| Place | Right side of the header, first element of the right group, before the account links / `Log in` nav. The logo stays on the left. |
-| Look | Looks like the other header links (D63): no border, no background, `--text`, 15 px semibold, 44 px high, underline on hover. Log out in the header gets the same look. The class `button-link-secondary` stays as the name. |
-| Current state | `aria-current="page"` plus an underline and the accent colour (not colour alone). |
-| Label | "Watch all events" (sentence case, always). |
-| Desktop | One row: logo, then the right group (button, then nav or account). Gap 16 px between the button and the account block. |
-| Phone (up to 520 px, the width used in `styles.css`) | The right group wraps below the logo, full label visible; the button, then the account block, wrap inside it in the existing 8 px row gap. |
+| Logo | Left side of the header, icon plus text "Event Registration", as built. Same look in all states; only the icon colour follows the organizer look (W-E22). |
+| Right group | `div.site-header-end` stays as the wrapper of the account links / `Log in` nav (flex, wrap, gap), now without the button in front. Desktop: one row, logo left, group right. |
+| Log out | Link look (D63), unchanged. |
+| Current state | `aria-current="page"` on the logo on `/`; no visual change. |
+| Phone (up to 520 px, the width in `styles.css`) | The right group wraps below the logo, as today. |
 
-**Copy.**
+**Copy.** No new text. "Watch all events" no longer exists in the app.
 
-| Case | Text |
-|---|---|
-| link | "Watch all events" |
-
-**States.** Always visible; current on `/` only. No loading or error state of its own.
+**States.** The logo is always visible; no loading or error state of its own.
 
 ## 3. Architecture decisions
 
-- **Apps:** `web/` only. React, `react-router` (`Link`, `useLocation`, both already used in `Header.tsx`). No new library, no API change, no new route.
-- **Target:** the constant `/`. No role map and no `useMe` check for the button.
-- **Current state:** `aria-current={pathname === "/" ? "page" : undefined}` using the `pathname` the header already reads. (`NavLink` is not used, to keep one `Link` as D58 says and exact matching explicit.)
-- **Structure:** the button is rendered by `Header` itself, outside the `Account` component and outside the `nav` elements, wrapped with them in one `div.site-header-end` (flex, wrap, gap). It is not inside `nav aria-label="Account"` so logged out and logged in have the same markup for it. It renders in every state, including while `me` is pending (HB3).
-- **Styling:** `web/src/styles.css`: `.button-link-secondary` (looks like a nav link, also used for the header Log out look) and `.site-header-end`. The rule `.site-nav a` is not applied because the link is outside the nav. Colours from `brand.md` tokens; no new colour.
-- **Landmarks:** the header keeps its two nav landmarks ("Main" for the logged-in account, "Account" for logged out). The button is a plain link in the `banner`.
+- **Apps:** `web/` only. `react-router` `Link`, `useLocation` (already in `Header.tsx`).
+- **Target:** the constant `/`. No role map and no `useMe` check for the logo `href`. (`me` is still read for the icon and the account block.)
+- **Current state:** `aria-current={pathname === "/" ? "page" : undefined}` on the logo `Link`.
+- **Remove from built code** (see section 4): the "Watch all events" `Link` and its comment in `Header.tsx`; the CSS class `.button-link-secondary` and its `[aria-current="page"]` rule; its tests.
+- **Keep:** `.site-account button.button-secondary` (Log out link look, D63) and `.site-header-end` with its phone rule `flex-basis: 100%`. Rename the CSS comments so they no longer name the button.
+- **Landmarks:** unchanged ("Main" for the logged-in account, "Account" for logged out).
 
 ## 4. Files to touch
 
 | File | What to do | Behaviours |
 |---|---|---|
-| `web/src/auth/Header.test.tsx` | Tests first: HB2 (`href` `/` in three states), HB3 (shown while pending, same after 200, 401, 5xx), HB5 (exact match, not on sub-routes). Then HB1, HB4, HB6, HB7, HB9 (Tab order) | HB1-HB9 |
-| `web/src/auth/Header.tsx` | Add the link with `aria-current`, the `site-header-end` wrapper | HB1-HB7, HB9 |
-| `web/src/styles.css` | `.button-link-secondary`, `.site-header-end`, phone wrap | HB9, HB10 |
-| `docs/brand.md` | Header section: the new button, after the canvas is drawn (separate edit) | HB10 |
-| `README.md`, `ROADMAP.md` | Step and behaviour list (separate edit by the agent that owns them) | |
+| `web/src/auth/Header.test.tsx` | Tests first: HB2 (logo `href` `/` in three states, on `/` and `/event/1`), HB3 (same element while pending and after 200, 401, 5xx, network error), HB4 (no "Watch all events" anywhere), HB5 (logo `aria-current` exact match). Then HB1, HB6, HB7, HB9 (Tab order). Change the W-E22 organizer case (`logo goes to /organizer`) to `/`. Delete the `WATCH` helpers and all tests that look for the "Watch all events" link (old HB1-HB9 describes), and the `/organizer` logo `href` check in the organizer-list test | HB1-HB9 |
+| `web/src/auth/Header.tsx` | Logo `to="/"` with `aria-current`; remove the "Watch all events" `Link`; keep the wrapper | HB1-HB9 |
+| `web/src/styles.css` | Remove `.button-link-secondary` (3 rules); keep the Log out rules; fix comments of `.site-header-end` | HB9, HB10 |
+| `docs/brand.md`, `README.md`, `ROADMAP.md` | Header section, step and behaviour list: remove the button (separate edit by the agent that owns them) | |
 
-Tests follow `auth-web.md` section 4: Vitest globals, files next to the code, `mockFetch`, a fresh `QueryClient` per test, `MemoryRouter`, `@testing-library/react` only. Existing helpers `ANN`, `OLGA`, `renderApp`, `callsTo`, `deferred`, `json` are enough.
+Tests follow `auth-web.md` section 4. Existing helpers `ANN`, `OLGA`, `renderApp`, `callsTo`, `deferred`, `json` are enough.
 
 ## 5. Done means
 
 - Tests, typecheck and linter pass in `web/`.
-- Every behaviour HB1 to HB9 has a test, or a note in the README that says it is not covered; HB10 is checked by hand.
-- HB2, HB3 and HB5 have their tests written and committed before the code.
-- All earlier `Header.test.tsx` and `eyebrow.test.tsx` cases stay green.
-- A manual check on the real app, desktop and 360 px: logged out, attendee and organizer land on `/` (the organizer sees "Loading..." only, then the list in the organizer look, no redirect); the current state shows on `/` for all three; tab order and focus ring are visible.
+- Every behaviour HB1 to HB9 has a test; HB10 is checked by hand.
+- HB2, HB3, HB4 and HB5 have their tests written and committed before the code.
+- All other `Header.test.tsx` and `eyebrow.test.tsx` cases stay green.
+- A manual check on the real app, desktop and 360 px: the logo opens `/` when logged out, as attendee and as organizer (the organizer sees "Loading..." only, then the list in the organizer look); "My events" opens `/organizer`; the tab order and focus ring are visible.
 
 ## 6. Canvas boards
 
-New boards for the existing design canvas (not a new artifact); not drawn yet. Each at desktop and phone width.
-
-| Board | States shown |
-|---|---|
-| Header / Watch all events | logged out; attendee; organizer (purple); each with the button normal, hover, focus, and current (on `/`, also for the organizer on the list) |
-| Header / Watch all events (phone) | the same three at 360 px, showing how the header wraps; the `me`-loading state (logo and button) |
+The earlier boards "Header / Watch all events" (and phone) must be removed from the existing canvas (no new artifact) or redrawn without the button: the three states (logged out, attendee, organizer in purple) at desktop and 360 px, logo normal, hover and focus; not done yet.
 
 ## 7. Open questions
 
-Decided: the target is `/` for everyone (D59), so the button is shown while `me` loads and the earlier questions on the `href` per role are closed. Also decided: an organizer who clicks the button stays on `/` and sees the list (D60), so the old question 4 (redirect) is closed and removed. Ids are kept.
-
-1. Look: closed by D63 (link look, also for Log out).
-2. Current state: keep the link visible and mark it `aria-current` on `/` (default, HB5), or hide it there?
-3. Should the logged-in account nav ("Registrations") and this button share one `nav` landmark? Default: no, the button is a plain link in the header.
+1. `aria-current="page"` on the logo on `/` (default, HB5, no visual change), or none?
+2. W-R14 in `registration-web.md` says the organizer link is "Registrations" to `/registrations`; the built link is "My events" to `/organizer`. Update W-R14 (and its test list) in a separate edit?

@@ -17,7 +17,7 @@ Feature spec made from `SPEC_TEMPLATE.md` (sections 1-5). The API side is `event
 | W-L5 | Loading shows "Loading..." (`role="status"`). Network error or 5xx shows "Could not load events" with a Retry button that refetches only this query; no cards. | |
 | W-L6 | Logged out: shows the list as in W-L1. No login link is added in the content (the header has it). Cards link to `/event/{id}`, which shows the "Log in to register" link (W-R2). | |
 | W-L7 | Attendee and organizer: shows the same list. No request other than `GET /auth/me` and `GET /public/events`; no per-event registration request (no "you are registered" mark in the list). | |
-| W-L8 | Organizer: `/` stays on `/` and shows the list (no redirect; replaces the old redirect to `/organizer`, D60). The page waits for `me` ("Loading..." only), then fetches `GET /public/events` once (key `["public-events"]`). The header logo still links to `/organizer` and the look is the organizer one (W-E22); cards link to `/event/{id}`; no role word in content (RE1). Same request rule as W-L7. | yes |
+| W-L8 | Organizer: `/` stays on `/` and shows the list (no redirect; replaces the old redirect to `/organizer`, D60). The page waits for `me` ("Loading..." only), then fetches `GET /public/events` once (key `["public-events"]`). The header logo links to `/` (D64) and the look is the organizer one (W-E22); cards link to `/event/{id}`; no role word in content (RE1). Same request rule as W-L7. | yes |
 | W-L9 | While `me` loads: "Loading..." only, no list request, no redirect (as W-E10, W-A2). Once `me` answers (also as organizer) the list request runs. `me` network error or 5xx: the page treats the viewer as logged out and shows the list (the list is public); `me` answer 401 means logged out. | yes |
 | W-L10 | 401 or 403 from the list call is not expected (the route is public). If it happens, invalidate `["me"]` and show no text of its own (W-E13). | |
 | W-L11 | Dates are shown in the browser's time zone with the zone name (W-E19); durations as in W-E19. Pure functions are reused from `web/src/events/format.ts`. | |
@@ -27,7 +27,7 @@ Feature spec made from `SPEC_TEMPLATE.md` (sections 1-5). The API side is `event
 **Out of scope.** Search, filters, sorting, pagination (the API returns at most 100), past and cancelled events, description in the list, "registered" marks, register buttons in the list, organizer name, images, calendar export, live updates, translations, dark theme.
 
 **Assumptions.** Change any of these first in this file.
-- An organizer on `/` stays on `/` and sees the list (D60, "Watch all events" in `header-events-link.md`). The organizer can open any `/event/:id` (W-E10, W-E22).
+- An organizer on `/` stays on `/` and sees the list (D60; the header logo opens `/`, D64, `header-events-link.md`). The organizer can open any `/event/:id` (W-E10, W-E22).
 - The list waits for `me` before it fetches, so the look and header are right at first paint (W-L8, W-L9). The cost is one `/auth/me` before the list, which the header already makes (same query key `["me"]`, no extra request).
 - Cards use the existing card style; a badge style exists from W-E17 (`brand.md`). New styles are small: list spacing and a clickable card.
 - The `/public` prefix is already proxied in `web/vite.config.ts`; production serves app and API on one origin, so no config change is needed. The web path `/` does not clash with the API path `/public/events`.

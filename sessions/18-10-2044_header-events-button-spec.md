@@ -82,3 +82,16 @@ Started 18-10 20:44 +06.
 
 ### D63: the "Watch all events" button and Log out look like links
 21:04:41 +0600. Replaces the outlined look of the spec. Reason: the user asked for it.
+
+## Step 7: the logo replaces the button
+
+**Prompt** (21:12 +06, text cleaned)
+
+> rename "Watch all events", use the logo as such a button instead, for both types of users
+
+**What Claude did.** Read it as: remove the "Watch all events" button and make the logo open `/` for everyone, organizers too. The `spec-writer` agent rewrote `header-events-link.md` for the logo and changed one sentence each in `events-web.md` (W-E22) and `events-public-list-web.md` (W-L8, assumptions). Updated `ROADMAP.md` and `README.md`. Open: `registration-web.md` W-R14 still says "Registrations" where the built link is "My events" (another change, not touched). Used Agent, Bash.
+
+**Decision.**
+
+### D64: the header logo opens `/` for everyone; the "Watch all events" button is removed
+21:12:00 +0600. Replaces D58-D59 (the button) and D62 (organizer logo to `/organizer`). Organizers reach `/organizer` through "My events" and after login (D61). Reason: the user asked for the logo to be the button for both roles.
