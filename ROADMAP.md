@@ -56,7 +56,7 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 | M1 | Accounts and login | `auth.md` | `auth-web.md` | | auth basics; session and guards |
 | M2 | Events (organizer) | `events.md` | `events-web.md` | | ownership |
 | M3 | Register and waiting list | `registration.md` | `registration-web.md` | B1, B2, B4 | B4 |
-| M4 | Cancel, promote, capacity change | `cancel-registration.md`, `capacity.md` | `cancel-registration-web.md`, `capacity-web.md` | B3, B10 | done |
+| M4 | Cancel, promote, capacity change | `cancel-registration.md`, `capacity.md` | `cancel-registration-web.md`, `capacity-web.md` | B3, B10 | |
 | M5 | Check-in and arrivals counter | `checkin.md` | `checkin-web.md` | B6, B7 | B6 |
 | M6 | Outbox sender and reminder worker | `email-reminders.md` | `email-reminders-web.md` | B5 | B5 |
 | M7 | Reschedule and event cancel | `email-reminders.md` (extend) | `email-reminders-web.md` (extend) | B8, B9 | |
