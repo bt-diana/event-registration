@@ -245,8 +245,9 @@ describe("W-EM20: pending and double submit (test first)", () => {
   it("two quick submits make one request", async () => {
     const { fetch } = await ownerPage({ [RESCHEDULE]: ok(MOVED) });
     setStart(NEW_START_INPUT);
-    submitReschedule();
-    submitReschedule();
+    const form = main().getByRole("button", { name: "Reschedule" }).closest("form")!;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
     await main().findByText(TEXT.rescheduled);
     expect(callsTo(fetch, RESCHEDULE)).toBe(1);
   });
@@ -320,8 +321,10 @@ describe("W-EM23: reschedule errors (test first)", () => {
     ],
     ["409 event_started", error(409, "event_started"), TEXT.rescheduleStarted, RUNNING],
   ])("%s: the text as an alert with focus, the value kept, the event read again, the section gone", async (_case, failure, text, after) => {
+    // The read after the 409 is held, so the kept value can be seen before the section goes.
+    const reread = deferred<Response>();
     const { fetch } = await ownerPage({
-      [OWN]: answers(ok(organizerEvent()), ok(after)),
+      [OWN]: answers(ok(organizerEvent()), () => reread.promise),
       [RESCHEDULE]: failure,
     });
     setStart(NEW_START_INPUT);
@@ -332,7 +335,9 @@ describe("W-EM23: reschedule errors (test first)", () => {
     await waitFor(() => expect(document.activeElement).toBe(message));
     expect(startField().value).toBe(NEW_START_INPUT);
     await waitFor(() => expect(callsTo(fetch, OWN)).toBe(2));
+    await act(async () => reread.resolve(json(200, after)));
     await waitFor(() => expect(controls()).toBeNull());
+    expect(document.activeElement).toBe(message);
     // The message stays when the section goes (W-EM16).
     expect(main().getByText(text)).toBe(message);
     expect(callsTo(fetch, RESCHEDULE)).toBe(1);

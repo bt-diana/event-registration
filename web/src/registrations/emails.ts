@@ -56,10 +56,13 @@ export function emailStatusLabel(status: string): string {
   return word(STATUSES, status);
 }
 
+// The prefix a reschedule or an event cancel invalidates (new rows, W-EM28).
+export const REGISTRATION_EMAILS_KEY = ["registration-emails"] as const;
+
 // Keyed by the account like the other organizer lists (W-EM6): a login as another
 // organizer in the same tab never shows the first one's rows.
 export const registrationEmailsKey = (meId: string, eventId: string, registrationId: string) =>
-  ["registration-emails", meId, eventId, registrationId] as const;
+  [...REGISTRATION_EMAILS_KEY, meId, eventId, registrationId] as const;
 
 // 404 (unknown or foreign event or registration), 401 and 403 are thrown as ApiError.
 export async function getRegistrationEmails(

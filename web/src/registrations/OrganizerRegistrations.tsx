@@ -107,6 +107,8 @@ export function OrganizerRegistrations() {
         </div>
       </div>
       <EventSelect events={events.data} value={chosen.id} onChange={choose} />
+      {/* email-reminders-web.md W-EM32: from the loaded event list, no request of its own. */}
+      {chosen.status === "cancelled" && <p className="event-select-note">This event is cancelled.</p>}
       {/* The list's own 404 text is the page's one "Event not found" (W-C9). */}
       {!listNotFound(list) && <ArrivalsCounter eventId={chosen.id} />}
       <RegistrationsBody list={list} eventId={chosen.id} />

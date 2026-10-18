@@ -20,18 +20,23 @@ import {
 } from "./api";
 import { EVENT_ARRIVALS_KEY } from "./arrivals";
 
+// The prefixes a reschedule or an event cancel invalidates (email-reminders-web.md W-EM28).
+export const REGISTRATION_KEY = ["registration"] as const;
+export const MY_REGISTRATIONS_KEY = ["registrations"] as const;
+export const EVENT_REGISTRATIONS_KEY = ["event-registrations"] as const;
+
 // Keyed by the account, so a second account in the same tab never sees the first
 // one's ticket (W-R23).
 export const registrationKey = (meId: string, eventId: string) =>
-  ["registration", meId, eventId] as const;
+  [...REGISTRATION_KEY, meId, eventId] as const;
 
 // The attendee list of all my registrations, keyed by the account (W-R19, W-R23).
-export const myRegistrationsKey = (meId: string) => ["registrations", meId] as const;
+export const myRegistrationsKey = (meId: string) => [...MY_REGISTRATIONS_KEY, meId] as const;
 
 // Keyed by the account like the attendee key (W-R23): a login as another organizer
 // replaces the cookie without a logout, and names and emails must not carry over.
 export const eventRegistrationsKey = (meId: string, eventId: string) =>
-  ["event-registrations", meId, eventId] as const;
+  [...EVENT_REGISTRATIONS_KEY, meId, eventId] as const;
 
 // The organizer list of one event (W-R20); runs once me is a known organizer and an
 // event is chosen. A 401/403 re-checks me and the guard decides (W-R13). Read again on

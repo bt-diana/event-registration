@@ -2,7 +2,8 @@
 // Inside the attendee entry (W-R15). Both reads start together; no button here.
 // The QR of the ticket code is shown here only (W-R25). Only the registration status is
 // shown, no ticket heading and no event status; the ticket sits in the card (W-R38).
-// No role eyebrow (RE1).
+// One exception (email-reminders-web.md W-EM30): a cancelled event adds the line "This
+// event has been cancelled.", from the public event already read. No role eyebrow (RE1).
 import { Link } from "react-router";
 import { BackLink, EventNotFound, Detail } from "../events/EventParts";
 import { formatDateTime } from "../events/format";
@@ -84,6 +85,10 @@ export function TicketPage({ eventId }: { eventId: string }) {
       </p>
       {/* The event name is plain text (user request, D72); the "Event" back link leads there. */}
       <p className="ticket-event">{event.data.title}</p>
+      {/* W-EM30: for every ticket status, so a checked-in person (still registered) sees it. */}
+      {event.data.status === "cancelled" && (
+        <p className="ticket-event-note">This event has been cancelled.</p>
+      )}
       <dl className="details">
         <Detail label="Starts">{formatDateTime(event.data.starts_at)}</Detail>
       </dl>

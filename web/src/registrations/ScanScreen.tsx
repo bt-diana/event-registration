@@ -268,6 +268,8 @@ export function ScanScreen({ submitCode }: Props) {
   return (
     <Shell backTo={backTo}>
       <EventSelect events={events.data} value={chosen.id} onChange={changeEvent} />
+      {/* email-reminders-web.md W-EM32: a plain line; scanning and its results are unchanged. */}
+      {chosen.status === "cancelled" && <p className="event-select-note">This event is cancelled.</p>}
       {/* checkin-web.md W-C3: in every camera state; a 200 check-in reads it again (W-C11). */}
       <ArrivalsCounter eventId={chosen.id} />
 
