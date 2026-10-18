@@ -10,14 +10,15 @@ import {
 } from "./helpers.js";
 
 // The DATABASE.md 3.1 flow: lock the event row, count the seated people,
-// insert as registered if a seat is free, otherwise as waitlisted.
+// insert as registered if a seat is free, otherwise as waitlisted. The short
+// sleep between count and insert widens the race window, so without the lock
+// the parallel transactions would really overlap and overbook.
 async function registerWithLock(
-  pool: pg.Pool,
+  client: pg.PoolClient,
   eventId: string,
   userId: string,
   onLocked: () => void,
 ): Promise<string> {
-  const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const event = await client.query<{ capacity: number }>(
@@ -29,6 +30,7 @@ async function registerWithLock(
       "SELECT count(*)::int AS n FROM registrations WHERE event_id = $1 AND status = 'registered'",
       [eventId],
     );
+    await client.query("SELECT pg_sleep(0.02)");
     const status = seated.rows[0].n < event.rows[0].capacity ? "registered" : "waitlisted";
     await client.query(
       "INSERT INTO registrations (event_id, user_id, status, ticket_code) VALUES ($1, $2, $3, $4)",
@@ -39,8 +41,23 @@ async function registerWithLock(
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
+  }
+}
+
+// Opens one connection per user first, then starts all transactions at once.
+async function registerAllAtOnce(
+  pool: pg.Pool,
+  eventId: string,
+  userIds: string[],
+  onLocked: (userId: string) => void = () => undefined,
+): Promise<string[]> {
+  const clients = await Promise.all(userIds.map(() => pool.connect()));
+  try {
+    return await Promise.all(
+      userIds.map((userId, i) => registerWithLock(clients[i], eventId, userId, () => onLocked(userId))),
+    );
   } finally {
-    client.release();
+    for (const client of clients) client.release();
   }
 }
 
@@ -64,10 +81,8 @@ describe("B4 last seat (event row lock)", () => {
     }
 
     const lockOrder: string[] = [];
-    const results = await Promise.all(
-      userIds.map((userId) =>
-        registerWithLock(db.pool, eventId, userId, () => lockOrder.push(userId)),
-      ),
+    const results = await registerAllAtOnce(db.pool, eventId, userIds, (userId) =>
+      lockOrder.push(userId),
     );
 
     expect(results.filter((s) => s === "registered")).toHaveLength(1);
@@ -93,9 +108,7 @@ describe("B4 last seat (event row lock)", () => {
     const eventId = await insertEvent(db.pool, organizerId, { capacity: 0 });
     const userIds = [await insertUser(db.pool), await insertUser(db.pool), await insertUser(db.pool)];
 
-    const results = await Promise.all(
-      userIds.map((userId) => registerWithLock(db.pool, eventId, userId, () => undefined)),
-    );
+    const results = await registerAllAtOnce(db.pool, eventId, userIds);
 
     expect(results).toEqual(["waitlisted", "waitlisted", "waitlisted"]);
   });
