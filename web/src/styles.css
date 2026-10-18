@@ -1059,11 +1059,12 @@ a:hover {
 /* Phone header (header-responsive.md D69, HR18, HR20, HR36, HR37), header only. Closed: one
    row, the logo left and the Menu button right; the drawer is off-screen and visibility: hidden,
    so its items are not on the screen, not in the Tab order and not in the accessibility tree.
-   Open: a modal drawer slides in from the right edge, on the side of the Menu button (D70),
-   over a backdrop; items stacked in the DOM order (no CSS order): Close menu, All events, the nav link, a line, the account info left and Log
-   out right, the log-out error; or the three logged-out links. The visibility change waits
-   200 ms on close so the slide out is seen. The header has no transform, filter or contain, so
-   the fixed backdrop and drawer cover the viewport, the header row included. */
+   Open: a modal drawer the full width of the page opens downward out of the header row, which
+   stays visible above it (user requests, replace the right-edge drawer of D70); items stacked in the DOM order (no CSS order): Close
+   menu, All events, the nav link, a line, the account info left and Log out right, the log-out error; or the three logged-out links. The visibility change waits
+   200 ms on close so the exit is seen. The phone header row is 61 px high (8 px padding, 44 px
+   row, 8 px padding, 1 px border); the backdrop and the drawer start under it. The header has no
+   transform, filter or contain, so they are fixed to the viewport. */
 @media (max-width: 640px) {
   .site-header {
     padding: 8px 16px;
@@ -1074,11 +1075,11 @@ a:hover {
     margin-left: auto;
   }
 
-  /* Over the page and the header row, under the drawer; --text at 40% (HR18, HR32). */
+  /* Over the page under the header row, under the drawer; --text at 40% (HR18, HR32). */
   .nav-backdrop {
     display: block;
     position: fixed;
-    inset: 0;
+    inset: 61px 0 0;
     z-index: 10;
     background: color-mix(in srgb, var(--text) 40%, transparent);
     opacity: 0;
@@ -1098,31 +1099,31 @@ a:hover {
 
   .site-header-end {
     position: fixed;
-    top: 0;
-    right: 0;
+    top: 61px;
+    left: 0;
     z-index: 11;
     flex-direction: column;
     flex-wrap: nowrap;
     align-items: stretch;
     gap: 0;
-    width: min(320px, 85vw);
-    height: 100dvh;
+    width: 100%;
+    height: calc(100dvh - 61px);
     padding: 8px 16px;
     overflow-y: auto;
     background: var(--surface);
-    border-left: 1px solid var(--border);
-    transform: translateX(100%);
+    /* Revealed from its top edge, the bottom of the header, downward. */
+    clip-path: inset(0 0 100% 0);
     visibility: hidden;
     transition:
-      transform 200ms ease,
+      clip-path 200ms ease,
       visibility 0s linear 200ms;
   }
 
   .site-header-end[data-open="true"] {
-    transform: translateX(0);
+    clip-path: inset(0);
     visibility: visible;
     transition:
-      transform 200ms ease,
+      clip-path 200ms ease,
       visibility 0s;
   }
 
