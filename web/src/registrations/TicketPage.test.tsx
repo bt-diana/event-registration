@@ -258,16 +258,62 @@ describe("W-R25: the QR on the ticket page", () => {
     expect(drawQr).not.toHaveBeenCalled();
   });
 
-  it('a checked-in ticket: "Checked in", the code as text, no QR, no time', async () => {
-    await ticketPage(
-      ok(publicEvent()),
-      ok(registration({ checked_in_at: "2030-01-01T09:55:00.000Z" })),
-    );
+  // User request 18-10: a checked-in ticket has nothing that can be used for entry, no QR
+  // and no ticket code. The rule keys on checked_in_at only (any event status, also a
+  // cancelled registration).
+  it.each<[string, Partial<SamplePublicEvent>, SampleRegistration, string]>([
+    ["registered", {}, registration({ checked_in_at: "2030-01-01T09:55:00.000Z" }), "Registered"],
+    [
+      "registered, cancelled event",
+      { status: "cancelled", seats_left: 0 },
+      registration({ checked_in_at: "2030-01-01T09:55:00.000Z" }),
+      "Registered",
+    ],
+    [
+      "registered, ended event",
+      { status: "passed", has_started: true, seats_left: 0 },
+      registration({ checked_in_at: "2030-01-01T09:55:00.000Z" }),
+      "Registered",
+    ],
+    [
+      "cancelled registration",
+      {},
+      registration({ status: "cancelled", checked_in_at: "2030-01-01T09:55:00.000Z" }),
+      "Cancelled",
+    ],
+  ])('a checked-in ticket (%s): only "Checked in", no code, no QR, no hint, no time', async (_case, event, r, badge) => {
+    await ticketPage(ok(publicEvent(event)), ok(r));
     expect(main().getByText("Checked in")).toBeTruthy();
-    expect(main().getByText("K7M2QX9TPA")).toBeTruthy();
+    // What stays: the h1, the badge, the event title and start.
+    expect(main().getByRole("heading", { level: 1, name: "Your ticket" })).toBeTruthy();
+    expect(main().getByText(badge)).toBeTruthy();
+    expect(main().getByText("Spring meetup")).toBeTruthy();
+    expect(main().getByText(formatDateTime("2030-01-01T10:00:00.000Z"))).toBeTruthy();
+    // No ticket code at all: no label, no text, no aria-label with it.
+    expect(main().queryByText("Ticket code")).toBeNull();
+    expect(main().queryByText(r.ticket_code)).toBeNull();
+    expect(screen.getByRole("main").textContent).not.toContain(r.ticket_code);
+    expect(screen.getByRole("main").querySelector(`[aria-label*="${r.ticket_code}"]`)).toBeNull();
+    // No QR component.
     expect(main().queryByRole("img")).toBeNull();
+    expect(screen.getByRole("main").querySelector("canvas")).toBeNull();
+    expect(main().queryByRole("heading", { level: 3, name: "Check-in code" })).toBeNull();
+    expect(main().queryByText("Show this QR code at the entrance.")).toBeNull();
+    expect(main().queryByText("If the scan does not work, show the ticket code.")).toBeNull();
     expect(drawQr).not.toHaveBeenCalled();
     expect(main().queryByText(formatDateTime("2030-01-01T09:55:00.000Z"))).toBeNull();
+  });
+
+  it("not checked in: the code, the QR and the hints are all there, no Checked in", async () => {
+    await ticketPage(ok(publicEvent()), ok(registration({ checked_in_at: null })));
+    expect(main().getByText("Ticket code")).toBeTruthy();
+    expect(main().getByText("K7M2QX9TPA")).toBeTruthy();
+    expect(main().getByRole("img", { name: QR })).toBeTruthy();
+    expect(main().getByRole("heading", { level: 3, name: "Check-in code" })).toBeTruthy();
+    expect(main().getByText("Show this QR code at the entrance.")).toBeTruthy();
+    expect(main().getByText("If the scan does not work, show the ticket code.")).toBeTruthy();
+    expect(drawQr).toHaveBeenCalledTimes(1);
+    expect(main().queryByText("Checked in")).toBeNull();
   });
 });
 

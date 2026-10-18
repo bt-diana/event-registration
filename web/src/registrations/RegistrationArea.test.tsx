@@ -513,12 +513,51 @@ describe("W-R7: the ticket panel", () => {
     expect(main().queryByRole("heading", { name: "Check-in code" })).toBeNull();
   });
 
-  it('a checked-in ticket has the line "Checked in"', async () => {
-    await attendeePage(
-      publicEvent(),
-      mine(registration({ checked_in_at: "2030-01-01T09:55:00.000Z" })),
-    );
+  // W-R25 (user request 18-10): a checked-in ticket shows no ticket code at all. The rule
+  // keys on checked_in_at only, so it holds on Cancelled and Ended events and for a
+  // cancelled registration too.
+  it.each<[string, Partial<SamplePublicEvent>, SampleRegistration, string]>([
+    [
+      "registered",
+      {},
+      registration({ checked_in_at: "2030-01-01T09:55:00.000Z" }),
+      "You are registered",
+    ],
+    [
+      "registered, cancelled event",
+      CANCELLED,
+      registration({ checked_in_at: "2030-01-01T09:55:00.000Z" }),
+      "You are registered",
+    ],
+    [
+      "registered, ended event",
+      PASSED,
+      registration({ checked_in_at: "2030-01-01T09:55:00.000Z" }),
+      "You are registered",
+    ],
+    [
+      "cancelled registration",
+      {},
+      registration({ status: "cancelled", checked_in_at: "2030-01-01T09:55:00.000Z" }),
+      "Registration cancelled",
+    ],
+  ])('checked in (%s): "Checked in" and no ticket code', async (_case, event, r, heading) => {
+    await attendeePage(publicEvent(event), mine(r));
+    expect(main().getByRole("heading", { level: 2, name: heading })).toBeTruthy();
     expect(main().getByText("Checked in")).toBeTruthy();
+    expect(main().getByRole("link", { name: "View ticket" })).toBeTruthy();
+    expect(main().queryByText("Ticket code")).toBeNull();
+    expect(main().queryByText(r.ticket_code)).toBeNull();
+    expect(screen.getByRole("main").querySelector(`[aria-label*="${r.ticket_code}"]`)).toBeNull();
+    expect(screen.getByRole("main").textContent).not.toContain(r.ticket_code);
+    expect(main().queryByRole("img")).toBeNull();
+  });
+
+  it("not checked in: the ticket code is shown and there is no Checked in line", async () => {
+    await attendeePage(publicEvent(), mine(registration({ checked_in_at: null })));
+    expect(main().getByText("Ticket code")).toBeTruthy();
+    expect(main().getByText("K7M2QX9TPA")).toBeTruthy();
+    expect(main().queryByText("Checked in")).toBeNull();
   });
 });
 
