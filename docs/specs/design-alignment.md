@@ -46,7 +46,7 @@ Already as the boards: list columns, badges, "Create event" button link, empty/l
 
 | # | Board | Behaviour | Kind | Test first? |
 |---|---|---|---|---|
-| DA7 | OrgEvent | Organizer view of `/event/:id`: the "Back to events" link and the share line sit together at the bottom, under one divider (`border-top`), after the `dl` and the existing "Registrations" button (built: back link above the `h1`; the share line has its own divider). The "Registrations" button is kept (section 9 question 13). | Look | |
+| DA7 | OrgEvent | Organizer view of `/event/:id`: the "Back to events" link stays at the top, above the `h1` (as built; the user decided against the board, which has it at the bottom). The share line keeps its place and divider under the `dl` and the existing "Registrations" button. The "Registrations" button is kept (section 9 question 13). The "Registrations" button gets more space around it: a larger gap above it (from the `dl`) and below it (to the share line), both from the spacing scale in `docs/brand.md` (24 px suggested). Only the spacing changes in the code. | Look (decided: keep as built, more space around the button) | |
 
 Functional gaps: none.
 
@@ -93,7 +93,33 @@ All 18 states of RegScanStates exist in `ScanScreen.tsx` (idle, asking, active, 
 
 Functional gaps: none.
 
-## 2. Mobile layout (all pages except the header)
+### 1.9 Back links (all pages except the header)
+
+Asked for: "Back to ..." buttons where possible. Routes checked (`web/src/App.tsx`): `/`, `/event/:id`, `/registrations`, `/registrations/me`, `/registrations/scan`, `/login`, `/signup`, `/organizer`, `/organizer/events/new`, `/organizer/login`, `/organizer/signup`. There is no catch-all route, so no page for an unknown URL exists (not added: nothing in the task asks for it).
+
+**Rules.** One link per screen. Not in the header. It is the first element of the screen's card or section, above the `h1` (and above an eyebrow). Look = the existing "Back to events" link: `.back-link` (15 px, 600, accent link look, `display: inline-flex`, `min-height: 44px`), arrow `&larr;` in a `span aria-hidden="true"`, then the text `Back to <name of the target>`. Accessible name is exactly "Back to <name>" (the arrow is hidden). A link to a parent is only drawn where the target does not depend on data we do not have. No link on top-level screens, on login and sign-up (not a flow with a parent) and on screens that already have a named exit link in the words of an existing spec (W-E11 "Go home", W-R12 "Go to the event", W-A6 "Go home"): those keep their words and get no second link. No request, no API, no new route.
+
+**Already built (not duplicated).** "Back to events" on the organizer event page (`EventPage.tsx`, top, `/organizer`, DA7) and on the create form (`CreateEventForm.tsx`, but below the form, DA36); "Back to registrations" on the scan screen (`ScanScreen.tsx`, loaded state only, below the `h1`, DA46). Their tests exist: `EventPage.test.tsx`, `ownership.test.tsx`, `CreateEventForm.test.tsx`, `ScanScreen.test.tsx`, `ArrivalsCounter.test.tsx`.
+
+All rows are Look unless noted; every row is checked by a component test (`renderApp`, `mockFetch`, helpers as in the existing files): `screen.getByRole("link", { name: "Back to ..." })`, its `href` attribute, and that it is the only link whose name starts with "Back to" in `main` (DA49). Tests-first is not needed (simple UI) except DA39 and DA46, where the target depends on the view or the chosen event.
+
+| # | Screen (route, state) | Behaviour | Kind | Test first? |
+|---|---|---|---|---|
+| DA35 | All rows below | Shared look and placement (rules above). One small component `BackLink({ to, name })` in `EventParts.tsx` renders it; the three built links switch to it with the same markup and text, so their tests stay green. CSS: the spacing rule `.card-event > .back-link { margin-bottom: 8px }` also covers `.card-message`, `.card-form`, `.list-page` and `.scan-page`; the old `.card-form .back-link { margin-top: 16px }` goes. Test: the rows below. | Look | |
+| DA36 | Create form `/organizer/events/new` | "Back to events" to `/organizer`, **moved** from below the form to the top, above the `h1` "Create event" (built: after the `</form>`). Text and target unchanged (W-E21). Test: in `CreateEventForm.test.tsx` the existing href check stays; add that the link comes before the `h1` in the document (`compareDocumentPosition`). | Look (position) | |
+| DA37 | Organizer event page `/event/:id`, owner view | Built: "Back to events" to `/organizer`, top, above the `h1` (DA7). No change. Tests: `EventPage.test.tsx`, `ownership.test.tsx` (not shown to a non-owner or a logged-out person). | Built | |
+| DA38 | Public event page `/event/:id`, loaded (logged out, attendee, organizer who is not the owner; open and closed events) | New "Back to events" to `/` (the public list), above the eyebrow "Event". Conflicts with W-E21 ("the public view has no extra links"): **section 9 question 16**. Test: `PublicEventPage.test.tsx` (name, href `/`; present for a closed event too; the registration control is unchanged). | Look | |
+| DA39 | Event load error "Could not load this event" (shared `EventLoadError`) | New "Back to events" above the `h1`: to `/organizer` when the viewer is the organizer asking for the owner view (`OwnerOrPublic`), to `/` in the public view. `EventLoadError` gets a `backTo` prop from its two callers. Test: `EventPage.test.tsx` (organizer, 500 on `GET /events/:id`: href `/organizer`) and `PublicEventPage.test.tsx` (logged out, 500: href `/`); Retry unchanged. | Func (two targets) | yes |
+| DA40 | Event not found (`EventNotFound`, public 404, also for an organizer and on the ticket page) | No change: keeps "Go home" to `/` (W-E11, W-E18, W-R12). No second link. Test: existing; add that there is no "Back to ..." link there. | None | |
+| DA41 | Ticket page `/registrations/me?event={id}`, loaded (registered, checked in, waiting list, cancelled) | New "Back to event" to `/event/{id}` (id from the URL, URL-encoded), above the `h1` "Your ticket". The title link under the `h1` (W-R11) stays. Test: `TicketPage.test.tsx` (href `/event/42`, for a waiting-list ticket too). | Look | |
+| DA42 | Ticket page, error "Could not load your ticket" | Same link, same target, above the `h1` (the id is known from the URL). Retry unchanged. Test: `TicketPage.test.tsx`. | Look | |
+| DA43 | Ticket page, loading; "no ticket" state | Loading: no link (changes in a moment). "You have no ticket for this event.": no link, the button "Go to the event" (W-R12) is the exit. Test: `TicketPage.test.tsx` (no link whose name starts with "Back to"). | None | |
+| DA44 | Organizer registrations `/registrations`, every state that has the `h1` "Registrations" (loaded, no events, loading, load error, list "Event not found") | New "Back to events" to `/organizer`, above the `h1` (outside `.list-head`). Does not depend on the chosen event. "Open event page" (DA13) is an action next to "Check in attendees" and stays; it is not a back link. Question 17. Test: `OrganizerRegistrations.test.tsx` (href `/organizer` in the loaded and the no-events state). | Look | |
+| DA45 | Attendee list placeholder `/registrations/me` (no `event`) | No link: a top-level screen reached from the header; its list is blocked (DA11). | None | |
+| DA46 | Scan screen `/registrations/scan`, every state with the `h1` "Check in" (loading, load error, no events, loaded) | The built "Back to registrations" moves above the `h1` (built: below it; DA32 already lists the order back link, `h1`) and shows in all four states, not only loaded. Target: `/registrations?event={id}` when an event is chosen (built), else `/registrations`. `Shell` gets a `backTo` prop. Camera, result and focus rules (W-R33 to W-R37) are untouched. Test: `ScanScreen.test.tsx` (loaded: href with `?event=`; no events and load error: href `/registrations`; link before the `h1`); the existing click test (line 513) stays. | Func (target by state) | yes |
+| DA47 | No link: `/`, `/organizer`, `/login`, `/signup`, `/organizer/login`, `/organizer/signup`, wrong-account card, "Could not check your login" | None drawn (top-level, no parent, or state unknown). Test: one test in `App.test.tsx` that renders these routes and finds no link whose name starts with "Back to" in `main`. | None | |
+| DA48 | Phone (<= 520 px) | The link stays at least 44 px high, its text wraps if needed (no `white-space: nowrap`), nothing touches the `h1` (8 px gap), no new breakpoint, no horizontal page scroll (DA21). Checked by hand at 320 and 390 px on every screen of DA36 to DA46. | Look (by hand) | |
+| DA49 | Every screen above | At most one link whose name starts with "Back to" in `main`; none in the header. | Func | |
 
 Reference: the phone boards PubListPhone (390 px) and RegScan (390 px). `LoginMobile` was not downloadable. Every other page has no phone board, so its rows are derived from `docs/brand.md` (fluid width, touch targets 44/48 px, 16 px text) and are assumptions (section 9 question 11). jsdom has no layout, so every row below is **checked by hand at 320 px and 390 px** (browser devtools, real app, desktop-size screen restored after). The header and its phone rule are out of scope (`header-responsive.md`).
 
@@ -102,7 +128,7 @@ Phone = `max-width: 520px`, the existing breakpoint in `styles.css` (the `.event
 | # | Source | Behaviour (all by hand at 320 and 390 px) |
 |---|---|---|
 | DA21 | brand.md | No horizontal scroll of the page on any route: `/`, `/login`, `/signup`, `/organizer`, `/organizer/login`, `/organizer/signup`, `/organizer/events/new`, `/event/:id` (public and organizer view), `/registrations`, `/registrations/me` (list placeholder and ticket), `/registrations/scan`, and their loading, empty and error states. Check: `document.documentElement.scrollWidth <= clientWidth`. Only a table scrolls sideways, inside its own card (DA29). |
-| DA22 | PubListPhone, RegScan | Page padding on phone: `24px 16px` (`.page`); the scan screen `16px` (RegScan `main`). Built: `64px 16px` everywhere. |
+| DA22 | PubListPhone, RegScan | Page padding on phone: `16px` on all four sides (`.page`, the scan screen too; user decision, replaces `24px 16px`). Built: `64px 16px` everywhere. |
 | DA23 | PubListPhone, RegScan | `h1` 30 px, line height 1.1, 16 px below it before the first block (`.public-list h1`, `.scan-page h1`, list heads). Built: 34 px (30 px on message cards only). |
 | DA24 | RegScan (derived for the rest) | Cards (`.card`, `.card-message`, `.card-form`, `.card-event`) have padding 20 px on phone (built: 32 px). The ticket panel, the arrivals counter and the scan blocks keep 12 to 20 px (already). Auth forms: derived, LoginMobile missing. |
 | DA25 | PubListPhone | `/`: the gap between cards is 12 px (built: 16 px). Everything else is built: card padding 16, title 20 px, order title, meta, badge, badge on its own line, whole card is the link. |
@@ -151,6 +177,15 @@ Phone = `max-width: 520px`, the existing breakpoint in `styles.css` (the `.event
 | `web/src/styles.css` | All look rows; the phone block of section 2; ticket code font; error box | DA4-DA10, DA14, DA17-DA20, DA22-DA34 |
 | `web/src/registrations/MyRegistrations.tsx` | No change now (blocked) | DA11, DA12 |
 | `docs/brand.md`, `README.md`, `ROADMAP.md` | Ticket code font, phone values, "Not decided yet" list is out of date (separate edit by the agent that owns them) | DA10, DA22-DA24 |
+| `web/src/events/EventParts.tsx` | New `BackLink`; `EventLoadError` gets a `backTo` prop | DA35, DA39 |
+| `web/src/events/CreateEventForm.tsx`, `CreateEventForm.test.tsx` | Link moved above the `h1`, uses `BackLink`; order test | DA36 |
+| `web/src/events/EventPage.tsx`, `EventPage.test.tsx` | Organizer view uses `BackLink` (no visible change); `backTo="/organizer"` for the load error; its test | DA37, DA39 |
+| `web/src/events/PublicEventPage.tsx`, `PublicEventPage.test.tsx` | "Back to events" to `/` on the loaded view; `backTo="/"` for the load error; tests | DA38, DA39 |
+| `web/src/registrations/TicketPage.tsx`, `TicketPage.test.tsx` | "Back to event" in the loaded and error states; no-link checks | DA41-DA43 |
+| `web/src/registrations/OrganizerRegistrations.tsx`, `OrganizerRegistrations.test.tsx` | "Back to events" above the `h1` in every state | DA44 |
+| `web/src/registrations/ScanScreen.tsx`, `ScanScreen.test.tsx` | `Shell` shows "Back to registrations" above the `h1` in all four states (test first) | DA46 |
+| `web/src/App.test.tsx` | No-link check for the top-level and auth routes | DA47 |
+| `web/src/styles.css` | Back link spacing for all containers; remove the `.card-form .back-link` top margin | DA35, DA48 |
 
 ## 6. Order of work
 
@@ -166,6 +201,7 @@ Small steps, one commit each, `type(scope): description`, tests before the code 
 8. Mobile pass (DA21 to DA34): CSS in the 520 px block, then the hand check at 320 and 390 px on every route of DA21; write the result in the session file.
 9. Update the canvas (section 8) and `docs/brand.md`.
 10. Later, not in this spec's steps: DA11, DA12 after `my-registrations.md` is built and W-R18 unblocked; DA15 after M4.
+11. **Back links (DA35 to DA49).** Answer questions 16 and 17 first. (a) Tests first: DA39 (two targets) and DA46 (target by state, all four states, link before the `h1`), commit `test(web): ...`. (b) `BackLink` component, the three built links switch to it, DA36 (move), DA46, DA39, commit `feat(web): ...`. (c) New links DA38, DA41, DA42, DA44 with their tests, commit `feat(web): ...`. (d) CSS spacing and the hand check at 320 and 390 px (DA48), result in the session file. Can run any time after step 2; it touches `ScanScreen.tsx` and `OrganizerRegistrations.tsx`, so not while another step edits those files.
 
 ## 7. Done means
 
@@ -174,6 +210,7 @@ Small steps, one commit each, `type(scope): description`, tests before the code 
 - Look rows (DA1 to DA10, DA14, DA16 to DA20) are compared board against the real page side by side; the header is ignored.
 - Section 2 is checked by hand at 320 px and 390 px on every route listed in DA21, with no horizontal page scroll.
 - DA11, DA12, DA15 are marked "blocked" in `ROADMAP.md`, not done.
+- Back links: DA39 and DA46 have tests committed before the code. Each row DA36 to DA44 has a component test (role link, exact name, `href`); DA47 has the no-link test; no screen has two "Back to ..." links; the header is unchanged. The built links keep their words ("Back to events", "Back to registrations") and the existing tests stay green. DA48 checked by hand at 320 and 390 px.
 
 Gap count: look 16 (login 4, public event 2, organizer event 1, ticket 3, attendee list 1 blocked, organizer registrations 1, scan 4), functional 4 (`Open event page` link free, scan alert role free, attendee list blocked by the API, cancelled row blocked by M4), mobile 14 rows. `/` has no desktop gap.
 
@@ -193,8 +230,12 @@ Redraw or fix on the existing canvas (no new artifact), after the open questions
 8. **Summary line** "Registered: 2 / 25 · Waiting list: 2" (RegOrg) vs the arrivals counter "Arrived: x / y registered" + "Capacity" (`checkin-web.md`; the arrivals route has no waiting-list count). **Recommended:** keep the counter; no waiting-list count.
 9. **Registrations table.** RegOrg and RegLists show a date only in "Registered", no Arrival column and a Cancelled row; W-R20 has date and time (W-E19), the Arrival column (W-C16) and only registered or waitlisted rows. **Recommended:** the spec rows (DA15 waits for M4).
 10. **Attendee list shape.** RegLists nests the cards in a white 960 px card; S3 (`registration-web.md`) and PubList use cards on the ground at 760 px. **Recommended:** S3.
-11. **Phone values** for pages without a phone board (padding 24/16, card padding 20, `h1` 30, full-width buttons, DA22 to DA34) are my derivation from PubListPhone, RegScan and `brand.md`. **Recommended:** accept them, then draw the missing phone boards (section 8) and correct the numbers.
+11. **Phone values** for pages without a phone board (padding 16, card padding 20, `h1` 30, full-width buttons, DA22 to DA34) are my derivation from PubListPhone, RegScan and `brand.md`. **Recommended:** accept them, then draw the missing phone boards (section 8) and correct the numbers.
 12. **QR size.** RegTicketQr draws 200 px with a 1 px border and radius 8; W-R26 says 232 px (8 px per module), fluid down to 160. **Recommended:** W-R26 (no change).
 13. **Organizer event page.** OrgEvent has no "Registrations" button, which the code has (it opens `/registrations?event={id}`), and its share line reads "Share link (same for everyone): /event/42" (built: "..., others see the public view" and the link is clickable; W-E21 says the share link is text). **Recommended:** keep the button (it is the only way from the event to its registrations apart from the header) and the built share line; only DA7.
 14. **Small board and spec differences kept as built:** page top padding 48 px on list and form boards vs `brand.md` 64 px; create-form hints under all five fields (board only under description and start); events-list load error as `h1` "Events" + alert (PubListStates uses the error as the title); "Check in attendees" as a text link (RegOrg) vs button link; 44 px vs 48 px selector; "Created" row. **Recommended:** keep as built, no row.
 15. **Organizer event 404.** OrgStates shows "Event not found" with "Back to events"; W-E11 and W-E18 show the public 404 with "Go home" for an organizer too. **Recommended:** W-E11; the board is outdated.
+16. **Public event page back link (DA38).** `events-web.md` W-E21 says "the public view has no extra links (no public list exists)". The public list `/` exists now (`events-public-list-web.md`). **Recommended:** add "Back to events" to `/` and update the W-E21 sentence (separate edit of `events-web.md`, not in this file).
+17. **Target of the registrations back link (DA44).** "Back to events" (`/organizer`) works in every state; the event page (`/event/{id}`) needs a chosen event and "Open event page" (DA13) already goes there. **Recommended:** `/organizer`, so the chain is scan, registrations, events list, and no screen has two links to the same place.
+18. **Wording of the ticket link (DA41).** "Back to event" (fixed words) or "Back to <event title>" (long titles wrap, and the title link under the `h1` has the same name). **Recommended:** "Back to event".
+19. **Stale text in the files table.** The DA7 row of section 5 still says "bottom block with back link and share line", but DA7 says the back link stays at the top. **Recommended:** the DA7 row of section 1.4 (top); fix the files row in a separate edit by whoever owns DA7. DA16 also says the built text is "Registrations", but the code already reads "Back to registrations".
