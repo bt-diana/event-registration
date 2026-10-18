@@ -1,13 +1,13 @@
 # Spec: Database schema
 
-Part of `SPEC.md` (section 3). PostgreSQL 18, Windows service, port 5433, `DATABASE_URL`, no Docker. Migrations are plain `.sql` files in `api/src/db/migrations/`, applied in file-name order. This file says what the schema must guarantee. It is not the migration.
+Part of `SPEC_TEMPLATE.md` (section 3). PostgreSQL 18, Windows service, port 5433, `DATABASE_URL`, no Docker. Migrations are plain `.sql` files in `api/src/db/migrations/`, applied in file-name order. This file says what the schema must guarantee. It is not the migration.
 
 Five tables: `organizers`, `users`, `events`, `registrations`, `outbox`. A ticket is a registration row (one table, no separate `tickets`). No other tables.
 
 - `users` are attendees. They sign up (email, name, password) and log in. Registering for an event needs a signed-in attendee; the email comes from the account.
 - `organizers` sign up, log in and own events. An organizer is not an attendee, so the two tables are separate.
 - Ids are `uuid PRIMARY KEY DEFAULT uuidv7()` (built in since PostgreSQL 18). All foreign keys are `uuid`.
-- Login is a signed cookie that lasts 7 days (default, the user can change it), no sessions table (see `SPEC.md` section 3). Passwords are stored only as a `scrypt` hash with a random salt in `password_hash`.
+- Login is a signed cookie that lasts 7 days (default, the user can change it), no sessions table (see `SPEC_TEMPLATE.md` section 3). Passwords are stored only as a `scrypt` hash with a random salt in `password_hash`.
 
 ## 1. Tables
 

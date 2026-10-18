@@ -16,13 +16,13 @@ Budget: 8 h build + 1 h buffer. Commit after every step (commit timestamps are y
 ## 2. Timed steps (each ends with a commit)
 | Time | Step | Claude Code move |
 |---|---|---|
-| 0:00–0:45 | Repo, `CLAUDE.md` (commands, test runner, "run `npm test` before finishing"), Stop hook running tests, SessionEnd hook copying transcript to `sessions/`. Interview prompt, produce `SPEC.md` incl. acceptance table | Interview prompt from S05; then `/clear` |
+| 0:00–0:45 | Repo, `CLAUDE.md` (commands, test runner, "run `npm test` before finishing"), Stop hook running tests, SessionEnd hook copying transcript to `sessions/`. Interview prompt, produce `SPEC_TEMPLATE.md` incl. acceptance table | Interview prompt from S05; then `/clear` |
 | 0:45–1:30 | Plan mode: schema, API list, ADRs into the session decisions file (timestamped lines) | `claude --permission-mode plan`; edit plan with Ctrl+G |
 | 1:30–3:00 | **Red:** write 3 hard tests + registration/waitlist/cancel tests, run, show failing. **Green:** migrations, services | Fresh session; tests before code |
 | 3:00 | **Checkpoint:** if registration/waitlist core not green, switch to fallback F (drop SPEC/ADR ceremony, keep tests and hooks) | — |
 | 3:00–4:00 | Tickets, check-in, reschedule, outbox, reminder worker | tests first for each |
 | 4:00–5:30 | React: event list/create, register/cancel/ticket page, check-in (code entry), organizer counts + reschedule | Screenshot-compare loop (S05) optional |
-| 5:30–6:30 | Two-tab proof, Playwright two-context test, subagent review of diff vs `SPEC.md` ("flag only correctness/requirement gaps", per S05) | `.claude/agents/reviewer.md` |
+| 5:30–6:30 | Two-tab proof, Playwright two-context test, subagent review of diff vs `SPEC_TEMPLATE.md` ("flag only correctness/requirement gaps", per S05) | `.claude/agents/reviewer.md` |
 | 6:30–7:30 | README (run, prerequisites, honest state), `NEXT.md`, export sessions, disclosure | `/export`; copy JSONL |
 | 7:30–8:30 | Buffer: flaky tests, polish | — |
 

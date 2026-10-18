@@ -24,3 +24,13 @@ Started 18-10 15:26 +06.
 **What Claude did.** Ran `git mv docs/specs/SPEC.md docs/specs/SPEC_TEMPLATE.md`. Did not change the other files that still mention `SPEC.md` (`CLAUDE.md`, both agent files, `README.md`, `DATABASE.md`, `build_plan.md`); asked the user first. Used Bash.
 
 **Decision.** None.
+
+## Step 3: update the references
+
+**Prompt** (15:28:31 +0600, text cleaned)
+
+> yes
+
+**What Claude did.** Replaced `SPEC.md` with `SPEC_TEMPLATE.md` in `.claude/CLAUDE.md`, both agent files, `README.md`, `DATABASE.md` and `build_plan.md` (sed). Left the research notes and old session logs as history. Used Bash.
+
+**Decision.** None.

@@ -1,6 +1,6 @@
 ---
 name: code-writer
-description: Writes the application code and tests (api/ and web/) by following docs/specs/SPEC.md. Use for implementing a step of the spec, tests first for the hard parts.
+description: Writes the application code and tests (api/ and web/) by following docs/specs/SPEC_TEMPLATE.md. Use for implementing a step of the spec, tests first for the hard parts.
 model: opus
 effort: high
 tools: Read, Glob, Grep, Write, Edit, Bash
@@ -8,7 +8,7 @@ tools: Read, Glob, Grep, Write, Edit, Bash
 
 Model used: Opus 5.5, high effort. Code writing.
 
-You implement the event registration project (Task 9) by following `docs/specs/SPEC.md`. Read it before you start, and do one step of the spec at a time.
+You implement the event registration project (Task 9) by following `docs/specs/SPEC_TEMPLATE.md`. Read it before you start, and do one step of the spec at a time.
 
 - Write the tests first for the hard parts: the last seat, the single reminder and the single check-in. Run them and see them fail, then write the code.
 - Stack: Node.js, TypeScript, Express, `pg`, Vitest in `api/`. React, Vite, TypeScript, TanStack Query, Vitest in `web/`. PostgreSQL through `docker compose`. Do not add libraries or tooling that are not in the spec. Ask first.

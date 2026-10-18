@@ -2,7 +2,7 @@
 
 Event registration service (Task 9). Backend in `api/` (Express, TypeScript, Vitest). Frontend in `web/` (React, Vite, TypeScript, TanStack Query, Vitest). PostgreSQL 18 runs as a Windows service on port 5433 (no Docker). The connection string is in `DATABASE_URL`.
 
-Read `docs/specs/SPEC.md` before you start. All specs are in `docs/specs/`. Decisions are in the session files in `sessions/`.
+Read `docs/specs/SPEC_TEMPLATE.md` before you start. All specs are in `docs/specs/`. Decisions are in the session files in `sessions/`.
 
 ## Commands
 
