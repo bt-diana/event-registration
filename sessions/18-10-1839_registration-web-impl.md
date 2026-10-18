@@ -53,7 +53,7 @@ Started 18-10 18:39 +06.
 
 ## Step 6: organizer list cache keyed by account
 
-**Prompt** (19:30 +06, passed on by the coordinator from a security review, text cleaned)
+**Prompt** (19:14 +06, passed on by the coordinator from a security review, text cleaned)
 
 > `eventRegistrationsKey(eventId)` has no account in it. A login as another account replaces the cookie without a logout, so the cache would show the previous organizer's attendee names and emails. Key it by `me.id`, enable the query only when `me` is a loaded organizer, and add a test first. Also check that the cache is cleared or ignored when the `me` identity changes on login or sign-up; if that is a broader existing gap, report it instead of widening the scope. Add this to the spec and the session file.
 

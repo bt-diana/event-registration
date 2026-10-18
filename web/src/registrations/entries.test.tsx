@@ -7,6 +7,7 @@ import { useLocation } from "react-router";
 import { App } from "../App";
 import type { Me } from "../auth/api";
 import { ANN, OLGA, callsTo, deferred, json, mockFetch, renderApp, renderWith } from "../auth/test-helpers";
+import { EVENT_ID, organizerEvent } from "../events/test-helpers";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -174,6 +175,56 @@ it("W-R20: the organizer screen is not the placeholder any more", async () => {
   expect(main().queryByText("The list is not built yet.")).toBeNull();
 });
 
+describe("W-R28: /registrations/scan is an organizer screen", () => {
+  it("an organizer sees it", async () => {
+    mockFetch({ [ME]: () => json(200, OLGA), [EVENTS]: noEvents });
+    renderApp("/registrations/scan");
+    expect(await main().findByRole("heading", { level: 1, name: "Check in" })).toBeTruthy();
+    expect(location()).toBe("/registrations/scan");
+  });
+
+  it("an attendee is redirected to /registrations/me, only the me request", async () => {
+    const fetch = mockFetch({ [ME]: () => json(200, ANN) });
+    renderApp("/registrations/scan?event=abc");
+    await waitFor(() => expect(location()).toBe("/registrations/me"));
+    expect(await main().findByRole("heading", { level: 1, name: "My registrations" })).toBeTruthy();
+    expect(screen.queryByText(/This page is for/)).toBeNull();
+    expect(fetch.mock.calls).toHaveLength(1);
+  });
+
+  it("logged out: redirect to the organizer login with next", async () => {
+    mockFetch({ [ME]: loggedOut });
+    renderApp("/registrations/scan");
+    await waitFor(() =>
+      expect(location()).toBe("/organizer/login?next=%2Fregistrations%2Fscan"),
+    );
+  });
+
+  it('shows only "Loading..." while me loads: no camera button, no other request', async () => {
+    const me = deferred<Response>();
+    const fetch = mockFetch({ [ME]: () => me.promise, [EVENTS]: noEvents });
+    renderApp("/registrations/scan");
+    expect(main().getByRole("status").textContent).toBe("Loading...");
+    expect(main().queryByRole("button")).toBeNull();
+    expect(fetch.mock.calls).toHaveLength(1);
+    await act(async () => me.resolve(json(200, OLGA)));
+    expect(await main().findByRole("heading", { level: 1, name: "Check in" })).toBeTruthy();
+  });
+
+  it("/registrations links to it with Check in attendees, keeping the chosen event", async () => {
+    mockFetch({
+      [ME]: () => json(200, OLGA),
+      [EVENTS]: () => json(200, { events: [organizerEvent()] }),
+      [`GET /events/${EVENT_ID}/registrations`]: () => json(200, { registrations: [] }),
+    });
+    renderApp("/registrations");
+    const link = await main().findByRole("link", { name: "Check in attendees" });
+    expect(link.getAttribute("href")).toBe(`/registrations/scan?event=${EVENT_ID}`);
+    fireEvent.click(link);
+    expect(await main().findByRole("heading", { level: 1, name: "Check in" })).toBeTruthy();
+  });
+});
+
 describe("W-R17: no redirect loop", () => {
   it.each<[string, Me, string[]]>([
     ["/registrations/me", ANN, ["/registrations/me"]],
@@ -181,6 +232,8 @@ describe("W-R17: no redirect loop", () => {
     ["/registrations", OLGA, ["/registrations"]],
     ["/registrations", ANN, ["/registrations", "/registrations/me"]],
     ["/registrations?event=abc", ANN, ["/registrations?event=abc", "/registrations/me"]],
+    ["/registrations/scan", OLGA, ["/registrations/scan"]],
+    ["/registrations/scan", ANN, ["/registrations/scan", "/registrations/me"]],
   ])("%s as %o ends on the right screen after at most one redirect", async (path, me, trail) => {
     const seen: string[] = [];
     const fetch = mockFetch({ [ME]: () => json(200, me), [EVENTS]: noEvents });
@@ -191,7 +244,8 @@ describe("W-R17: no redirect loop", () => {
       </>,
       path,
     );
-    const h1 = me.role === "user" ? "My registrations" : "Registrations";
+    const h1 =
+      me.role === "user" ? "My registrations" : path === "/registrations/scan" ? "Check in" : "Registrations";
     expect(await main().findByRole("heading", { level: 1, name: h1 })).toBeTruthy();
     // Give a loop the chance to show itself.
     await new Promise((resolve) => setTimeout(resolve, 20));
