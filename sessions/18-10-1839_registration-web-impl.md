@@ -70,3 +70,13 @@ Started 18-10 18:39 +06.
 **What Claude did.** Updated `registration-web.md` for the real call (commit `21a0540`: W-R33, W-R34, section 3 `CheckInResult` mapping, section 4 rows, `/checkin` proxy). Tests first (commit `930f8a7`, red: no scan screen, no `scanner.ts`, `camera.ts`, `ticketCode.ts`): `ScanScreen.test.tsx` (camera states incl. denied, no camera, insecure; no prompt before the click; invalid scanned text sends nothing; manual entry; five reads of one code and a double click give one `POST /checkin`; every answer 200, 409 x4, 404, 400, 5xx and network with "Try again", 401 to the login; release on unmount, route change, event change and while asking; selector, no events, events error; accessibility), W-R28 guard, link and W-R17 rows in `entries.test.tsx`, and `ticketCode.test.ts`, `camera.test.ts`, `scanner.test.ts` (`qr-scanner` mocked). Then the code: `ticketCode.ts`, `camera.ts`, `scanner.ts` (the only `qr-scanner` import: `hasCamera`, `startScanner` with `pause(true)` and `destroy()` on stop), `checkIn` and `CheckInResult` in `api.ts`, `useCheckIn` in `queries.ts`, `ScanScreen.tsx`, `ScanEntry` in `entries.tsx`, the route in `App.tsx`, the "Check in attendees" link on `/registrations`, `/checkin` in `vite.config.ts`, styles. A production build puts the qr-scanner worker in its own chunk. Updated `README.md` and `ROADMAP.md`. `bash scripts/verify.sh` passes (api 332, web 522 and 4 todo). Not done: the manual camera and QR check with a phone (jsdom has no camera); the mock-up boards in the design canvas could not be opened from this agent, so the screens follow `docs/brand.md` and section 6 of the spec. Used Read, Write, Edit, Bash.
 
 **Decision.** None.
+
+## Step 8: spec for the arrivals counter (checkin-web.md)
+
+**Prompt** (19:21 +06, text cleaned)
+
+> let's then create a spec for checkin-web.md with what's left
+
+**What Claude did.** Gave the `spec-writer` agent the task. It wrote `docs/specs/checkin-web.md` (W-C1-W-C19): arrivals counter ("Arrived: 12 / 20 registered") counted from the organizer list, polled every 5 s, an "Arrival" column, stops and refetch after a check-in tested first. Claude marked roadmap step 27 done, reworded step 28 (the scan screen is already built from `registration-web.md`), and fixed W-R29 so it no longer says the event id goes to the check-in. Open questions 1-8 are not answered; the spec's recommended answers are: no counter on the event page, 5 s, refetch on tab focus, list polls, add the column. Pointer edits for W-R20 and W-R34 in `registration-web.md` are still to do. Used Agent (`spec-writer`), Bash.
+
+**Decision.** None.
