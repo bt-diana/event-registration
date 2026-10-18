@@ -23,6 +23,7 @@ The web app is not a milestone of its own any more (D35). Its screens are built 
 - M3 API spec: `registration.md` (R1-R22): register, waiting list, last seat, my registration.
 - M5 arrivals route spec: `arrivals.md` (AR1-AR15): `GET /events/:id/arrivals` with `{ capacity, registered, arrived }`; replaces D45 (D47, shape D49).
 - M5 API: arrivals route `GET /events/:id/arrivals` (`arrivals.md` AR1-AR15, step 27a): tests-first commit `api/test/checkin/arrivals.test.ts`, then `getArrivals` in `api/src/checkin/service.ts` (one statement with the ownership check and both counts, no lock, no transaction) and the route in `checkinRouter` (`requireOrganizer`, `Cache-Control: no-store`, uuid check, same 404 for unknown, malformed and foreign), `api/openapi.yaml` 0.6.0. The web does not read it yet (step 28).
+- M6 UI spec: `email-reminders-web.md` (W-EM1-W-EM8, step 33): two static lines under the ticket panel (demo note, reminder line from `reminderNote`), no new request, nothing for the organizer; six open questions with recommendations.
 - M6 API spec: `email-reminders.md` (ER1-ER38, step 29): console stub sender with 2 retries then status `error_sending` (D56, migration `004_outbox_status.sql`), reminder worker, timer; real email through Resend is out of scope (D57); no new route, no new library. D52 settled the first five questions; two open questions (`send_error` column, database errors not counted as tries) have recommendations.
 - Header button spec: `header-events-link.md` (HB1-HB10): a "Watch all events" link in the header, `/` for logged out and attendees, `/organizer` for organizers (D58); web only, no API change, no new library. Five open questions with recommendations; not built yet.
 - M5 API spec: `checkin.md` (C1-C19): check-in by ticket code, organizer registrations list for the arrivals counter.
@@ -103,7 +104,7 @@ Specs are not written all at once. The first steps of each milestone write (or e
 30. Migration `004_outbox_status.sql` and the stub sender: prints pending outbox rows, sets `status = 'sent'` and `sent_at`, gives up after 3 tries with `error_sending` (D56). Test: sends once, a repeat run sends nothing, fails twice then works, fails three times.
 31. **Red:** B5 test (fake clock at one day before, worker run 10 times and with two workers: one `reminder` row per registered person, none for waiting people).
 32. **Green:** reminder worker with `INSERT ... SELECT ... ON CONFLICT DO NOTHING`, a timer to start it, a clock that can be injected.
-33. UI spec: `email-reminders-web.md`: what the screens say about emails (for example "a ticket email was sent" on the ticket page). Only what the API can tell; no new route unless the spec asks for it.
+33. UI spec: `email-reminders-web.md`: what the screens say about emails (for example "a ticket email was sent" on the ticket page). Only what the API can tell; no new route unless the spec asks for it. (done: W-EM1-W-EM8; no API field says anything about email, so only two static lines on the ticket page: a demo note and a reminder line; no new route)
 34. Test, then code: the email notes on the ticket page.
 
 ### M7. Reschedule and event cancel
