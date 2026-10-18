@@ -80,6 +80,10 @@ Find the PC's Wi-Fi address with `ipconfig` (the IPv4 address of the Wi-Fi adapt
 - **The page does not load (Windows Firewall).** Windows blocks incoming connections to Node.js by default. When the prompt "Windows Defender Firewall has blocked some features of Node.js" appears, tick **Private networks** and click **Allow access**. If you missed the prompt, open PowerShell **as administrator** and run `New-NetFirewallRule -DisplayName "Vite dev 5173" -Direction Inbound -Protocol TCP -LocalPort 5173,4173 -Action Allow -Profile Private` (remove it later with `Remove-NetFirewallRule -DisplayName "Vite dev 5173"`). The Wi-Fi network must also be set to **Private** (Settings, Network & internet, Wi-Fi, your network). Check that the phone is not on mobile data or a guest network.
 - **The camera does not start.** Browsers allow the camera only on https or `localhost`, so over `http://<PC address>` the scan screen shows "The camera needs a secure connection (https or localhost). Enter the code below." Typing the code and showing the ticket QR still work. For a camera test on Android Chrome, open `chrome://flags/#unsafe-treat-insecure-origin-as-secure`, add the address, enable it and restart Chrome (testing only). iPhone Safari has no such switch: use an https tunnel or a local certificate (not set up here).
 
+### Deploy on Render
+
+The repository root has a `package.json` with `build` and `start` scripts that run the API in `api/`. For the API Web Service leave Root Directory empty, set Build Command to `npm run build` and Start Command to `npm start`, and set the environment variables from `.env.example` (`DATABASE_URL`, `COOKIE_SECRET`, `EMAIL_API_KEY`, `MAIL_FROM`).
+
 ### Demo logins
 
 Migration `005_seed_test_data.sql` adds test data: one organizer, five events on 20-24 October 2026 (the TypeScript Workshop on 21 October is full with two people waiting), eight attendees and their registrations. The addresses are placeholders with no mailbox, and no emails are sent for them. Every demo account uses the password `demo1234`.
