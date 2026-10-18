@@ -10,6 +10,11 @@ export function endsAt(startsAt: Date, durationMinutes: number): Date {
   return new Date(startsAt.getTime() + durationMinutes * MINUTE_MS);
 }
 
+// The start has been reached: `now = starts_at` counts as started (ER64, CR14).
+export function hasStarted(startsAt: Date, now: Date): boolean {
+  return startsAt.getTime() <= now.getTime();
+}
+
 // `cancelled` if stored cancelled; else `passed` from the end on; else `active`.
 export function deriveStatus(
   stored: StoredStatus,

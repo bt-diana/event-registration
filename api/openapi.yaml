@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Event registration API - accounts, login, events, registration, check-in and emails
-  version: 0.10.0
+  version: 0.11.0
   description: |
     Hand-written description of the seven auth routes (milestone M1, docs/specs/auth.md):
     signup, login and logout for each role, and GET /auth/me for either role. All bodies are JSON. Errors use the body { "error": "<code>" }; the status is
@@ -26,7 +26,14 @@ info:
     Registering runs in one transaction that locks the event row, so seats are never
     over-sold: when the `registered` count has reached `capacity`, the new
     registration is `waitlisted`. A seat writes one `ticket` row to the outbox table
-    (sent through Resend by the outbox sender, docs/specs/email-reminders.md). Cancelling and promotion are not built yet (M4).
+    (sent through Resend by the outbox sender, docs/specs/email-reminders.md).
+
+    Cancel my registration (milestone M4, docs/specs/cancel-registration.md):
+    `POST /events/{id}/registrations/me/cancel` cancels the logged-in attendee's own
+    registration of an event (the row is kept as `cancelled`). If it held a seat,
+    the first waiting person by queue order gets it and one `promotion` outbox row.
+    A repeat answers 200 and writes nothing. Runs in one transaction under the same
+    event lock as registering, so the `registered` count never goes above `capacity`.
 
     My registrations (docs/specs/my-registrations.md): `GET /me/registrations` lists
     all of the logged-in attendee's own registrations in every status, newest first,
@@ -533,6 +540,55 @@ paths:
           $ref: "#/components/responses/AttendeeOnly"
         "404":
           $ref: "#/components/responses/NoRegistration"
+
+  /events/{id}/registrations/me/cancel:
+    post:
+      tags: [registrations]
+      operationId: cancelMyRegistration
+      summary: Cancel the logged-in attendee's own registration for an event
+      description: |
+        No body (ignored). The registration is always the cookie user's own: no
+        path, query or body value names a user or a registration. Order of checks:
+        guard (401/403), id is a uuid (else 404, no query), then one transaction
+        that locks the event row (404 if none) and then the caller's row (404 if
+        the caller has no row of any status for this event). The caller's row is
+        the active one, else the newest cancelled one.
+
+        Row state first: an already `cancelled` row answers 200 with that row and
+        nothing is written (idempotent; also for a cancelled, started or passed
+        event); a checked-in ticket is 409 `already_checked_in`. Then the event
+        state with the server clock: stored cancelled is 409 `event_cancelled`, an
+        ended event 409 `event_passed`, a started one 409 `event_started` (also for
+        a waiting person). Otherwise the row becomes `cancelled` with
+        `cancelled_at`, and its pending `reminder` outbox rows are deleted (sent,
+        error_sending and other kinds stay).
+
+        If the row was `registered` and the `registered` count under the lock is
+        below `capacity`, the first `waitlisted` row of the event by queue order
+        becomes `registered` (same ticket code) and gets one `promotion` outbox row
+        with the locked event's `schedule_version` and `starts_at`. At most one
+        person is promoted per cancel. Cancelling a waiting place frees no seat; the
+        other places renumber at read time. The answer says nothing about who was
+        promoted. Registering again afterwards makes a new row.
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: The cancelled registration (`status` `cancelled`, the old `ticket_code`, `waitlist_position` and `checked_in_at` null); also the answer to a repeat.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+        "401":
+          $ref: "#/components/responses/NotLoggedIn"
+        "403":
+          $ref: "#/components/responses/AttendeeOnly"
+        "404":
+          $ref: "#/components/responses/NoRegistration"
+        "409":
+          $ref: "#/components/responses/RegistrationNotCancellable"
 
   /events/{id}/registrations/{registrationId}/emails:
     get:
@@ -1582,6 +1638,30 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
           examples:
+            cancelled:
+              value:
+                error: event_cancelled
+            passed:
+              value:
+                error: event_passed
+            started:
+              value:
+                error: event_started
+    RegistrationNotCancellable:
+      description: |
+        The registration cannot be cancelled; checked under the event lock, nothing
+        is written. `already_checked_in`: the ticket was used (checked first, so
+        also on a cancelled, started or ended event). `event_cancelled`: the event
+        was cancelled. `event_passed`: `starts_at + duration_minutes` is reached.
+        `event_started`: the event has started and not ended.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            checkedIn:
+              value:
+                error: already_checked_in
             cancelled:
               value:
                 error: event_cancelled

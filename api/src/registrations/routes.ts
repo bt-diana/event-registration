@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import type pg from "pg";
 import { requireUser } from "../auth/middleware.js";
 import {
+  cancelRegistration,
   listMyRegistrations,
   REGISTRATION_COLUMNS,
   registerForEvent,
@@ -11,6 +12,8 @@ import {
 
 // docs/specs/registration.md (M3): POST /events/:id/registrations and
 // GET /events/:id/registrations/me for the logged-in attendee.
+// docs/specs/cancel-registration.md (M4): POST
+// /events/:id/registrations/me/cancel, the attendee cancels their own row.
 // docs/specs/my-registrations.md: GET /me/registrations, all of the
 // attendee's own registrations.
 
@@ -82,6 +85,17 @@ export function registrationsRouter(pool: pg.Pool): Router {
     );
     if (rows.length === 0) return fail(res, 404, "not_found");
     res.status(200).json(registrationShape(rows[0]));
+  });
+
+  // CR1-CR3: the guard runs first, then the uuid check (no query). The body is
+  // ignored; the row is always the cookie user's own. A repeat is 200 (CR12).
+  router.post("/events/:id/registrations/me/cancel", requireUser, async (req: Request, res: Response) => {
+    const id = req.params.id;
+    if (typeof id !== "string" || !UUID.test(id)) return fail(res, 404, "not_found");
+    const result = await cancelRegistration(pool, id, req.user!.id, new Date());
+    if (result.kind === "not_found") return fail(res, 404, "not_found");
+    if (result.kind === "refused") return fail(res, 409, result.error);
+    res.status(200).json(registrationShape(result.registration));
   });
 
   return router;
