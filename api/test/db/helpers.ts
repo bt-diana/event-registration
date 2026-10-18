@@ -195,6 +195,27 @@ export async function waitUntilBlocked(pool: pg.Pool, pid: number): Promise<void
   throw new Error(`backend ${pid} never waited on a lock`);
 }
 
+// Waits until some backend waits on a lock held by `holderPid` and returns its
+// pid. Returns null when `stop()` becomes true first (for example because the
+// request that should wait has already finished without waiting).
+export async function waitUntilBlockedBy(
+  pool: pg.Pool,
+  holderPid: number,
+  stop: () => boolean = () => false,
+): Promise<number | null> {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    const { rows } = await pool.query<{ pid: number }>(
+      "SELECT pid FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid)) LIMIT 1",
+      [holderPid],
+    );
+    if (rows.length > 0) return rows[0].pid;
+    if (stop()) return null;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`no backend waited on a lock of ${holderPid}`);
+}
+
 export async function backendPid(client: pg.PoolClient): Promise<number> {
   const { rows } = await client.query<{ pid: number }>("SELECT pg_backend_pid() AS pid");
   return rows[0].pid;

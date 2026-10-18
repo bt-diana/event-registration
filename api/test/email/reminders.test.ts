@@ -1,12 +1,14 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { enqueueReminders } from "../../src/email/reminders.js";
 import {
+  backendPid,
   createTestDb,
   insertEvent,
   insertOrganizer,
   insertRegistration,
   insertUser,
   uniqueEmail,
+  waitUntilBlockedBy,
   type TestDb,
 } from "../db/helpers.js";
 
@@ -330,6 +332,45 @@ describe("ER30: the worker writes only outbox rows", () => {
     const { rows } = await db.pool.query<{ kind: string }>("SELECT DISTINCT kind FROM outbox");
     expect(rows).toEqual([{ kind: "reminder" }]);
   });
+});
+
+describe("ER72: the worker does not insert behind a reschedule or cancel (tests first)", () => {
+  // What the M7 routes do under the event lock, written by SQL here.
+  const changes: [string, string][] = [
+    [
+      "a reschedule (start far away, version + 1)",
+      "UPDATE events SET starts_at = starts_at + interval '30 days', schedule_version = schedule_version + 1 WHERE id = $1",
+    ],
+    ["a cancel", "UPDATE events SET status = 'cancelled', cancelled_at = now() WHERE id = $1"],
+  ];
+  for (const [label, change] of changes) {
+    it(`waits for the event lock and writes no old-version row after ${label}`, async () => {
+      const { eventId } = await setup();
+      const client = await db.pool.connect();
+      let done = false;
+      let worker: Promise<number> | undefined;
+      let blocked: number | null | undefined;
+      try {
+        await client.query("BEGIN");
+        await client.query("SELECT id FROM events WHERE id = $1 FOR UPDATE", [eventId]);
+        const holder = await backendPid(client);
+        worker = enqueueReminders(db.pool, ONE_DAY_BEFORE).finally(() => {
+          done = true;
+        });
+        blocked = await waitUntilBlockedBy(db.pool, holder, () => done);
+        await client.query(change, [eventId]);
+        await client.query("COMMIT");
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
+      expect(await worker!).toBe(0);
+      expect(await reminders(eventId)).toEqual([]);
+      expect(blocked).not.toBeNull();
+    });
+  }
 });
 
 describe("ER31: error_sending does not open the door to a second reminder (tests first)", () => {
