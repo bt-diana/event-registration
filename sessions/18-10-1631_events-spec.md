@@ -28,3 +28,13 @@ Started 18-10 16:31 +06.
 
 ### D36: event duration and a derived `passed` status
 16:52:12 +0600. The user wants a duration on each event and the status `passed` once the event is over. Not stored: the API works it out as `now >= starts_at + duration`, so no worker or status change in the table is needed. The public page also shows `capacity`; the other three answers are accepted as written.
+
+## Step 3: implement M2 (api)
+
+**Prompt** (17:00 +06, text cleaned)
+
+> implement
+
+**What Claude did.** Gave the `code-writer` agent the task. It made three commits on `main`: `9e9a703` (migration `002_event_duration.sql` and schema tests), `36e3f30` (tests first: ownership, public page and organizer tests, E1-E20; 72 of 81 failed on purpose because the routes were missing) and `f66461e` (`api/src/events/routes.ts`, mount in `app.ts`, `openapi.yaml`, README, ROADMAP). Then ran `bash scripts/verify.sh`: typecheck, lint and tests pass (api 184, web 110). Things to know: `events.md` still says roadmap steps 6 and 7, while the renumbered ROADMAP calls them steps 8 and 9; `starts_at` accepts only `YYYY-MM-DDTHH:MM[:SS[.fff]]` with `Z` or an offset; a body that is not JSON gets 400 before the guard (from the app-wide `express.json()`); the new tests rely on dropping their throw-away schema instead of deleting rows; the agent wrote `Co-Authored-By: Claude Opus 5.5` in its commits. Used Agent (`code-writer`), Bash.
+
+**Decision.** None.
